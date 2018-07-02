@@ -1,0 +1,19 @@
+//
+// Created by wangzhen on 18-6-19.
+//
+
+#ifndef DIGITALCURRENCYSTRATEGYSYSTEM_CONSTANTS_H
+#define DIGITALCURRENCYSTRATEGYSYSTEM_CONSTANTS_H
+
+#define MAX_UNIT_NAME_LENGTH    30
+#define NAX_UNIT_FOLDER_LENGTH  100
+
+#define TIME_TO_LAST       -1
+#define TIME_FROM_FIRST     0
+
+const int KB = 1024;
+const int MB = KB * KB;
+const int UNIT_PAGE_SIZE = 64 * MB;
+const int PAGE_MIN_HEADROOM = 2 * MB;
+
+#endif //DIGITALCURRENCYSTRATEGYSYSTEM_CONSTANTS_H

@@ -1,0 +1,1 @@
+/usr/bin/c++     CMakeFiles/dcsstd.dir/main.cpp.o CMakeFiles/dcsstd.dir/OKTGEngine.cpp.o CMakeFiles/dcsstd.dir/TGEngine.cpp.o  -o dcsstd  -L/usr/local/lib  -L/opt/kungfu/toolchain/boost-1.62.0/lib -Wl,-rpath,/usr/local/lib:/opt/kungfu/toolchain/boost-1.62.0/lib -lcpprest -lboost_system -lssl -lcrypto 

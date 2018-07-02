@@ -1,0 +1,1 @@
+/usr/bin/c++  -g     -o strategy  -L/usr/local/lib  -L/opt/kungfu/toolchain/boost-1.62.0/lib -Wl,-rpath,/usr/local/lib:/opt/kungfu/toolchain/boost-1.62.0/lib -lcpprest ../UnitEngine/Logger/libdcsslog.a -lboost_system -lssl -lcrypto -llog4cplus 

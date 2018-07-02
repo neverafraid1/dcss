@@ -1,0 +1,1 @@
+/usr/bin/c++  -g   CMakeFiles/demo.dir/main.cpp.o CMakeFiles/demo.dir/src/TG/OKTGEngine.cpp.o  -o demo 

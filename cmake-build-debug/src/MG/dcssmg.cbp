@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="dcssmg"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;CMake Files\src\;CMake Files\src\Logger\;CMake Files\src\TG\;CMake Files\src\MG\;CMake Files\UnitEngine\;CMake Files\UnitEngine\Unit\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/src/MG"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/src/MG/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/src/MG/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/src/MG/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/src/MG/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="dcssmg">
+				<Option output="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/src/MG/dcssmg" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/src/MG"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/Logger"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/TG"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MG"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MD5"/>
+					<Add directory="/opt/kungfu/toolchain/boost-1.62.0/include"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/."/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/../include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MG/../Logger"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MG/../MD5"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MG/../../include"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MG/.."/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../include/c++/4.8.5"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../include/c++/4.8.5/x86_64-redhat-linux"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../include/c++/4.8.5/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/4.8.5/include"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/src/MG/Makefile&quot;  VERBOSE=1 dcssmg"/>
+					<CompileFile command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/src/MG/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/src/MG/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/src/MG/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="dcssmg/fast">
+				<Option output="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/src/MG/dcssmg" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/src/MG"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/Logger"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/TG"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MG"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MD5"/>
+					<Add directory="/opt/kungfu/toolchain/boost-1.62.0/include"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/."/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/../include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MG/../Logger"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MG/../MD5"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MG/../../include"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MG/.."/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../include/c++/4.8.5"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../include/c++/4.8.5/x86_64-redhat-linux"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../include/c++/4.8.5/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/4.8.5/include"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/src/MG/Makefile&quot;  VERBOSE=1 dcssmg/fast"/>
+					<CompileFile command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/src/MG/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/src/MG/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/src/MG/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MD5/MD5.cpp">
+			<Option target="dcssmg"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MD5/MD5.h">
+			<Option target="dcssmg"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MG/MGEngine.cpp">
+			<Option target="dcssmg"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MG/MGEngine.h">
+			<Option target="dcssmg"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MG/OKMGEngine.cpp">
+			<Option target="dcssmg"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MG/OKMGEngine.h">
+			<Option target="dcssmg"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MG/main.cpp">
+			<Option target="dcssmg"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\src\"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/Logger/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\src\Logger\"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/TG/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\src\TG\"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/MG/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\src\MG\"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/UnitEngine/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\UnitEngine\"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/UnitEngine/Unit/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\UnitEngine\Unit\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

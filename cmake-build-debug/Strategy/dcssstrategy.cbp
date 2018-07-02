@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="dcssstrategy"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;CMake Files\GateWay\;CMake Files\GateWay\TG\;CMake Files\GateWay\MG\;CMake Files\UnitEngine\;CMake Files\UnitEngine\Unit\;CMake Files\UnitEngine\Paged\;CMake Files\UnitEngine\Logger\;CMake Files\Strategy\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/Strategy"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/Strategy/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/Strategy/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/Strategy/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/Strategy/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="dcssstrategy">
+				<Option output="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/Strategy/libdcssstrategy.so" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/Strategy"/>
+				<Option object_output="./"/>
+				<Option type="3"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/Strategy/../include"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/Strategy/../UnitEngine/utils"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/Strategy/../UnitEngine/Unit"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/Strategy/../UnitEngine/Logger"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../include/c++/4.8.5"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../include/c++/4.8.5/x86_64-redhat-linux"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../include/c++/4.8.5/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/4.8.5/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/Strategy/Makefile&quot;  VERBOSE=1 dcssstrategy"/>
+					<CompileFile command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/Strategy/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/Strategy/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/Strategy/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="dcssstrategy/fast">
+				<Option output="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/Strategy/libdcssstrategy.so" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/Strategy"/>
+				<Option object_output="./"/>
+				<Option type="3"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/Strategy/../include"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/Strategy/../UnitEngine/utils"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/Strategy/../UnitEngine/Unit"/>
+					<Add directory="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/Strategy/../UnitEngine/Logger"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../include/c++/4.8.5"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../include/c++/4.8.5/x86_64-redhat-linux"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../include/c++/4.8.5/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/4.8.5/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/Strategy/Makefile&quot;  VERBOSE=1 dcssstrategy/fast"/>
+					<CompileFile command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/Strategy/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/Strategy/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j4 -f &quot;/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug/Strategy/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/Strategy/DCSSDataWrapper.cpp">
+			<Option target="dcssstrategy"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/Strategy/DCSSDataWrapper.h">
+			<Option target="dcssstrategy"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/Strategy/DCSSStrategyUtil.cpp">
+			<Option target="dcssstrategy"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/Strategy/DCSSStrategyUtil.h">
+			<Option target="dcssstrategy"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/Strategy/IDCSSDataProcessor.h">
+			<Option target="dcssstrategy"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/Strategy/IDCSSStrategy.cpp">
+			<Option target="dcssstrategy"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/Strategy/IDCSSStrategy.h">
+			<Option target="dcssstrategy"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/GateWay/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\GateWay\"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/GateWay/TG/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\GateWay\TG\"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/GateWay/MG/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\GateWay\MG\"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/UnitEngine/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\UnitEngine\"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/UnitEngine/Unit/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\UnitEngine\Unit\"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/UnitEngine/Paged/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\UnitEngine\Paged\"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/UnitEngine/Logger/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\UnitEngine\Logger\"/>
+		</Unit>
+		<Unit filename="/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/Strategy/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\Strategy\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

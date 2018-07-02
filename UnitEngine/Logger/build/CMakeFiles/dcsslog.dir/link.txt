@@ -1,0 +1,2 @@
+/usr/bin/ar qc libdcsslog.a  CMakeFiles/dcsslog.dir/DCSSLog.cpp.o
+/usr/bin/ranlib libdcsslog.a

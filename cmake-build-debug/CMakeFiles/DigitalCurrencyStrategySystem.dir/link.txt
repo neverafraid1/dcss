@@ -1,0 +1,1 @@
+/usr/bin/c++  -g   CMakeFiles/DigitalCurrencyStrategySystem.dir/main.cpp.o CMakeFiles/DigitalCurrencyStrategySystem.dir/src/TG/OKTGEngine.cpp.o CMakeFiles/DigitalCurrencyStrategySystem.dir/src/Logger/DCSSLog.cpp.o CMakeFiles/DigitalCurrencyStrategySystem.dir/src/TG/main.cpp.o  -o DigitalCurrencyStrategySystem 

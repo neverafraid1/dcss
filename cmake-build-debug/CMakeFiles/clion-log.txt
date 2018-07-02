@@ -1,0 +1,4 @@
+/home/wangzhen/.local/share/JetBrains/Toolbox/apps/CLion/ch-0/181.5281.33/bin/cmake/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/cmake-build-debug
