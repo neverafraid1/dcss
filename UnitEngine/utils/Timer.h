@@ -6,6 +6,10 @@
 #define DIGITALCURRENCYSTRATEGYSYSTEM_TIMER_H
 
 #include <memory>
+#include <cstring>
+#include "UnitDeclare.h"
+
+UNIT_NAMESPACE_START
 
 const long MILLISECONDS_PER_SECOND = 1000;
 const long MICROSECONDS_PER_MILLISECOND = 1000;
@@ -25,9 +29,6 @@ const long NANOSECONDS_PER_MINUTE = NANOSECONDS_PER_SECOND * SECONDS_PER_MINUTE;
 const long NANOSECONDS_PER_HOUR = NANOSECONDS_PER_SECOND * SECONDS_PER_HOUR;
 const long NANOSECONDS_PER_DAY = NANOSECONDS_PER_HOUR * HOURS_PER_DAY;
 
-namespace MemoryBuffer
-{
-
 class NanoTimer
 {
 public:
@@ -35,12 +36,13 @@ public:
 
     long GetNano() const;
 
-private:
-    NanoTimer() = default;
     NanoTimer& operator=(const NanoTimer& source) = delete;
 
 private:
-    static std::shared_ptr<NanoTimer> ptr;
+    NanoTimer() = default;
+
+private:
+    static std::unique_ptr<NanoTimer> ptr;
     long secDiff;
 };
 
@@ -95,6 +97,25 @@ inline std::string ParseNano(long nano, const char* format)
     strftime(buffer, sizeof(buffer), format, dt);
     return std::string(buffer);
 }
+
+/*
+#if defined(__i386__)
+static __inline__ unsigned long long GetCycleCount()
+{
+    unsigned long long int x;
+    __asm__ volatile("rdtsc":"=A"(x));
+    return x;
 }
+#elif defined(__x86_64__)
+static __inline__ unsigned long long GetCycleCount()
+{
+    unsigned hi, lo;
+    __asm__ volatile("rdtsc":"=a"(lo),"=d"(hi));
+    return ((unsigned long long)lo)|(((unsigned long long)hi)<<32);
+}
+#endif
+ */
+
+UNIT_NAMESPACE_END
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_TIMER_H

@@ -22,23 +22,25 @@ using namespace web;
 class OKMGApi : public IMGApi
 {
 public:
-    OKMGApi();
-    virtual ~OKMGApi();
+    explicit OKMGApi(short source);
+    ~OKMGApi() override ;
 
 public:
-    virtual void Register(IMGApiPtr spi);
+    void Register(IMGEnginePtr spi) override ;
 
-    virtual void Connect();
-    virtual bool IsConnected();
+    void Connect() override ;
+    bool IsConnected() const override ;
 
 public:
-    virtual void ReqSubTicker(const char10& Symbol);
-    virtual void ReqSubDepth(const char10& Symbol, int depth);
-    virtual void ReqSubKline(const char10& Symbol, KlineTypeType klineType);
+    void ReqSubTicker(const DCSSSymbolField& symbol) override ;
+    void ReqSubDepth(const DCSSSymbolField& symbol, int depth) override ;
+    void ReqSubKline(const DCSSSymbolField& symbol, KlineTypeType klineType) override ;
 
-    virtual void ReqUnSubTicker(const char10& Symbol);
-    virtual void ReqUnSubDepth(const char10& Symbol, int depth);
-    virtual void ReqUnSubKline(const char10& Symbol, KlineTypeType klineType);
+    void ReqUnSubTicker(const DCSSSymbolField& symbol) override ;
+    void ReqUnSubDepth(const DCSSSymbolField& symbol, int depth) override ;
+    void ReqUnSubKline(const DCSSSymbolField& symbol, KlineTypeType klineType) override ;
+
+    std::string Name() const override {return "OK_MG"; }
 
 private:
     void OnWsMessage(const websocket_incoming_message& msg);
@@ -46,23 +48,30 @@ private:
 
     void OnWsConnect();
 
-    void OnRtnTick(const json::value& v, const std::string& symbol);
-    void OnRtnKline(const json::value& v, const std::pair<std::string, KlineTypeType>& pair);
-    void OnRtnDepth(const json::value& v, const std::pair<std::string, int>& pair);
+    void OnRtnTick(const json::value& v, const DCSSSymbolField& symbol);
+    void OnRtnKline(const json::value& v, const std::pair<DCSSSymbolField, KlineTypeType>& pair);
+    void OnRtnDepth(const json::value& v, const std::pair<DCSSSymbolField, int>& pair);
+
+    void Ping();
 
 private:
+
+    DCSSLogPtr mLogger;
+
     static std::map<KlineTypeType, std::string> klineStringMap;
     static std::map<std::string, KlineTypeType> stringKlineMap;
 
     std::shared_ptr<websocket_callback_client> mWsClient;
     volatile bool IsWsConnected;
+    volatile bool Ponged;
 
-    std::map<std::string, std::string> mSubTickMap; // <request, symbol>
-    std::map<std::string, std::pair<std::string, KlineTypeType> > mSubKlineMap;
-    std::map<std::string, std::pair<std::string, int> > mSubDepthMap;
+    std::map<std::string, DCSSSymbolField> mSubTickMap; // <request, symbol>
+    std::map<std::string, std::pair<DCSSSymbolField, KlineTypeType> > mSubKlineMap;
+    std::map<std::string, std::pair<DCSSSymbolField, int> > mSubDepthMap;
+
+    std::unique_ptr<std::thread> mPingThread;
 
     IMGEnginePtr mSpi;
-
 };
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_OKMGENGINE_H

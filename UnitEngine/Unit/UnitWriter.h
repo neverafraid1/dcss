@@ -8,13 +8,23 @@
 #include "UnitHandler.h"
 #include "FrameHeader.h"
 
+UNIT_NAMESPACE_START
 
-class UnitWriter;
-DECLARE_PTR(UnitWriter);
+PRE_DECLARE_PTR(UnitWriter);
 
-
+/**
+ * uint writer
+ * enable user to write into unit
+ * one unit writer can only one unit and
+ * meanwhile this unit cannot be used by other writer
+ */
 class UnitWriter : public UnitHandler
 {
+public:
+    static UnitWriterPtr Create(const std::string& dir, const std::string& uname, const std::string& writerName);
+    static UnitWriterPtr Create(const std::string& dir, const std::string& uname, PageProviderPtr ptr);
+    static UnitWriterPtr Create(const std::string& dir, const std::string& uname);
+
 public:
     /** init unit */
     void Init(const std::string& dir, const std::string& uname);
@@ -26,23 +36,24 @@ public:
      */
     void SeekToEnd();
     /** write a string into unit */
-    long WriteStr(const std::string& str);
+    /*no need now*/
+//    long WriteStr(const std::string& str);
     /** write a frame with full information */
     virtual long WriteFrameFull(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType,
             FH_REQID_TYPE requestId, FH_NANO_TYPE extraNano, FH_ERRORID_TYPE errorId, const char* errorMsg);
-
+    /*write a basic mCurrFrame*/
     virtual long WriteFrame(const void* data, FH_LENGTH_TYPE length,
             FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType, FH_REQID_TYPE requestId)
     {
         return WriteFrameFull(data, length, source, msgType, requestId, 0, 0, nullptr);
     }
-
+    /*write a mCurrFrame with extra nano*/
     virtual long WriteFrameExtra(const void* data, FH_LENGTH_TYPE length,
             FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType, FH_REQID_TYPE requestId, FH_NANO_TYPE extraNano)
     {
         return WriteFrameFull(data, length, source, msgType, requestId, extraNano, 0, nullptr);
     }
-
+    /*write an error mCurrFrame*/
     virtual long WriteErrorFrame(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source,
             FH_MSG_TP_TYPE msgType, FH_REQID_TYPE requestId,
             FH_ERRORID_TYPE errorId, const char* errorMsg)
@@ -51,16 +62,12 @@ public:
     }
 
 public:
-    static UnitWriterPtr Create(const std::string& dir, const std::string& uname, const std::string& writerName);
-    static UnitWriterPtr Create(const std::string& dir, const std::string& uname, PageProviderPtr ptr);
-    static UnitWriterPtr Create(const std::string& dir, const std::string& uname);
-
-    static std::string PREFIX;
-
+    static const std::string PREFIX;
 
 protected:
+    /*the unit will write in*/
     UnitPtr mUnit;
-
+    /*private constructor, only can get object through create*/
     UnitWriter(PageProviderPtr ptr) : UnitHandler(ptr) {}
 
 };
@@ -68,12 +75,14 @@ protected:
 class UnitSafeWriter : public UnitWriter
 {
 public:
-    virtual long WriteFrameFull(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType,
-            FH_REQID_TYPE requestId, FH_NANO_TYPE extraNano, FH_ERRORID_TYPE errorId, const char* errorMsg);
+    long WriteFrameFull(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType,
+            FH_REQID_TYPE requestId, FH_NANO_TYPE extraNano, FH_ERRORID_TYPE errorId, const char* errorMsg) override ;
 
     static UnitWriterPtr Create(const std::string& dir, const std::string& uname, const std::string& writerName);
 protected:
     UnitSafeWriter(PageProviderPtr ptr) : UnitWriter(ptr) {}
 };
+
+UNIT_NAMESPACE_END
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_UNITWRITER_H

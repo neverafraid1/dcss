@@ -11,24 +11,29 @@ DCSSStrategyUtil::DCSSStrategyUtil(const std::string& strategyName)
 
 long DCSSStrategyUtil::GetNano()
 {
-    return MemoryBuffer::GetNanoTime();
+    return GetNanoTime();
 }
 
 static const char TimeFormat[] = "%Y-%m-%d %H:%M:%S";
 
 std::string DCSSStrategyUtil::GetTime()
 {
-    return MemoryBuffer::ParseNano(MemoryBuffer::GetNanoTime(), TimeFormat);
+    return UnitEngine::ParseNano(GetNanoTime(), TimeFormat);
 }
 
 long DCSSStrategyUtil::ParseTime(const std::string& timeStr)
 {
-    return MemoryBuffer::ParseTime(timeStr.c_str(), TimeFormat);
+    return UnitEngine::ParseTime(timeStr.c_str(), TimeFormat);
 }
 
 std::string DCSSStrategyUtil::ParseNano(long nano)
 {
-    return MemoryBuffer::ParseNano(nano, TimeFormat);
+    return UnitEngine::ParseNano(nano, TimeFormat);
+}
+
+std::string DCSSStrategyUtil::GetName() const
+{
+    return mStrategyName;
 }
 
 int DCSSStrategyUtil::InsertLimitOrder(short source, const DCSSSymbolField& symbol, double price, double volume,
@@ -36,7 +41,6 @@ int DCSSStrategyUtil::InsertLimitOrder(short source, const DCSSSymbolField& symb
 {
     if (tradeType != BUY && tradeType != SELL)
     {
-        // TODO
         return -1;
     }
     int rid = GetRid();
@@ -56,16 +60,25 @@ int DCSSStrategyUtil::InsertMarketOrder(short source, const DCSSSymbolField& sym
 {
     if(tradeType != BUY_MARKET && tradeType != SELL_MARKET)
     {
-        //TODO
         return -1;
     }
     int rid = GetRid();
     DCSSReqInsertOrderField req = {};
     req.Symbol = symbol;
+    req.Amount = volume;
+    req.TradeType = tradeType;
+
+    WriteFrameExtra(&req, sizeof(req), source, MSG_TYPE_REQ_ORDER_INSERT, rid, mMdNano);
 }
 
-int DCSSStrategyUtil::CancelOrder(short source, int orderId)
+int DCSSStrategyUtil::CancelOrder(short source, const DCSSSymbolField& symbol, long orderId)
 {
-    DCSSReqCancelOrderField req = {};
+    int rid = GetRid();
 
+    DCSSReqCancelOrderField req = {};
+    req.Symbol = symbol;
+    req.OrderID[0] = orderId;
+    WriteFrame(&req, sizeof(DCSSReqCancelOrderField), source, MSG_TYPE_REQ_ORDER_ACTION, rid);
+
+    return rid;
 }

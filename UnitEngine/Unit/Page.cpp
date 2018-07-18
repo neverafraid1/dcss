@@ -6,36 +6,25 @@
 #include "PageHeader.h"
 #include "PageUtil.h"
 #include "Timer.h"
-
 #include <sstream>
 
-using namespace UNIT;
+USING_UNIT_NAMESPACE
 
 #define PAGE_INIT_POSITION sizeof(PageHeader)
 
 Page::Page(void *buffer)
-        : frame(ADDRESS_ADD(buffer, PAGE_INIT_POSITION)), buffer(buffer), position(PAGE_INIT_POSITION), frameNum(0), pageNum(-1)
+        : mCurrFrame(ADDRESS_ADD(buffer, PAGE_INIT_POSITION)), mBuffer(buffer), mPosition(PAGE_INIT_POSITION), mFrameNum(0), mPageNum(-1)
 {}
-
-void Page::FinishPage()
-{
-    PageHeader* header = reinterpret_cast<PageHeader*>(buffer);
-    header->CloseNano = GetNanoTime();
-    header->FrameNum = frameNum;
-    header->LastPos = position;
-    frame.SetStatusPageClosed();
-}
-
 
 PagePtr Page::Load(const std::string& dir, const std::string& uname, short pageNum, bool isWriting,
         bool quickMode)
 {
-    std::string path;
+    std::string path = PageUtil::GenPageFullPath(dir, uname, pageNum);
     void* buffer = PageUtil::LoadPageBuffer(path, UNIT_PAGE_SIZE, isWriting, quickMode);
-    if (buffer ==nullptr)
+    if (buffer == nullptr)
         return PagePtr();
 
-    PageHeader* header = reinterpret_cast<PageHeader*>(buffer);
+    auto header = static_cast<PageHeader*>(buffer);
     if (header->Status == UNIT_PAGE_STATUS_RAW)
     {
         if (!isWriting)
@@ -56,7 +45,16 @@ PagePtr Page::Load(const std::string& dir, const std::string& uname, short pageN
         throw std::runtime_error(ss.str().c_str());
     }
 
-    PagePtr pPage = PagePtr(new Page(buffer));
-    pPage->pageNum = pageNum;
-    return pPage;
+    PagePtr pPage(new Page(buffer));
+    pPage->mPageNum = pageNum;
+    return std::move(pPage);
+}
+
+void Page::FinishPage()
+{
+    auto header = static_cast<PageHeader*>(mBuffer);
+    header->CloseNano = GetNanoTime();
+    header->FrameNum = mFrameNum;
+    header->LastPos = mPosition;
+    mCurrFrame.SetStatusPageClosed();
 }

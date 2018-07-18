@@ -6,9 +6,11 @@
 #include "PageUtil.h"
 #include "IPageProvider.h"
 
+USING_UNIT_NAMESPACE
+
 UnitPtr Unit::CreateUnit(const std::string& dir, const std::string& uname, int serviceIdx, IPageProviderPtr providerPtr)
 {
-    UnitPtr p = UnitPtr(new Unit());
+    UnitPtr p(new Unit());
     p->mPageProviderPtr = providerPtr;
     p->mDirectory = dir;
     p->mUnitName = uname;
@@ -22,7 +24,7 @@ void Unit::Expire()
     if (!mExpired)
     {
         mExpired = true;
-        if (mCurPage.get() !=nullptr)
+        if (mCurPage.get() != nullptr)
         {
             mPageProviderPtr->ReleasePage(mCurPage->GetBuffer(), UNIT_PAGE_SIZE, mServiceIdx);
             mCurPage.reset();
@@ -33,24 +35,24 @@ void Unit::Expire()
 
 void Unit::SeekTime(long time)
 {
-    if (mCurPage.get() !=nullptr)
+    if (mCurPage.get() != nullptr)
         mPageProviderPtr->ReleasePage(mCurPage->GetBuffer(), UNIT_PAGE_SIZE, mServiceIdx);
 
     if (time == TIME_TO_LAST)
     {
-        std::vector<short> pageNums ;//= PageUtil:
+        std::vector<short> pageNums = PageUtil::GetPageNums(mDirectory, mUnitName);
         mCurPage = mPageProviderPtr->GetPage(mDirectory, mUnitName, mServiceIdx, (pageNums.size() > 0) ? pageNums.back() : 1);
         if (mCurPage.get() !=nullptr)
             mCurPage->SkipWrittenFrame();
     }
     else if (time == TIME_FROM_FIRST)
     {
-        std::vector<short> pageNums ;//= PageUtil:
+        std::vector<short> pageNums = PageUtil::GetPageNums(mDirectory, mUnitName);
         mCurPage = mPageProviderPtr->GetPage(mDirectory, mUnitName, mServiceIdx, (pageNums.size() > 0) ? pageNums.front() : 1);
     }
     else
     {
-        short pageNum;
+        short pageNum = PageUtil::GetPageNumWithTime(mDirectory, mUnitName, time);
         mCurPage = mPageProviderPtr->GetPage(mDirectory, mUnitName, mServiceIdx, pageNum);
         if (mCurPage.get() !=nullptr)
             mCurPage->SkipWrittenFrame();
@@ -80,12 +82,12 @@ void Unit::LoadNextPage()
     }
 }
 
-inline void* Unit::LocateFrame()
+void* Unit::LocateFrame()
 {
     if (mExpired)
         return nullptr;
 
-    // if writing, we need an empty frame
+    // if writing, we need an empty mCurrFrame
     if (mIsWriting)
     {
         void* frame = mCurPage->LocateWritableFrame();
@@ -96,7 +98,7 @@ inline void* Unit::LocateFrame()
         }
         return frame;
     }
-    // if reading, we need an written frame
+    // if reading, we need an written mCurrFrame
     else
     {
         if (mCurPage.get() == nullptr || mCurPage->IsAtPageEnd())
@@ -107,17 +109,17 @@ inline void* Unit::LocateFrame()
     return nullptr;
 }
 
-inline void Unit::PassFrame()
+void Unit::PassFrame()
 {
     mCurPage->SkipFrame();
 }
 
-inline short Unit::GetCurPageNum() const
+short Unit::GetCurPageNum() const
 {
     return mCurPage->GetPageNum();
 }
 
-inline std::string Unit::GetUnitName() const
+std::string Unit::GetUnitName() const
 {
     return mUnitName;
 }

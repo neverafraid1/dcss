@@ -8,7 +8,6 @@
 #include <string>
 #include <cstdint>
 
-namespace DCSS {
 class MD5 {
 // Methods
 public:
@@ -75,6 +74,5 @@ private:
     uint8_t m_Finalized;
 
 };
-}
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_MD5_H

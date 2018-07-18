@@ -9,7 +9,7 @@
 const short MSG_TYPE_STRATEGY_START = 10;
 const short MSG_TYPE_STRATEGY_END = 11;
 const short MSG_TYPE_TRADE_ENGINE_LOGIN = 12;
-const short MSG_TYPE_TRADE_ENGINT_ACK = 13;
+const short MSG_TYPE_TRADE_ENGINE_ACK = 13;
 
 /*20-29 for service*/
 const short MSG_TYPE_PAGED_START = 20;

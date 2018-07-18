@@ -5,22 +5,18 @@
 #include "Timer.h"
 #include <chrono>
 
-using namespace MemoryBuffer;
+USING_UNIT_NAMESPACE
 
-std::shared_ptr<NanoTimer> NanoTimer::ptr =  std::shared_ptr<NanoTimer>(nullptr);
+std::unique_ptr<NanoTimer> NanoTimer::ptr =  std::unique_ptr<NanoTimer>(new NanoTimer());
 
 NanoTimer* NanoTimer::GetInstance()
 {
-    if (ptr.get() == nullptr)
-    {
-        ptr = std::shared_ptr<NanoTimer>(new NanoTimer());
-    }
     return ptr.get();
 }
 
 inline std::chrono::steady_clock::time_point GetTimeNow()
 {
-    timespec tp;
+    timespec tp = {};
     clock_gettime(CLOCK_MONOTONIC, &tp);
     return std::chrono::steady_clock::time_point(
             std::chrono::steady_clock::duration(

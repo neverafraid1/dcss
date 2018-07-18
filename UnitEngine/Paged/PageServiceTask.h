@@ -10,7 +10,9 @@
  * here we define tasks which can be implemented in page engine
  */
 
-#include "Declare.h"
+#include "UnitDeclare.h"
+
+UNIT_NAMESPACE_START
 
 class PageEngine;
 
@@ -19,7 +21,7 @@ class PstBase
 public:
     virtual void Go(){}
     virtual std::string GetName() const { return "Base";}
-    virtual ~PstBase(){}
+    virtual ~PstBase() = default;
 };
 DECLARE_PTR(PstBase);
 
@@ -29,35 +31,40 @@ DECLARE_PTR(PstBase);
 class PstPidCheck : public PstBase
 {
 public:
-    PstPidCheck(PageEngine* pe);
-    void Go();
-    std::string GetName()const {return "PidCheck";}
+    explicit PstPidCheck(PageEngine* pe);
+    void Go() final ;
+    std::string GetName() const final{return "PidCheck";}
 private:
-    PageEngine* engine;
+    PageEngine* mEngine;
 };
 DECLARE_PTR(PstPidCheck);
 
 class PstTimeTick: public PstBase
 {
 public:
-    PstTimeTick(PageEngine* pe);
-    void Go();
-    std::string GetName() const { return "TimeTick"; }
+    explicit PstTimeTick(PageEngine* pe);
+    void Go() final ;
+    std::string GetName() const final{ return "TimeTick"; }
 private:
-    PageEngine* engine;
+    PageEngine* mEngine;
 };
 DECLARE_PTR(PstTimeTick);
 
+/*
+ * load temp page
+ */
 class PstTempPage : public PstBase
 {
 public:
     static const std::string PageFullPath;
-    PstTempPage(PageEngine* pe);
-    void Go();
-    std::string GetName() const {return "TempCheck";}
+    explicit PstTempPage(PageEngine* pe);
+    void Go() final ;
+    std::string GetName() const final {return "TempCheck";}
 private:
-    PageEngine* engine;
+    PageEngine* mEngine;
 };
 DECLARE_PTR(PstTempPage);
+
+UNIT_NAMESPACE_END
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_PAGESERVICETASK_H

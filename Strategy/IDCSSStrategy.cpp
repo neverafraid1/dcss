@@ -7,6 +7,13 @@
 #include <iostream>
 #include "IDCSSStrategy.h"
 
+static std::string SymbolStr(const DCSSSymbolField& symbol)
+{
+    std::stringstream ss;
+    ss << symbol.Base << "_" << symbol.Quote;
+    return ss.str();
+}
+
 void RegisterSignalCallback()
 {
     std::signal(SIGTERM, IDCSSDataProcessor::SignalHandler);
@@ -19,19 +26,19 @@ void RegisterSignalCallback()
 IDCSSStrategy::IDCSSStrategy(const std::string& name) : mName(name)
 {
     mLogger = DCSSLog::GetStrategyLogger(name, name);
-    mUtil = std::make_shared(new DCSSStrategyUtil(name));
-    mData = std::make_shared(new DCSSDataWrapper(this, mUtil.get()));
+    mUtil.reset(new DCSSStrategyUtil(name));
+    mData.reset(new DCSSDataWrapper(this, mUtil.get()));
 
     RegisterSignalCallback();
 }
 
 void IDCSSStrategy::Start()
 {
-    mDataThread = std::make_shared(new std::thread(&DCSSDataWrapper::Run, mData.get()));
+    mDataThread.reset(new std::thread(&DCSSDataWrapper::Run, mData.get()));
     DCSS_LOG_INFO(mLogger, "[Start] data thread start");
 }
 
-void IDCSSStrategy::~IDCSSStrategy()
+IDCSSStrategy::~IDCSSStrategy()
 {
     DCSS_LOG_INFO(mLogger, "[IDCSSStrategytegy]");
 
@@ -73,28 +80,59 @@ void IDCSSStrategy::Block()
         mDataThread->join();
 }
 
-void IDCSSStrategy::OnRtnTicker(const DCSSTickerField& ticker, long recvTime)
+void IDCSSStrategy::OnRtnTicker(const DCSSTickerField& ticker, short source, long recvTime)
 {
-    DCSS_LOG_DEBUG(mLogger, "[rtn ticker] (symbol)"
-            << ticker.Symbol
-            << " (last price)" << ticker.LastPrice << " (time)" << ticker.Time
-            << " (recv time)" << recvTime);
+    std::cout << GetNanoTime() - recvTime << std::endl;
+//    DCSS_LOG_DEBUG(mLogger, "[rtn ticker]"
+//            << " (source)" << source
+//            << " (symbol)" << SymbolStr(ticker.Symbol)
+//            << " (last price)" << ticker.LastPrice
+//            << " (time)" << ticker.Time
+//            << " (recv time)" << recvTime);
 }
 
-void IDCSSStrategy::OnRtnKline(const DCSSKlineHeaderField& header, const std::vector<DCSSKlineField>& kline, long recvTime)
-{ }
+void IDCSSStrategy::OnRtnKline(const DCSSKlineHeaderField& header, const std::vector<DCSSKlineField>& kline,
+        short source, long recvTime)
+{
+//    DCSS_LOG_DEBUG(mLogger, "[kline]"
+//                            << " (source)" << source
+//    << " (symbol)" << SymbolStr(header.Symbol) << )
+}
 
-void IDCSSStrategy::OnRtnDepth(const DCSSDepthHeaderField& header, const std::vector<DCSSDepthField>& ask,
-        const std::vector<DCSSDepthField>& bid, long recvTime)
-{ }
+void IDCSSStrategy::OnRtnOrder(const DCSSOrderField& order, int requestID, short source, long recvTime)
+{
+    DCSS_LOG_DEBUG(mLogger, "[rtn_order] (source)" << source << " (rid)" << requestID);
+}
 
-void IDCSSStrategy::OnRspOrderInsert(const DCSSRspInsertOrderField& rsp, int requestId, long recvTime, short errorId,
-        const char* errorMsg)
-{ }
+void IDCSSStrategy::OnRspOrderInsert(const DCSSRspInsertOrderField& rsp, int requestID, short source, long recvTime)
+{
+
+}
+
+void IDCSSStrategy::Debug(const char* msg)
+{
+    DCSS_LOG_DEBUG(mLogger, msg);
+}
 
 void IDCSSStrategy::OnTime(long curTime)
 {
-    mUtil->P
+//    mUtil->
+}
+
+int IDCSSStrategy::InsertLimitOrder(short source, const DCSSSymbolField& symbol, double price, double volume, TradeTypeType tradeType)
+{
+    return mUtil->InsertLimitOrder(source, symbol, price, volume, tradeType);
+}
+
+int IDCSSStrategy::InsertMarketOrder(short source, const DCSSSymbolField& symbol, double volume,
+        TradeTypeType tradeType)
+{
+    return mUtil->InsertMarketOrder(source, symbol, volume, tradeType);
+}
+
+int IDCSSStrategy::CancelOrder(short source, const DCSSSymbolField& symbol, long orderId)
+{
+    return mUtil->CancelOrder(source, symbol, orderId);
 }
 
 bool IDCSSStrategy::IsTdReady(short source) const

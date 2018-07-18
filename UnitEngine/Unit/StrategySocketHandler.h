@@ -7,29 +7,32 @@
 
 #include "PageProvider.h"
 #include "IStrategyUtil.h"
-#include "SocketStruct.h"
+#include "PageSocketStruct.h"
 #include "Declare.h"
 #include <array>
+#include "UnitDeclare.h"
 
-typedef std::array<char, MAX_SOCKET_MESSAGE_LENGTH> SocketArray;
-
-void GetSocketRsp(SocketArray& input, SocketArray& output);
-
-void GetSocketRspOnReq(PagedSocketRequest& req, SocketArray& data, const std::string& name);
+UNIT_NAMESPACE_START
 
 class StrategySocketHandler : public IStrategyUtil, public ClientPageProvider
 {
 public:
+    /*constructor with strategy name*/
+    explicit StrategySocketHandler(const std::string& strategyName);
 
-    StrategySocketHandler(const std::string& strategyName);
+    bool RegisterStrategy(int& ridStart, int& ridEnd) override ;
 
-    virtual bool RegisterStrategy(int& ridStart, int& ridEnd);
+    bool TdConnect(short source) override ;
 
-    virtual bool TdConnect(short source);
+    bool MdSubscribe(const std::vector<DCSSSymbolField>& tickers, short source) override ;
 
-    virtual bool MdSubscribe(const std::vector<DCSSSymbolField>& tickers, short source);
+    bool MdSubscribeKline(const DCSSSymbolField& symbol, KlineTypeType klineType, short source) override ;
+
+    bool MdSubscribeDepth(const DCSSSymbolField& symbol, int depth, short source) override ;
 };
 
 DECLARE_PTR(StrategySocketHandler);
+
+UNIT_NAMESPACE_END
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_STRATEGYSOCKETHANDLER_H

@@ -7,12 +7,14 @@
 #include "PageProvider.h"
 #include "Timer.h"
 
+USING_UNIT_NAMESPACE
+
 const std::string UnitWriter::PREFIX = "writer";
 
 void UnitWriter::Init(const std::string& dir, const std::string& uname)
 {
     AddUnit(dir, uname);
-    mUnit = mUnitVec[0];
+    mUnit = mUnits[0];
     SeekToEnd();
 }
 
@@ -41,7 +43,7 @@ long UnitWriter::WriteFrameFull(const void* data, FH_LENGTH_TYPE length, FH_SOUR
 
 UnitWriterPtr UnitWriter::Create(const std::string& dir, const std::string& uname, const std::string& writerName)
 {
-    PageProviderPtr provider = PageProviderPtr(new ClientPageProvider(writerName, true));
+    PageProviderPtr provider(new ClientPageProvider(writerName, true));
 
     return Create(dir, uname, provider);
 }
@@ -55,7 +57,7 @@ UnitWriterPtr UnitWriter::Create(const std::string& dir, const std::string& unam
 
 UnitWriterPtr UnitWriter::Create(const std::string& dir, const std::string& uname)
 {
-    return Create(dir, uname, GetDefalutName(PREFIX));
+    return std::move(Create(dir, uname, GetDefaultName(PREFIX)));
 }
 
 void UnitWriter::SeekToEnd()
@@ -64,21 +66,23 @@ void UnitWriter::SeekToEnd()
     mUnit->LocateFrame();
 }
 
-#include <mutex>
+#include "SpinLock.h"
 
-std::mutex gSafeWriterMutex;
+SpinLock gSl;
 
 long UnitSafeWriter::WriteFrameFull(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source,
         FH_MSG_TP_TYPE msgType, FH_REQID_TYPE requestId, FH_NANO_TYPE extraNano,
         FH_ERRORID_TYPE errorId, const char* errorMsg)
 {
-    std::lock_guard<std::mutex> lck(gSafeWriterMutex);
-    return UnitWriter::WriteFrameFull(data, length, source, msgType, requestId, extraNano, errorId, errorMsg);
+    gSl.Lock();
+    long nano = UnitWriter::WriteFrameFull(data, length, source, msgType, requestId, extraNano, errorId, errorMsg);
+    gSl.UnLock();
+    return nano;
 }
 
 UnitWriterPtr UnitSafeWriter::Create(const std::string& dir, const std::string& uname, const std::string& writerName)
 {
-    PageProviderPtr provider = PageProviderPtr(new ClientPageProvider(writerName, true));
+    PageProviderPtr provider(new ClientPageProvider(writerName, true));
     UnitWriterPtr uwp = UnitWriterPtr(new UnitSafeWriter(provider));
     uwp->Init(dir, uname);
     return uwp;

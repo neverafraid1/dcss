@@ -3,18 +3,34 @@
 //
 
 #include <thread>
+#include "util.h"
 #include "IMGEngine.h"
 #include "OKMGApi.h"
+#include "Timer.h"
 
-void IMGEngine::Init(short index)
+void IMGEngine::Init()
 {
-    mMGApi = IMGApi::Create(index);
-    mMGApi->Register(shared_from_this());
 }
 
 void IMGEngine::SetReaderThread()
 {
-    mReaderThread = ThreadPtr(new std::thread(std::bind(&IMGEngine::Listening, this)));
+    mReaderThread.reset(new std::thread(std::bind(&IMGEngine::Listening, this)));
+}
+
+void IMGEngine::Load(const nlohmann::json& config)
+{
+    short source = config.at("source");
+    auto pair = GetMdUnitPair(source);
+    mMGApi = IMGApi::Create(source);
+    mMGApi->Register(shared_from_this());
+    mMGApi->Connect();
+    while (!mMGApi->IsConnected())
+    {
+        DCSS_LOG_INFO(mLogger, "[load] mg is not connected now (source)" << source);
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    mWriter = UnitWriter::Create(pair.first, pair.second, mMGApi->Name());
+    mReader = UnitReader::CreateRevisableReader(mMGApi->Name());
 }
 
 void IMGEngine::Listening()
@@ -26,47 +42,50 @@ void IMGEngine::Listening()
         if (frame.get() != nullptr)
         {
             short source = frame->GetSource();
-//            if (source != ) TODO
+            if (source != mMGApi->GetSource())
+            {
+                continue;
+            }
 
             FH_MSG_TP_TYPE msgType = frame->GetMsgType();
-            int requestId = frame->GetRequestID();
+
             void* data = frame->GetData();
 
             switch (msgType)
             {
             case MSG_TYPE_SUB_TICKER:
             {
-                DCSSSubTickerField* req = reinterpret_cast<DCSSSubTickerField*>(data);
+                auto req = static_cast<DCSSSubTickerField*>(data);
                 mMGApi->ReqSubTicker(req->Symbol);
                 break;
             }
             case MSG_TYPE_SUB_DEPTH:
             {
-                DCSSSubDepthField* req = reinterpret_cast<DCSSSubDepthField*>(data);
+                auto req = static_cast<DCSSSubDepthField*>(data);
                 mMGApi->ReqSubDepth(req->Symbol, req->Depth);
                 break;
             }
             case MSG_TYPE_SUB_KLINE:
             {
-                DCSSSubKlineField* req = reinterpret_cast<DCSSSubKlineField*>(data);
+                auto req = static_cast<DCSSSubKlineField*>(data);
                 mMGApi->ReqSubKline(req->Symbol, req->KlineType);
                 break;
             }
             case MSG_TYPE_UNSUB_TICKER:
             {
-                DCSSSubTickerField* req = reinterpret_cast<DCSSSubTickerField*>(data);
+                auto req = static_cast<DCSSSubTickerField*>(data);
                 mMGApi->ReqUnSubTicker(req->Symbol);
                 break;
             }
-            case MSG_TYPE_UNSUM_DEPTH:
+            case MSG_TYPE_UNSUB_DEPTH:
             {
-                DCSSSubDepthField* req = reinterpret_cast<DCSSSubDepthField*>(data);
+                auto req = static_cast<DCSSSubDepthField*>(data);
                 mMGApi->ReqUnSubDepth(req->Symbol, req->Depth);
                 break;
             }
             case MSG_TYPE_UNSUB_KLINE:
             {
-                DCSSSubKlineField* req = reinterpret_cast<DCSSSubKlineField*>(data);
+                auto req = static_cast<DCSSSubKlineField*>(data);
                 mMGApi->ReqUnSubKline(req->Symbol, req->KlineType);
                 break;
             }
@@ -87,19 +106,19 @@ void IMGEngine::Listening()
     }
 }
 
-void IMGEngine::OnRtnTicker(const DCSSTickerField* ticker)
+void IMGEngine::OnRtnTicker(const DCSSTickerField* ticker, short source)
 {
     if (mIsRunning)
     {
-        mWriter->WriteFrame(ticker, sizeof(DCSSTickerField), 1, MSG_TYPE_RTN_TICKER, -1);
+        mWriter->WriteFrame(ticker, sizeof(DCSSTickerField), source, MSG_TYPE_RTN_TICKER, -1);
     }
 }
 
-void IMGEngine::OnRtnDepth(const DCSSDepthHeaderField* header, const std::vector<DCSSDepthField>& depthVec)
+void IMGEngine::OnRtnDepth(const DCSSDepthHeaderField* header, const std::vector<DCSSDepthField>& depthVec, short source)
 {
     if (mIsRunning)
     {
-        int length = sizeof(DCSSDepthHeaderField) + depthVec.size() * sizeof(DCSSDepthField);
+        size_t length = sizeof(DCSSDepthHeaderField) + depthVec.size() * sizeof(DCSSDepthField);
         char tmp[length];
         bzero(tmp, length);
         memcpy(tmp, header, sizeof(DCSSDepthHeaderField));
@@ -108,15 +127,15 @@ void IMGEngine::OnRtnDepth(const DCSSDepthHeaderField* header, const std::vector
             memcpy(tmp + sizeof(DCSSDepthHeaderField) + i * sizeof(DCSSDepthField), &(depthVec[i]), sizeof(DCSSDepthField));
         }
 
-        mWriter->WriteFrame(tmp, length, 1, MSG_TYPE_RTN_DEPTH, -1);
+        mWriter->WriteFrame(tmp, (int)length, source, MSG_TYPE_RTN_DEPTH, -1);
     }
 }
 
-void IMGEngine::OnRtnKline(const DCSSKlineHeaderField* header, const std::vector<DCSSKlineField>& klineVec)
+void IMGEngine::OnRtnKline(const DCSSKlineHeaderField* header, const std::vector<DCSSKlineField>& klineVec, short source)
 {
     if (mIsRunning)
     {
-        int length = sizeof(DCSSKlineHeaderField) + klineVec.size() * sizeof(DCSSKlineField);
+        size_t length = sizeof(DCSSKlineHeaderField) + klineVec.size() * sizeof(DCSSKlineField);
         char tmp[length];
         bzero(tmp, length);
         memcpy(tmp, header, sizeof(DCSSKlineHeaderField));
@@ -124,6 +143,22 @@ void IMGEngine::OnRtnKline(const DCSSKlineHeaderField* header, const std::vector
         {
             memcpy(tmp + sizeof(DCSSKlineHeaderField) + i * sizeof(DCSSKlineField), &(klineVec[i]), sizeof(DCSSKlineField));
         }
-        mWriter->WriteFrame(tmp,length, 1, MSG_TYPE_RTN_KLINE, -1);
+        mWriter->WriteFrame(tmp, (int)length, source, MSG_TYPE_RTN_KLINE, -1);
     }
+}
+
+IMGApiPtr IMGApi::Create(short source)
+{
+    switch (source)
+    {
+    case EXCHANGE_OKCOIN:
+        return IMGApiPtr(new OKMGApi(source));
+    default:
+        return IMGApiPtr();
+    }
+}
+
+short IMGApi::GetSource() const
+{
+    return mSourceId;
 }

@@ -7,12 +7,18 @@
 
 #include <cstring>
 #include "FrameHeader.h"
-#include "Declare.h"
+#include "UnitDeclare.h"
 
+UNIT_NAMESPACE_START
+
+/**
+ * Basic memory unit
+ * header / data / errorMsg(if needs)
+ */
 class Frame
 {
 public:
-    Frame(void* address);
+    explicit Frame(void* address);
 
     void SetAddress(void* address);
 
@@ -31,11 +37,8 @@ public:
     char* GetErrorMsg() const ;
     void* GetData() const ;
 
-    void SetStatus(FH_STATUS_TYPE status);
     void SetSource(FH_SOURCE_TYPE source);
     void SetNano(FH_NANO_TYPE nano);
-    void SetFrameLength(FH_LENGTH_TYPE length);
-    void SetHashCode(FH_HASH_TYPE hash);
     void SetMsgType(FH_MSG_TP_TYPE type);
     void SetReqID(FH_REQID_TYPE reqid);
     void SetExtraNano(FH_NANO_TYPE extra);
@@ -44,18 +47,29 @@ public:
     void SetStatusWritten();
     void SetStatusPageClosed();
 
-    FH_LENGTH_TYPE next();
+    /*move the mCurrFrame forward by length*/
+    FH_LENGTH_TYPE Next();
 
 private:
+    /*return the address of next mCurrFrame header*/
+    FrameHeader* GetNextEntry() const ;
 
-    FrameHeader* getNextEntry() const ;
+    void SetStatus(FH_STATUS_TYPE status);
+
+    void SetFrameLength(FH_LENGTH_TYPE length);
 
 private:
+    /*address with type*/
     FrameHeader* frame;
 
 };
 
 DECLARE_PTR(Frame);
+
+inline Frame::Frame(void* address)
+{
+    SetAddress(address);
+}
 
 inline FH_LENGTH_TYPE Frame::GetHeaderLength() const
 {
@@ -110,7 +124,7 @@ inline char* Frame::GetErrorMsg() const
     if (GetErrorID() == 0)
         return nullptr;
     else
-        return reinterpret_cast<char*>(ADDRESS_ADD(frame, BASIC_FRAME_HEADER_LENGTH));
+        return static_cast<char*>(ADDRESS_ADD(frame, BASIC_FRAME_HEADER_LENGTH));
 }
 
 inline FH_LENGTH_TYPE Frame::GetDataLength() const
@@ -123,14 +137,11 @@ inline void* Frame::GetData() const
     return ADDRESS_ADD(frame, GetHeaderLength());
 }
 
-inline Frame::Frame(void* address)
-{
-    SetAddress(address);
-}
+
 
 inline void Frame::SetAddress(void* address)
 {
-    frame = reinterpret_cast<FrameHeader*>(address);
+    frame = static_cast<FrameHeader*>(address);
 }
 
 inline void* Frame::GetAddress() const
@@ -156,11 +167,6 @@ inline void Frame::SetNano(FH_NANO_TYPE nano)
 inline void Frame::SetFrameLength(FH_LENGTH_TYPE length)
 {
     frame->Length = length;
-}
-
-inline void Frame::SetHashCode(FH_HASH_TYPE hash)
-{
-    frame->Hash = hash;
 }
 
 inline void Frame::SetMsgType(FH_MSG_TP_TYPE type)
@@ -204,7 +210,7 @@ inline void Frame::SetData(const void* data, int dataLength)
 
 inline void Frame::SetStatusWritten()
 {
-    getNextEntry()->Status = UNIT_FRAME_STATUS_RAW;
+    GetNextEntry()->Status = UNIT_FRAME_STATUS_RAW;
     SetStatus(UNIT_FRAME_STATUS_WRITTEN);
 }
 
@@ -213,16 +219,18 @@ inline void Frame::SetStatusPageClosed()
     SetStatus(UNIT_FRAME_STATUS_PAGE_END);
 }
 
-inline FH_LENGTH_TYPE Frame::next()
+inline FH_LENGTH_TYPE Frame::Next()
 {
     FH_LENGTH_TYPE len = GetFrameLength();
-    frame = getNextEntry();
+    frame = GetNextEntry();
     return len;
 }
 
-inline FrameHeader* Frame::getNextEntry() const
+inline FrameHeader* Frame::GetNextEntry() const
 {
-    return reinterpret_cast<FrameHeader*>(ADDRESS_ADD(frame, GetFrameLength()));
+    return static_cast<FrameHeader*>(ADDRESS_ADD(frame, GetFrameLength()));
 }
+
+UNIT_NAMESPACE_END
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_FRAME_H

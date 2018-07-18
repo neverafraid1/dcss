@@ -5,6 +5,7 @@
 #ifndef DIGITALCURRENCYSTRATEGYSYSTEM_DATAWRAPPER_H
 #define DIGITALCURRENCYSTRATEGYSYSTEM_DATAWRAPPER_H
 
+#include <unordered_map>
 #include "Declare.h"
 #include "UnitReader.h"
 #include "IDCSSDataProcessor.h"
@@ -46,6 +47,9 @@ public:
     uint8_t GetTdStatus(short source);
 
 protected:
+
+    void ProcessTdAck(const std::string& content, short source, long recvTime);
+
     volatile bool mForceStop;
 
     std::vector<std::string> mFolders;
@@ -53,7 +57,9 @@ protected:
     IDCSSDataProcessor*     mProcessor;
     DCSSStrategyUtil*       mUtil;
     UnitReaderPtr           mReader;
+
     std::map<short, uint8_t>    mTdStatus;
+    std::unordered_map<std::string, double> mLastPriceMap;
 
     int mRidStart;
     int mRidEnd;

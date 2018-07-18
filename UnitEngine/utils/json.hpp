@@ -119,17 +119,17 @@ using json = basic_json<>;
 // You MUST include macro_unscope.hpp at the end of json.hpp to undef all of them
 
 // exclude unsupported compilers
-#if !defined(JSON_SKIP_UNSUPPORTED_COMPILER_CHECK)
-    #if defined(__clang__)
-        #if (__clang_major__ * 10000 + __clang_minor__ * 100 + __clang_patchlevel__) < 30400
-            #error "unsupported Clang version - see https://github.com/nlohmann/json#supported-compilers"
-        #endif
-    #elif defined(__GNUC__) && !(defined(__ICC) || defined(__INTEL_COMPILER))
-        #if (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) < 40900
-            #error "unsupported GCC version - see https://github.com/nlohmann/json#supported-compilers"
-        #endif
-    #endif
-#endif
+//#if !defined(JSON_SKIP_UNSUPPORTED_COMPILER_CHECK)
+//    #if defined(__clang__)
+//        #if (__clang_major__ * 10000 + __clang_minor__ * 100 + __clang_patchlevel__) < 30400
+//            #error "unsupported Clang version - see https://github.com/nlohmann/json#supported-compilers"
+//        #endif
+//    #elif defined(__GNUC__) && !(defined(__ICC) || defined(__INTEL_COMPILER))
+//        #if (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) < 40900
+//            #error "unsupported GCC version - see https://github.com/nlohmann/json#supported-compilers"
+//        #endif
+//    #endif
+//#endif
 
 // disable float-equal warnings on GCC/clang
 #if defined(__clang__) || defined(__GNUC__) || defined(__GNUG__)
@@ -1666,7 +1666,7 @@ constexpr const auto& to_json = detail::static_const<detail::to_json_fn>::value;
 #include <cstddef> // size_t
 #include <cstring> // strlen
 #include <istream> // istream
-#include <iterator> // begin, end, iterator_traits, random_access_iterator_tag, distance, next
+#include <iterator> // begin, end, iterator_traits, random_access_iterator_tag, distance, Next
 #include <memory> // shared_ptr, make_shared, addressof
 #include <numeric> // accumulate
 #include <string> // string, char_traits
@@ -1786,7 +1786,7 @@ class wide_string_input_adapter : public input_adapter_protocol
 
     std::char_traits<char>::int_type get_character() noexcept override
     {
-        // check if buffer needs to be filled
+        // check if mBuffer needs to be filled
         if (utf8_bytes_index == utf8_bytes_filled)
         {
             if (sizeof(typename WideStringType::value_type) == 2)
@@ -1802,7 +1802,7 @@ class wide_string_input_adapter : public input_adapter_protocol
             assert(utf8_bytes_index == 0);
         }
 
-        // use buffer
+        // use mBuffer
         assert(utf8_bytes_filled > 0);
         assert(utf8_bytes_index < utf8_bytes_filled);
         return utf8_bytes[utf8_bytes_index++];
@@ -2272,7 +2272,7 @@ class lexer
 
         while (true)
         {
-            // get next character
+            // get Next character
             switch (get())
             {
                 // end of file while parsing string
@@ -2341,7 +2341,7 @@ class lexer
                             // check if code point is a high surrogate
                             if (0xD800 <= codepoint1 and codepoint1 <= 0xDBFF)
                             {
-                                // expect next \uxxxx entry
+                                // expect Next \uxxxx entry
                                 if (JSON_LIKELY(get() == '\\' and get() == 'u'))
                                 {
                                     const int codepoint2 = get_codepoint();
@@ -3108,7 +3108,7 @@ scan_number_done:
     }
 
     /*
-    @brief get next character from the input
+    @brief get Next character from the input
 
     This function provides the interface to the used input adapter. It does
     not throw in case the input reached EOF, but returns a
@@ -3274,7 +3274,7 @@ scan_number_done:
             return token_type::parse_error;
         }
 
-        // read next character and ignore whitespace
+        // read Next character and ignore whitespace
         do
         {
             get();
@@ -4215,7 +4215,7 @@ class parser
     {
         const bool result = sax_parse_internal(sax);
 
-        // strict mode: next byte must be EOF
+        // strict mode: Next byte must be EOF
         if (result and strict and (get_token() != token_type::end_of_input))
         {
             return sax->parse_error(m_lexer.get_position(),
@@ -4419,7 +4419,7 @@ class parser
             {
                 if (states.back())  // array
                 {
-                    // comma -> next value
+                    // comma -> Next value
                     if (get_token() == token_type::value_separator)
                     {
                         // parse a new value
@@ -4453,7 +4453,7 @@ class parser
                 }
                 else  // object
                 {
-                    // comma -> next value
+                    // comma -> Next value
                     if (get_token() == token_type::value_separator)
                     {
                         // parse key
@@ -4706,7 +4706,7 @@ template<typename BasicJsonType> struct internal_iterator
 
 
 #include <ciso646> // not
-#include <iterator> // iterator, random_access_iterator_tag, bidirectional_iterator_tag, advance, next
+#include <iterator> // iterator, random_access_iterator_tag, bidirectional_iterator_tag, advance, Next
 #include <type_traits> // conditional, is_const, remove_const
 
 // #include <nlohmann/detail/exceptions.hpp>
@@ -5764,7 +5764,7 @@ class binary_reader
                 assert(false);  // LCOV_EXCL_LINE
         }
 
-        // strict mode: next byte must be EOF
+        // strict mode: Next byte must be EOF
         if (result and strict)
         {
             if (format == input_format_t::ubjson)
@@ -8931,7 +8931,7 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
     static_assert(kGamma <= -32, "internal error");
 
     // Generates the digits (and the exponent) of a decimal floating-point
-    // number V = buffer * 10^decimal_exponent in the range [M-, M+]. The diyfp's
+    // number V = mBuffer * 10^decimal_exponent in the range [M-, M+]. The diyfp's
     // w, M- and M+ share the same exponent e, which satisfies alpha <= e <= gamma.
     //
     //               <--------------------------- delta ---->
@@ -8991,24 +8991,24 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
     while (n > 0)
     {
         // Invariants:
-        //      M+ = buffer * 10^n + (p1 + p2 * 2^e)    (buffer = 0 for n = k)
+        //      M+ = mBuffer * 10^n + (p1 + p2 * 2^e)    (mBuffer = 0 for n = k)
         //      pow10 = 10^(n-1) <= p1 < 10^n
         //
         const uint32_t d = p1 / pow10;  // d = p1 div 10^(n-1)
         const uint32_t r = p1 % pow10;  // r = p1 mod 10^(n-1)
         //
-        //      M+ = buffer * 10^n + (d * 10^(n-1) + r) + p2 * 2^e
-        //         = (buffer * 10 + d) * 10^(n-1) + (r + p2 * 2^e)
+        //      M+ = mBuffer * 10^n + (d * 10^(n-1) + r) + p2 * 2^e
+        //         = (mBuffer * 10 + d) * 10^(n-1) + (r + p2 * 2^e)
         //
         assert(d <= 9);
-        buffer[length++] = static_cast<char>('0' + d); // buffer := buffer * 10 + d
+        buffer[length++] = static_cast<char>('0' + d); // mBuffer := mBuffer * 10 + d
         //
-        //      M+ = buffer * 10^(n-1) + (r + p2 * 2^e)
+        //      M+ = mBuffer * 10^(n-1) + (r + p2 * 2^e)
         //
         p1 = r;
         n--;
         //
-        //      M+ = buffer * 10^n + (p1 + p2 * 2^e)
+        //      M+ = mBuffer * 10^n + (p1 + p2 * 2^e)
         //      pow10 = 10^n
         //
 
@@ -9023,11 +9023,11 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
         const uint64_t rest = (uint64_t{p1} << -one.e) + p2;
         if (rest <= delta)
         {
-            // V = buffer * 10^n, with M- <= V <= M+.
+            // V = mBuffer * 10^n, with M- <= V <= M+.
 
             decimal_exponent += n;
 
-            // We may now just stop. But instead look if the buffer could be
+            // We may now just stop. But instead look if the mBuffer could be
             // decremented to bring V closer to w.
             //
             // pow10 = 10^n is now 1 ulp in the decimal representation V.
@@ -9053,7 +9053,7 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
     // The digits of the integral part have been generated:
     //
     //      M+ = d[k-1]...d[1]d[0] + p2 * 2^e
-    //         = buffer            + p2 * 2^e
+    //         = mBuffer            + p2 * 2^e
     //
     // Now generate the digits of the fractional part p2 * 2^e.
     //
@@ -9081,9 +9081,9 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
     //
     // i.e.
     //
-    //      M+ = buffer + p2 * 2^e
-    //         = buffer + 10^-m * (d + r * 2^e)
-    //         = (buffer * 10^m + d) * 10^-m + 10^-m * r * 2^e
+    //      M+ = mBuffer + p2 * 2^e
+    //         = mBuffer + 10^-m * (d + r * 2^e)
+    //         = (mBuffer * 10^m + d) * 10^-m + 10^-m * r * 2^e
     //
     // and stop as soon as 10^-m * r * 2^e <= delta * 2^e
 
@@ -9093,29 +9093,29 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
     for (;;)
     {
         // Invariant:
-        //      M+ = buffer * 10^-m + 10^-m * (d[-m-1] / 10 + d[-m-2] / 10^2 + ...) * 2^e
-        //         = buffer * 10^-m + 10^-m * (p2                                 ) * 2^e
-        //         = buffer * 10^-m + 10^-m * (1/10 * (10 * p2)                   ) * 2^e
-        //         = buffer * 10^-m + 10^-m * (1/10 * ((10*p2 div 2^-e) * 2^-e + (10*p2 mod 2^-e)) * 2^e
+        //      M+ = mBuffer * 10^-m + 10^-m * (d[-m-1] / 10 + d[-m-2] / 10^2 + ...) * 2^e
+        //         = mBuffer * 10^-m + 10^-m * (p2                                 ) * 2^e
+        //         = mBuffer * 10^-m + 10^-m * (1/10 * (10 * p2)                   ) * 2^e
+        //         = mBuffer * 10^-m + 10^-m * (1/10 * ((10*p2 div 2^-e) * 2^-e + (10*p2 mod 2^-e)) * 2^e
         //
         assert(p2 <= UINT64_MAX / 10);
         p2 *= 10;
         const uint64_t d = p2 >> -one.e;     // d = (10 * p2) div 2^-e
         const uint64_t r = p2 & (one.f - 1); // r = (10 * p2) mod 2^-e
         //
-        //      M+ = buffer * 10^-m + 10^-m * (1/10 * (d * 2^-e + r) * 2^e
-        //         = buffer * 10^-m + 10^-m * (1/10 * (d + r * 2^e))
-        //         = (buffer * 10 + d) * 10^(-m-1) + 10^(-m-1) * r * 2^e
+        //      M+ = mBuffer * 10^-m + 10^-m * (1/10 * (d * 2^-e + r) * 2^e
+        //         = mBuffer * 10^-m + 10^-m * (1/10 * (d + r * 2^e))
+        //         = (mBuffer * 10 + d) * 10^(-m-1) + 10^(-m-1) * r * 2^e
         //
         assert(d <= 9);
-        buffer[length++] = static_cast<char>('0' + d); // buffer := buffer * 10 + d
+        buffer[length++] = static_cast<char>('0' + d); // mBuffer := mBuffer * 10 + d
         //
-        //      M+ = buffer * 10^(-m-1) + 10^(-m-1) * r * 2^e
+        //      M+ = mBuffer * 10^(-m-1) + 10^(-m-1) * r * 2^e
         //
         p2 = r;
         m++;
         //
-        //      M+ = buffer * 10^-m + 10^-m * p2 * 2^e
+        //      M+ = mBuffer * 10^-m + 10^-m * p2 * 2^e
         // Invariant restored.
 
         // Check if enough digits have been generated.
@@ -9131,7 +9131,7 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
         }
     }
 
-    // V = buffer * 10^-m, with M- <= V <= M+.
+    // V = mBuffer * 10^-m, with M- <= V <= M+.
 
     decimal_exponent -= m;
 
@@ -9321,8 +9321,8 @@ inline char* format_buffer(char* buf, int len, int decimal_exponent,
     const int n = len + decimal_exponent;
 
     // v = buf * 10^(n-k)
-    // k is the length of the buffer (number of decimal digits)
-    // n is the position of the decimal point relative to the start of the buffer.
+    // k is the length of the mBuffer (number of decimal digits)
+    // n is the mPosition of the decimal point relative to the start of the mBuffer.
 
     if (k <= n and n <= max_exp)
     {
@@ -9417,17 +9417,17 @@ char* to_chars(char* first, char* last, FloatType value)
 
     assert(last - first >= std::numeric_limits<FloatType>::max_digits10);
 
-    // Compute v = buffer * 10^decimal_exponent.
-    // The decimal digits are stored in the buffer, which needs to be interpreted
+    // Compute v = mBuffer * 10^decimal_exponent.
+    // The decimal digits are stored in the mBuffer, which needs to be interpreted
     // as an unsigned decimal integer.
-    // len is the length of the buffer, i.e. the number of decimal digits.
+    // len is the length of the mBuffer, i.e. the number of decimal digits.
     int len = 0;
     int decimal_exponent = 0;
     dtoa_impl::grisu2(first, len, decimal_exponent, value);
 
     assert(len <= std::numeric_limits<FloatType>::max_digits10);
 
-    // Format the buffer like printf("%.*g", prec, value)
+    // Format the mBuffer like printf("%.*g", prec, value)
     constexpr int kMinExp = -4;
     // Use digits10 here to increase compatibility with version 2.
     constexpr int kMaxExp = std::numeric_limits<FloatType>::digits10;
@@ -9796,7 +9796,7 @@ class serializer
                             }
                             else
                             {
-                                // copy byte to buffer (all previous bytes
+                                // copy byte to mBuffer (all previous bytes
                                 // been copied have in default case above)
                                 string_buffer[bytes++] = s[i];
                             }
@@ -9804,7 +9804,7 @@ class serializer
                         }
                     }
 
-                    // write buffer and reset index; there must be 13 bytes
+                    // write mBuffer and reset index; there must be 13 bytes
                     // left, as this is the maximal number of bytes to be
                     // written ("\uxxxx\uxxxx\0") for one code point
                     if (string_buffer.size() - bytes < 13)
@@ -9826,7 +9826,7 @@ class serializer
                 {
                     if (not ensure_ascii)
                     {
-                        // code point will not be escaped - copy byte to buffer
+                        // code point will not be escaped - copy byte to mBuffer
                         string_buffer[bytes++] = s[i];
                     }
                     break;
@@ -9836,7 +9836,7 @@ class serializer
 
         if (JSON_LIKELY(state == UTF8_ACCEPT))
         {
-            // write buffer
+            // write mBuffer
             if (bytes > 0)
             {
                 o->write_characters(string_buffer.data(), bytes);
@@ -9944,7 +9944,7 @@ class serializer
 
         // negative value indicates an error
         assert(len > 0);
-        // check if buffer was large enough
+        // check if mBuffer was large enough
         assert(static_cast<std::size_t>(len) < number_buffer.size());
 
         // erase thousands separator
@@ -10631,8 +10631,8 @@ class json_pointer
         }
 
         // extract the reference tokens:
-        // - slash: position of the last read slash (or end of string)
-        // - start: position after the previous slash
+        // - slash: mPosition of the last read slash (or end of string)
+        // - start: mPosition after the previous slash
         for (
             // search for the first slash after the first character
             std::size_t slash = reference_string.find_first_of('/', 1),
@@ -10640,10 +10640,10 @@ class json_pointer
             start = 1;
             // we can stop if start == string::npos+1 = 0
             start != 0;
-            // set the beginning of the next reference token
+            // set the beginning of the Next reference token
             // (will eventually be 0 if slash == std::string::npos)
             start = slash + 1,
-            // find next slash
+            // find Next slash
             slash = reference_string.find_first_of('/', start))
         {
             // use the text between the beginning of the reference token
@@ -10694,7 +10694,7 @@ class json_pointer
         for (auto pos = s.find(f);                // find first occurrence of f
                 pos != std::string::npos;         // make sure f was found
                 s.replace(pos, f.size(), t),      // replace with t, and
-                pos = s.find(f, pos + t.size()))  // find next occurrence of f
+                pos = s.find(f, pos + t.size()))  // find Next occurrence of f
         {}
     }
 

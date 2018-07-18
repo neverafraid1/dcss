@@ -5,8 +5,10 @@
 #ifndef DIGITALCURRENCYSTRATEGYSYSTEM_DCSSSTRATEGYUTIL_H
 #define DIGITALCURRENCYSTRATEGYSYSTEM_DCSSSTRATEGYUTIL_H
 
-#include "Declare.h"
+#include "UnitDeclare.h"
 #include "StrategyUtil.h"
+
+USING_UNIT_NAMESPACE
 
 /**
  * strategy utilities include:
@@ -17,14 +19,14 @@
 class DCSSStrategyUtil : public StrategyUtil
 {
 public:
-    DCSSStrategyUtil(const std::string& strategyName);
-    ~DCSSStrategyUtil() = default;
+    explicit DCSSStrategyUtil(const std::string& strategyName);
+    ~DCSSStrategyUtil() override = default;
 
     int InsertLimitOrder(short source, const DCSSSymbolField& symbol, double price, double volume, TradeTypeType tradeType);
 
     int InsertMarketOrder(short source, const DCSSSymbolField& symbol, double volume, TradeTypeType tradeType);
 
-    int CancelOrder(short source, int orderId);
+    int CancelOrder(short source, const DCSSSymbolField& symbol, long orderId);
 
 
     /*get nano time*/
@@ -35,6 +37,10 @@ public:
     long ParseTime(const std::string& timeStr);
     /*parse nano*/
     std::string ParseNano(long nano);
+
+    std::string GetName() const;
+
+    void SetMdNano(long curTime) { mMdNano = curTime;}
 
 private:
     long mMdNano;

@@ -5,13 +5,13 @@
 #ifndef DIGITALCURRENCYSTRATEGYSYSTEM_UNIT_H
 #define DIGITALCURRENCYSTRATEGYSYSTEM_UNIT_H
 
-#include "Declare.h"
+#include "UnitDeclare.h"
 #include "Page.h"
 
-class Unit;
-DECLARE_PTR(Unit);
-class IPageProvider;
-DECLARE_PTR(IPageProvider);
+UNIT_NAMESPACE_START
+
+PRE_DECLARE_PTR(Unit);
+PRE_DECLARE_PTR(IPageProvider);
 
 /**
  * the abstraction of continuous memory access
@@ -22,9 +22,10 @@ public:
     /** create a unit, only entrance */
     static UnitPtr CreateUnit(const std::string& dir, const std::string& uname, int serviceIdx, IPageProviderPtr providerPtr);
 
+public:
     /** expire this unit provisionally, until reset by SeekTime */
     void Expire();
-
+    /*seek to time*/
     void SeekTime(long time);
     /** get frame address, return nullptr if thers's no available frame */
     void* LocateFrame();
@@ -57,4 +58,6 @@ private:
 };
 
 DECLARE_PTR(Unit);
+
+UNIT_NAMESPACE_END
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_UNIT_H

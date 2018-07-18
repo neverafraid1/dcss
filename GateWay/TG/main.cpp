@@ -4,35 +4,15 @@
 
 #include <unistd.h>
 #include <thread>
+#include <iostream>
 #include "ITGEngine.h"
+
+std::string jj = "{\"name\":\"cpp_test\",\"folder\":\"/home/wangzhen/dcss/unit/strategy\",\"accounts\":[{\"source\":1,\"api_key\":\"1\",\"secret_key\":\"2\"},{\"source\":2,\"api_key\":\"3\",\"secret_key\":\"4\"}]}";
 
 int main()
 {
-    int requestID = 1;
-
-    std::shared_ptr<DCSS::ITGEngine> p = DCSS::ITGEngine::CreateTGEngine();
-    p->Connect();
-    p->Login();
-//    DCSS::char10 symbol;
-//    bzero(symbol, 10);
-//    memcpy(symbol, "ltc_btc", 7);
-
-    while (!p->IsLogged())
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-
-    DCSS::DCSSReqInsertOrderField req;
-    memcpy(req.Symbol, "ltc_btc", 7);
-    req.TradeType = BUY;
-    req.Price = 1.1;
-    req.Aumount = 0.1;
-
-    p->ReqQryUserInfo(requestID++);
-
-    while(1)
-    {
-        sleep(1);
-    }
-
+    std::shared_ptr<ITGEngine> p(new ITGEngine);
+    p->Initialize(jj);
+    p->Start();
+    p->WaitForStop();
 }

@@ -6,48 +6,66 @@
 #define DIGITALCURRENCYSTRATEGYSYSTEM_PAGE_H
 
 #include "FrameHeader.h"
-#include "Frame.h"
+#include "Frame.hpp"
 #include "constants.h"
-#include <memory>
+#include "UnitDeclare.h"
 
-class Page;
-DECLARE_PTR(Page);
+UNIT_NAMESPACE_START
 
+PRE_DECLARE_PTR(Page);
+
+/**
+ * page class
+ * handle signal page to provide continues unit abstration
+ */
 class Page
 {
 public:
-    inline void* GetBuffer() const { return buffer; }
+    /*load page, should bo caller by PageProvider*/
+    static PagePtr Load(const std::string& dir, const std::string& uname, short pageNum, bool isWriting,
+            bool quickMode);
 
-    inline short GetPageNum() const { return pageNum; }
+public:
+    /*get page mBuffer*/
+    inline void* GetBuffer() const
+    { return mBuffer; }
+    /*get current page num*/
+    inline short GetPageNum() const
+    { return mPageNum; }
+
+    /*get writable mCurrFrame address*/
+    void* LocateWritableFrame();
+    /*get readable mCurrFrame address*/
+    void* LocateReadableFrame();
+    /*move to next mCurrFrame*/
+    void SkipFrame();
+    /*skip all writtern mCurrFrame*/
+    void SkipWrittenFrame();
+    /*skip to time*/
+    void SkipToTime(long time);
 
     bool IsAtPageEnd() const;
 
-    void* LocateWritableFrame();
-
-    void* LocateReadableFrame();
-
-    void SkipFrame();
-
-    void SkipWrittenFrame();
-
-    void SkipToTime(long time);
-
     void FinishPage();
 
-    static PagePtr Load(const std::string& dir, const std::string& uname, short pageNum, bool isWriting, bool quickMode);
 private:
     Page(void* buffer);
 
     inline FH_STATUS_TYPE GetCurStatus() const
     {
-        return frame.GetStatus();
+        return mCurrFrame.GetStatus();
     }
 private:
-    Frame frame;
-    void* const buffer;
-    int position;
-    int frameNum;
-    short pageNum;
+    /*address of mmap file associated with this page*/
+    void* const mBuffer;
+    /*current mPosition in this page*/
+    int mPosition;
+    /*current mCurrFrame*/
+    Frame mCurrFrame;
+    /*number index of current fram in the page*/
+    int mFrameNum;
+    /*number of the page in a unit*/
+    short mPageNum;
 };
 
 inline bool Page::IsAtPageEnd() const
@@ -57,8 +75,8 @@ inline bool Page::IsAtPageEnd() const
 
 inline void Page::SkipFrame()
 {
-    position += frame.next();
-    frameNum += 1;
+    mPosition += mCurrFrame.Next();
+    mFrameNum += 1;
 }
 
 inline void Page::SkipWrittenFrame()
@@ -70,7 +88,7 @@ inline void Page::SkipWrittenFrame()
 inline void Page::SkipToTime(long time)
 {
     while (GetCurStatus() == UNIT_FRAME_STATUS_WRITTEN
-            && frame.GetNano() < time)
+            && mCurrFrame.GetNano() < time)
         SkipFrame();
 }
 
@@ -78,13 +96,18 @@ inline void* Page::LocateWritableFrame()
 {
     SkipWrittenFrame();
     return (GetCurStatus() == UNIT_FRAME_STATUS_RAW
-    && (position + PAGE_MIN_HEADROOM < UNIT_PAGE_SIZE) ?
-    frame.GetAddress() : nullptr);
+            && (mPosition + PAGE_MIN_HEADROOM < UNIT_PAGE_SIZE) ?
+            mCurrFrame.GetAddress() : nullptr);
 }
 
 inline void* Page::LocateReadableFrame()
 {
-    return (GetCurStatus() == UNIT_FRAME_STATUS_WRITTEN ? frame.GetAddress() : nullptr);
+    if (GetCurStatus() == UNIT_FRAME_STATUS_WRITTEN)
+        return mCurrFrame.GetAddress();
+    else
+        return nullptr;
+//    return (GetCurStatus() == UNIT_FRAME_STATUS_WRITTEN ? mCurrFrame.GetAddress() : nullptr);
 }
 
+UNIT_NAMESPACE_END
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_PAGE_H

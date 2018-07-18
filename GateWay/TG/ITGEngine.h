@@ -5,55 +5,99 @@
 #ifndef DCSS_TGENGINE_H
 #define DCSS_TGENGINE_H
 
-#include "DCSSLog.h"
 #include "DataStruct.h"
 #include "IEngine.h"
 
-#include <memory>
+PRE_DECLARE_PTR(ITGApi);
 
-class ITGApi;
-DECLARE_PTR(ITGApi);
+struct TradeAccount
+{
+    std::string ApiKey;
+    std::string SecretKey;
+    ITGApiPtr Api;
+};
 
+struct ClientInfo
+{
+    bool IsAlive;
+    size_t UnitIndex;
+    int RidStart;
+    int RidEnd;
+    int AccountIndex;
+};
+
+/**
+ * base class of all trade engine
+ *
+ * one strategy may connect to several different trade engines at the same time,
+ * we use this to wrap te detail
+ */
 class ITGEngine : public IEngine , public std::enable_shared_from_this<ITGEngine>
 {
 public:
-    ITGEngine()
-    { };
-    virtual ~ITGEngine()
-    { };
+    ITGEngine();
+    ~ITGEngine() override = default;
 
 public:
-    void Init(const std::vector<short>& index);
+    void Init() override ;
 
-    void SetReaderThread();
+    void Load(const nlohmann::json& config) override ;
+
+    void SetReaderThread() override ;
+
+    void Connect() override {};
+    /** release api */
+    void ReleaseApi() override {};
+    /** return true if engine is connected to front */
+    bool IsConnected() const  override { return true;};
+
+    virtual TradeAccount LoadAccount(int idx, const nlohmann::json& account);
+
+protected:
+    /*add strategy, return true if added successfully*/
+    bool ReigsterClient(const std::string& name, const nlohmann::json& request);
+    /*remove strategy*/
+    bool RemoveClient(const std::string& name, const nlohmann::json& request);
+
 
 public:
-    void OnRtnOrder(const DCSSOrderField* order);
+    void OnRtnOrder(const DCSSOrderField* order, short source);
 
-    void OnRspQryTicker(const DCSSTickerField* ticker, int requestId,
+    void OnRspQryTicker(const DCSSTickerField* ticker, short source, int requestId,
             int errorId = 0, const char* errorMsg = nullptr);
 
-    void OnRspQryKline(const DCSSKlineHeaderField* header, const std::vector<DCSSKlineField>& kline,
+    void OnRspQryKline(const DCSSKlineHeaderField* header, short source, const std::vector<DCSSKlineField>& kline,
             int requestId, int errorId = 0, const char* errorMsg = nullptr);
 
-    void OnRspQryUserInfo(const DCSSUserInfoField* userInfo, int requestId,
+    void OnRspQryUserInfo(const DCSSUserInfoField* userInfo, short source, int requestId,
             int errorId = 0, const char* errorMsg = nullptr);
 
-    void OnRspOrderInsert(const DCSSRspInsertOrderField* rsp, int requestId,
+    void OnRspOrderInsert(const DCSSRspInsertOrderField* rsp, short source, int requestId,
             int errorId = 0, const char* errorMsg = nullptr);
 
-    void OnRspOrderAction(const DCSSRspCancelOrderField* rsp, int requestId,
+    void OnRspOrderAction(const DCSSRspCancelOrderField* rsp, short source, int requestId,
             int errorId = 0, const char* errorMsg = nullptr);
 
-    void OnRspQryOrder(const DCSSRspQryOrderHeaderField* header, const std::vector<DCSSRspQryOrderField>& order,
+    void OnRspQryOrder(const DCSSRspQryOrderHeaderField* header, short source, const std::vector<DCSSRspQryOrderField>& order,
             int requestId, int errorId = 0, const char* errorMsg = nullptr);
 
 protected:
     void Listening();
 
 protected:
-    std::map<short, ITGApiPtr> mApiMap;
+    ClientInfo mClient;
+    /*vec of all accounts*/
+//    TradeAccount mAccounts;
+    /*current nano time*/
+    long mCurTime;
+    /*-1 if do not accept unregistered account*/
+    int mDefaultAccountIndex;
 
+    std::map<short, ITGApiPtr> mApiMap;
+    // client name, load from config
+    std::string mName;
+    // client folder/ load from config
+    std::string mFolder;
 };
 
 DECLARE_PTR(ITGEngine);
@@ -61,9 +105,10 @@ DECLARE_PTR(ITGEngine);
 class ITGApi
 {
 public:
+    /*only interface to create a api*/
+    static ITGApiPtr CreateTGApi(short source);
 
-    static ITGApiPtr CreateTGApi(short index);
-
+    virtual void LoadAccount(const nlohmann::json& config) = 0;
     virtual void Connect() = 0;
     virtual void Login() = 0;
     virtual void Logout() = 0;
@@ -79,9 +124,15 @@ public:
     virtual void ReqQryOrder(const DCSSReqQryOrderField* req, int requestID) = 0;
     virtual void ReqInsertOrder(const DCSSReqInsertOrderField* req, int requestID) = 0;
     virtual void ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID) = 0;
+
 protected:
-    ITGApi(){};
-    virtual ~ITGApi(){};
+    ITGApi(short source)
+    : mSourceId(source)
+    {}
+    virtual ~ITGApi() = default;
+
+protected:
+    short mSourceId;
 };
 
 #endif //DEMO_TGENGINE_H

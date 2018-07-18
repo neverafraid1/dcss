@@ -7,6 +7,9 @@
 #include "Timer.h"
 #include <sstream>
 #include <cassert>
+#include <limits>
+
+USING_UNIT_NAMESPACE
 
 const std::string UnitReader::PREFIX = "reader";
 
@@ -37,15 +40,15 @@ size_t UnitReader::AddUnit(const std::string& dir, const std::string& uname)
 
 void UnitReader::JumpToStartTime(long startTime)
 {
-    for (auto& unit : mUnitVec)
+    for (auto& unit : mUnits)
         unit->SeekTime(startTime);
 }
 
 bool UnitReader::ExpireUnit(size_t idx)
 {
-    if (idx < mUnitVec.size())
+    if (idx < mUnits.size())
     {
-        mUnitVec.at(idx)->Expire();
+        mUnits.at(idx)->Expire();
         return true;
     }
     return false;
@@ -60,29 +63,52 @@ bool UnitReader::ExpireUnitByName(const std::string& name)
     return false;
 }
 
+bool UnitReader::SeekTimeUnit(size_t idx, long nano)
+{
+    if (idx < mUnits.size())
+    {
+        mUnits.at(idx)->SeekTime(nano);
+        return true;
+    }
+    return false;
+}
+
+bool UnitReader::SeekTimeUnitByName(const std::string& name, long nano)
+{
+    auto iter = mUnitMap.find(name);
+    if (iter == mUnitMap.end())
+        return false;
+    return SeekTimeUnit(iter->second, nano);
+}
+
 FramePtr UnitReader::GetNextFrame()
 {
-    long minNano = TIME_TO_LAST;
+    long minNano = std::numeric_limits<long>::max();
     void* address = nullptr;
 
-    for (auto& unit : mUnitVec)
+    size_t index = 0;
+    size_t tmp = 0;
+
+    for (auto& unit : mUnits)
     {
-        FrameHeader* header = reinterpret_cast<FrameHeader*>(unit->LocateFrame());
+        auto header = static_cast<FrameHeader*>(unit->LocateFrame());
         if (header != nullptr)
         {
             long nano = header->Nano;
-            if (minNano > nano || minNano == TIME_TO_LAST)
+            if (nano < minNano)
             {
                 minNano = nano;
                 address = header;
-                mCurUnit = unit;
+                index = tmp;
             }
         }
+        ++tmp;
     }
     if (address != nullptr)
     {
+        mCurUnit = mUnits.at(index);
         mCurUnit->PassFrame();
-        return FramePtr(new Frame(address));
+        return std::make_shared<Frame>(address);
     }
     else
     {
@@ -95,11 +121,11 @@ UnitReaderPtr UnitReader::Create(const std::vector<std::string>& dirs, const std
 {
     assert(dirs.size() == unames.size());
     std::stringstream ss;
-    ss << readerName << "_read";
+    ss << readerName << "_R";
     std::string clientName = ss.str();
 
-    PageProviderPtr provider = PageProviderPtr(new ClientPageProvider(clientName, false));
-    UnitReaderPtr urp = UnitReaderPtr(new UnitReader(provider));
+    PageProviderPtr provider(new ClientPageProvider(clientName, false));
+    UnitReaderPtr urp(new UnitReader(provider));
 
     for (size_t i = 0; i < dirs.size(); ++i)
         urp->AddUnit(dirs[i], unames[i]);
@@ -109,7 +135,7 @@ UnitReaderPtr UnitReader::Create(const std::vector<std::string>& dirs, const std
     return urp;
 }
 
-UnitReaderPtr UnitReader::Create(std::string dir, std::string uname, long startTime, const std::string& readerName)
+UnitReaderPtr UnitReader::Create(const std::string& dir, const std::string& uname, long startTime, const std::string& readerName)
 {
     return Create(std::vector<std::string>({dir}), std::vector<std::string>({uname}), startTime, readerName);
 }
@@ -117,12 +143,12 @@ UnitReaderPtr UnitReader::Create(std::string dir, std::string uname, long startT
 UnitReaderPtr UnitReader::Create(const std::vector<std::string>& dirs, const std::vector<std::string>& unames,
         long startTime)
 {
-    return Create(dirs, unames, startTime, GetDefalutName(PREFIX));
+    return Create(dirs, unames, startTime, GetDefaultName(PREFIX));
 }
 
-UnitReaderPtr UnitReader::Create(std::string dir, std::string uname, long startTime)
+UnitReaderPtr UnitReader::Create(const std::string& dir, const std::string& uname, long startTime)
 {
-    return Create(dir, uname, startTime, GetDefalutName(PREFIX));
+    return Create(dir, uname, startTime, GetDefaultName(PREFIX));
 }
 
 UnitReaderPtr UnitReader::CreateReaderWithSys(const std::vector<std::string>& dirs,
@@ -134,4 +160,17 @@ UnitReaderPtr UnitReader::CreateReaderWithSys(const std::vector<std::string>& di
     tunames.emplace_back(PAGED_UNIT_NAME);
 
     return Create(tdirs, tunames, startTime, readerName);
+}
+
+UnitReaderPtr UnitReader::CreateRevisableReader(const std::string& readerName)
+{
+    std::stringstream ss;
+    ss << readerName << "_SR";
+    std::string clientName = ss.str();
+    PageProviderPtr provider(new ClientPageProvider(clientName, false, true));
+    UnitReaderPtr urp =  UnitReaderPtr(new UnitReader(provider));
+
+    urp->AddUnit(PAGED_UNIT_FOLDER, PAGED_UNIT_NAME);
+    urp->JumpToStartTime(GetNanoTime());
+    return urp;
 }

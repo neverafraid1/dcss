@@ -6,8 +6,6 @@
 #include <assert.h>
 #include "MD5.h"
 
-using namespace DCSS;
-
 static unsigned char PADDING[64] =
         {
                 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

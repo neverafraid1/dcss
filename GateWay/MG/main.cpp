@@ -5,30 +5,13 @@
 #include <thread>
 #include "IMGEngine.h"
 
-using namespace DCSS::MG;
-using namespace DCSS;
+std::string jj = "{\"name\":\"ok_mg\",\"source\":1}";
 
 int main()
 {
-    std::shared_ptr<IMGEngine> p = IMGEngine::CreateMGEngine();
+    std::shared_ptr<IMGEngine> p(new IMGEngine());
 
-    p->Connect();
-
-    while (!p->IsConnected())
-    {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-
-    char10 s = "bch_btc";
-
-    p->ReqSubDepth(s, 5);
-
-    std::this_thread::sleep_for(std::chrono::seconds(10));
-
-    p->ReqUnSubDepth(s, 5);
-
-    while(1)
-    {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
+    p->Initialize(jj);
+    p->Start();
+    p->WaitForStop();
 }

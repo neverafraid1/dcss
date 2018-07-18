@@ -2,7 +2,7 @@
 // Created by wangzhen on 18-6-7.
 //
 
-#ifndef DCSS_PagePtrUCT_H
+#ifndef DCSS_DATASTRUCT_H
 #define DCSS_DATASTRUCT_H
 
 #include "Constants.h"
@@ -22,7 +22,10 @@ struct DCSSSymbolField
 
     char5 Quote;
 
-    char10 Exchange;
+    DCSSSymbolField()
+    {
+        memset(this, 0, sizeof(DCSSSymbolField));
+    }
 };
 
 struct DCSSTickerField
@@ -34,7 +37,7 @@ struct DCSSTickerField
     // 毫秒
     int MilliSec;
     // 币对
-    char10 Symbol;
+    DCSSSymbolField Symbol;
     // 买一价
     double BuyPrice;
     // 卖一价
@@ -58,11 +61,11 @@ struct DCSSTickerField
 struct DCSSKlineHeaderField
 {
     // 币对
-    char10 Symbol;
+    DCSSSymbolField Symbol;
     // K线时间周期
     KlineTypeType KlineType;
     // K线条数
-    int Size;
+    size_t Size;
 
     DCSSKlineHeaderField()
     {
@@ -107,7 +110,7 @@ struct BalanceField
 
 struct DCSSDepthHeaderField
 {
-    char10 Symbol;
+    DCSSSymbolField Symbol;
     // 日期 YYYYMMDD
     char10 Date;
     // 时间 hh:mm:ss
@@ -115,9 +118,9 @@ struct DCSSDepthHeaderField
     // 毫秒
     int Millisec;
 
-    int AskNum;
+    size_t AskNum;
 
-    int BidNum;
+    size_t BidNum;
 
     DCSSDepthHeaderField()
     {
@@ -152,7 +155,7 @@ struct DCSSUserInfoField
 
 struct DCSSReqQryTickerField
 {
-    char10 Symbol;
+    DCSSSymbolField Symbol;
 
     DCSSReqQryTickerField()
     {
@@ -163,7 +166,7 @@ struct DCSSReqQryTickerField
 struct DCSSReqQryKlineField
 {
     // 币对如ltc_btc
-    char10 Symbol;
+    DCSSSymbolField Symbol;
     // K线时间周期类型
     KlineTypeType KlineType;
     // 指定获取数据的条数 非必填(默认全部获取)
@@ -209,7 +212,7 @@ struct DCSSRspInsertOrderField
 struct DCSSReqCancelOrderField
 {
     // 币对如ltc_btc
-    char10 Symbol;
+    DCSSSymbolField Symbol;
     // 订单ID(一次最多取消三笔订单)
     long3 OrderID;
 
@@ -235,7 +238,7 @@ struct DCSSRspCancelOrderField
 struct DCSSReqQryOrderField
 {
     // 币对如ltc_btc
-    char10 Symbol;
+    DCSSSymbolField Symbol;
     // 订单ID -1:未完成订单，否则查询相应订单号的订单
     long OrderID;
 
@@ -247,7 +250,7 @@ struct DCSSReqQryOrderField
 
 struct DCSSRspQryOrderHeaderField
 {
-    char10 Symbol;
+    DCSSSymbolField Symbol;
 
     int Size;
 
@@ -260,7 +263,7 @@ struct DCSSRspQryOrderHeaderField
 struct DCSSRspQryOrderField
 {
     // 币对如ltc_btc
-    char10 Symbol;
+    DCSSSymbolField Symbol;
     // 委托数量
     double Amount;
     // 委托日期
@@ -293,7 +296,7 @@ struct DCSSRspQryOrderField
 struct DCSSOrderField
 {
     // 币对如ltc_btc
-    char10 Symbol;
+    DCSSSymbolField Symbol;
     // 委托日期
     char10 CreateDate;
     // 委托时间
@@ -336,7 +339,7 @@ struct DCSSBalanceField
 
 struct DCSSSubTickerField
 {
-    char10 Symbol;
+    DCSSSymbolField Symbol;
 
     DCSSSubTickerField()
     {
@@ -346,7 +349,7 @@ struct DCSSSubTickerField
 
 struct DCSSSubDepthField
 {
-    char10 Symbol;
+    DCSSSymbolField Symbol;
 
     int Depth;
 
@@ -358,7 +361,7 @@ struct DCSSSubDepthField
 
 struct DCSSSubKlineField
 {
-    char10 Symbol;
+    DCSSSymbolField Symbol;
 
     KlineTypeType KlineType;
 
@@ -368,4 +371,4 @@ struct DCSSSubKlineField
     }
 };
 
-#endif //DEMO_DATASTRUCT_H
+#endif //DCSS_DATASTRUCT_H

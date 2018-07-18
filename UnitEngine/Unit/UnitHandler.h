@@ -5,11 +5,7 @@
 #ifndef DIGITALCURRENCYSTRATEGYSYSTEM_UNITHANDLER_H
 #define DIGITALCURRENCYSTRATEGYSYSTEM_UNITHANDLER_H
 
-#include <memory>
-#include <vector>
-#include "Declare.h"
-#include "PageProvider.h"
-#include "Unit.h"
+#include "UnitDeclare.h"
 
 /**
  *                       | - UnitReader
@@ -20,8 +16,14 @@
  *       | - connect to PageEngine
  */
 
-class PageProvider;
-class Unit;
+UNIT_NAMESPACE_START
+
+PRE_DECLARE_PTR(PageProvider);
+PRE_DECLARE_PTR(Unit);
+
+/**
+ * basic class of unit reader / writer
+ */
 class UnitHandler
 {
 public:
@@ -30,17 +32,21 @@ public:
     {}
 
     virtual ~UnitHandler();
-
+    /*return the unit's index in the vector*/
     virtual size_t AddUnit(const std::string& dir, const std::string& uname);
-
-    static std::string GetDefalutName(const std::string& prefix);
+    /*get default name*/
+    static std::string GetDefaultName(const std::string& prefix);
 
 protected:
+
     PageProviderPtr mPageProvider;
-    UnitPtr mCurUnit;
-    std::vector<UnitPtr> mUnitVec;
+//    UnitPtr mCurUnit;
+    /*Units*/
+    std::vector<UnitPtr> mUnits;
 };
 
 DECLARE_PTR(UnitHandler);
+
+UNIT_NAMESPACE_END
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_UNITHANDLER_H

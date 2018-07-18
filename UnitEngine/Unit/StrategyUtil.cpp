@@ -4,17 +4,21 @@
 
 #include "StrategyUtil.h"
 #include "PageCommStruct.h"
+#include "PageSocketHandler.h"
+#include "StrategySocketHandler.h"
+
+USING_UNIT_NAMESPACE
 
 StrategyUtil::StrategyUtil(const std::string& strategyName)
 {
-    mHandler = std::make_shared(new StrategySocketHandler(strategyName));
-    mWriter = UnitWriter::Create(STRATEGY_LOG_FOLDER, strategyName, mHandler);
+    mHandler.reset(new StrategySocketHandler(strategyName));
+    mWriter = UnitWriter::Create(STRATEGY_BASE_FOLDER, strategyName, mHandler);
     Init();
 }
 
 StrategyUtilPtr StrategyUtil::Create(const std::string& strategyName)
 {
-    return std::make_shared(new StrategyUtil(strategyName));
+    return std::move(std::make_shared<StrategyUtil>(strategyName));
 }
 
 StrategyUtil::~StrategyUtil()

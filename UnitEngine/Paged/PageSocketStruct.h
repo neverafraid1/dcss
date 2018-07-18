@@ -5,10 +5,15 @@
 #ifndef DIGITALCURRENCYSTRATEGYSYSTEM_SOCKETSTRUCT_H
 #define DIGITALCURRENCYSTRATEGYSYSTEM_SOCKETSTRUCT_H
 
-#include <cstdint>
-#include "../utils/constants.h"
+#include "constants.h"
 
+UNIT_NAMESPACE_START
+
+#define PAGED_SOCKET_FILE DCSS_SOCKET_FOLDER "paged.sock"
+
+/*max length of a socket mBuffer*/
 #define MAX_SOCKET_MESSAGE_LENGTH   500
+/*max length of error msg*/
 #define MAX_SOCKET_ERROR_LENGTH     100
 
 #define PAGED_SOCKET_TD_LOGIN           1
@@ -23,8 +28,6 @@
 
 #define PAGED_SOCKET_SUBSCRIBE          20
 #define PAGED_SOCKET_SUBSCRIBE_TBC      21  // to be continued...
-
-#define PAGED_SOCKET_FILE "paged.sock"
 
 struct PagedSocketRequest
 {
@@ -69,5 +72,7 @@ struct PagedSocketRspStrategy : public PagedSocketResponse
     /*end of request id*/
     int RidEnd;
 };
+
+UNIT_NAMESPACE_END
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_SOCKETSTRUCT_H

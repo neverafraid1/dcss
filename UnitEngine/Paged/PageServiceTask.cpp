@@ -8,17 +8,19 @@
 #include "PageUtil.h"
 #include "Timer.h"
 
+USING_UNIT_NAMESPACE
+
 #define TEMP_PAGE DCSS_UNIT_FOLDER "TEMP_PAGE"
 const std::string PstTempPage::PageFullPath = TEMP_PAGE;
 
 PstPidCheck::PstPidCheck(PageEngine* pe)
-: engine(pe)
+: mEngine(pe)
 { }
 
 void PstPidCheck::Go()
 {
     std::vector<std::string> clientToRemove;
-    for (const auto& i : engine->mPidClientMap)
+    for (const auto& i : mEngine->mPidClientMap)
     {
         struct stat st;
         std::stringstream ss;
@@ -27,26 +29,34 @@ void PstPidCheck::Go()
         {
             for (const auto& name : i.second)
             {
-                clientToRemove.push_back(name);
+                clientToRemove.emplace_back(name);
             }
         }
     }
 
     for (const auto& name : clientToRemove)
     {
-        engine->ExitClient(name);
+        mEngine->ExitClient(name);
     }
 }
 
+PstTimeTick::PstTimeTick(UnitEngine::PageEngine* pe)
+: mEngine(pe)
+{ }
+
+void PstTimeTick::Go()
+{ }
+
 PstTempPage::PstTempPage(PageEngine* pe)
-: engine(pe)
+: mEngine(pe)
 { }
 
 void PstTempPage::Go()
 {
-    auto& fileAddrs = engine->mFildAddrs;
+    auto& fileAddrs = mEngine->mFildAddrs;
     if (fileAddrs.find(PageFullPath) == fileAddrs.end())
     {
+        DCSS_LOG_INFO(mEngine->GetLogger(), "NEW TEMP PAGE: " << PageFullPath);
         void* buffer = PageUtil::LoadPageBuffer(PageFullPath, UNIT_PAGE_SIZE, true, true);
         if (buffer != nullptr)
             fileAddrs[PageFullPath] = buffer;

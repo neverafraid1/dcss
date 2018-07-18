@@ -8,6 +8,9 @@
 #include <vector>
 #include <string>
 #include "DataStruct.h"
+#include "UnitDeclare.h"
+
+UNIT_NAMESPACE_START
 
 /**
  * interface class
@@ -27,5 +30,7 @@ public:
 
     virtual ~IStrategyUtil() = default;
 };
+
+UNIT_NAMESPACE_END
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_ISTRATEGYUTIL_H

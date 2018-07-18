@@ -8,9 +8,15 @@
 #include "UnitReader.h"
 #include "UnitWriter.h"
 #include "DCSSLog.h"
+#include "json.hpp"
+#include "UnitDeclare.h"
 
-using namespace DCSS;
+USING_UNIT_NAMESPACE
 
+/**
+ * base class of all engines
+ * such as TGEngine/MGEngine
+ */
 class IEngine
 {
 public:
@@ -19,7 +25,7 @@ public:
     /** init writer,reader etc... */
     virtual void Init() = 0;
 
-    virtual void Load() = 0;
+    virtual void Load(const nlohmann::json& config) = 0;
 
     /** connect to front */
     virtual void Connect() = 0;
@@ -27,14 +33,21 @@ public:
     virtual void ReleaseApi() = 0;
     /** return true if engine is connected to front */
     virtual bool IsConnected() const = 0;
-    /** get this engine's name */
-    virtual std::string Name() const = 0;
+
+    DCSSLogPtr GetLogger() const
+    {
+        return mLogger;
+    }
+
 public:
-    void Initialize();
-
+    /*initialize engine, pass-in parameters as json format*/
+    void Initialize(const std::string& jsonStr);
+    /*start engine*/
     bool Start();
-
+    /*stop all threads*/
     bool Stop();
+    /*block main thread*/
+    void WaitForStop();
 
 
 protected:
@@ -48,11 +61,22 @@ protected:
     {
         SignalReceived = signum;
     }
+
+    inline void WriteEngineStatus(const std::string& status)
+    {
+//        if (mWriter.get() != nullptr)
+//            mWriter->WriteFrame(status.c_str(), status.length(), )
+    }
 protected:
+    /*map: <clientname, writer>*/
     UnitWriterPtr mWriter;
+    /*reader*/
     UnitReaderPtr mReader;
+    /*dcss logger*/
     DCSSLogPtr mLogger;
+    /*flag of reader thread*/
     volatile bool mIsRunning;
+    /*reader thread*/
     ThreadPtr mReaderThread;
 };
 

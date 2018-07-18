@@ -9,17 +9,25 @@
 
 #include <sstream>
 
-using namespace UNIT;
+USING_UNIT_NAMESPACE
 
+UnitHandler::~UnitHandler()
+{
+    mPageProvider->ExitClient();
+}
 
-std::string UnitHandler::GetDefalutName(const std::string& prefix)
+std::string UnitHandler::GetDefaultName(const std::string& prefix)
 {
     std::stringstream ss;
     ss << prefix << "_" << GetNanoTime();
     return ss.str();
 }
 
-size_t UnitHandler::AddUnit(const std::string& dir, const std::string& uname)
+size_t UnitHandler::AddUnit(const std::string& _dir, const std::string& uname)
 {
+    std::string dir = _dir.back() == '/' ? _dir.substr(0, _dir.length() - 1) : _dir;
 
+    int serviceIdx = mPageProvider->RegisterUnit(dir, uname);
+    mUnits.emplace_back(Unit::CreateUnit(dir, uname, serviceIdx, mPageProvider));
+    return mUnits.size() - 1;
 }

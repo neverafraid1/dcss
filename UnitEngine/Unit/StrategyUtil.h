@@ -7,15 +7,13 @@
 
 #include "IStrategyUtil.h"
 #include "UnitWriter.h"
-#include "StrategySocketHandler.h"
 
-#define STRATEGY_LOG_FOLDER "/shared/dcss/log/"
-
-class StrategyUtil;
-DECLARE_PTR(StrategyUtil);
+UNIT_NAMESPACE_START
+PRE_DECLARE_PTR(StrategyUtil);
+PRE_DECLARE_PTR(StrategySocketHandler);
 
 /**
- * wrapper of strategy utilities
+ * wrapper of strategy utilities for dcss strategy
  */
 class StrategyUtil : public IStrategyUtil
 {
@@ -25,9 +23,9 @@ public:
 
     bool MdSubscribe(const std::vector<DCSSSymbolField>& tickers, short source) override ;
 
-    bool MdSubscribeKline(const DCSSSymbolField& symbol, KlineTypeType klineType, short source) override ;
+    bool MdSubscribeKline(const DCSSSymbolField& symbol, KlineTypeType klineType, short source) override {};
 
-    bool MdSubscribeDepth(const DCSSSymbolField& symbol, int depth, short source) override ;
+    bool MdSubscribeDepth(const DCSSSymbolField& symbol, int depth, short source) override {};
 
     bool RegisterStrategy(int& ridStart, int& ridEnd) override ;
 
@@ -37,8 +35,6 @@ public:
     ~StrategyUtil() override ;
 
     static StrategyUtilPtr Create(const std::string& strategyName);
-
-    bool SubscribeTicker(const std::vector<std::string>& tickers);
 
     long WriteFrame(const void* data, FH_LENGTH_TYPE length,
     FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType,
@@ -70,5 +66,7 @@ private:
     /*writer*/
     UnitWriterPtr mWriter;
 };
+
+UNIT_NAMESPACE_END
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_STRATEGYUTIL_H

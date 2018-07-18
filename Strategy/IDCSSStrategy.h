@@ -12,42 +12,59 @@
 class IDCSSStrategy : public IDCSSDataProcessor
 {
 public:
-    virtual void OnRtnTicker(const DCSSTickerField& ticker, long recvTime);
-    virtual void OnRtnDepth(const DCSSDepthHeaderField& header,
-            const std::vector<DCSSDepthField>& ask,
-            const std::vector<DCSSDepthField>& bid,
-            long recvTime);
-    virtual void OnRtnKline(const DCSSKlineHeaderField& header,
-            const std::vector<DCSSKlineField>& kline,
-            long recvTime);
+    void OnRtnTicker(const DCSSTickerField& ticker, short source, long recvTime) override ;
 
-    virtual void OnRspOrderInsert(const DCSSRspInsertOrderField& rsp,
-            int requestId, long recvTime, short errorId = 0, const char* errorMsg = nullptr);
+    void OnRtnKline(const DCSSKlineHeaderField& header,
+    const std::vector<DCSSKlineField>& kline,
+    short source,
+    long recvTime) override ;
 
-    virtual void OnTime(long curTime);
+    void OnRtnDepth(const DCSSDepthHeaderField& header,
+    const std::vector<DCSSDepthField>& ask,
+    const std::vector<DCSSDepthField>& bid,
+    short source,
+    long recvTime) override {}
 
+    void OnRtnOrder(const DCSSOrderField& order, int requestID, short source, long recvTime) override ;
 
-    virtual std::string GetName() const { return  mName; };
+    void OnRspOrderInsert(const DCSSRspInsertOrderField& rsp, int requestID, short source, long recvTime) override ;
 
+    void Debug(const char* msg) override;
+
+    void OnTime(long curTime) override ;
+
+    std::string GetName() const override { return mName; };
+
+public:
+    int InsertLimitOrder(short source, const DCSSSymbolField& symbol, double price, double volume, TradeTypeType tradeType);
+
+    int InsertMarketOrder(short source, const DCSSSymbolField& symbol, double volume, TradeTypeType tradeType);
+
+    int CancelOrder(short source, const DCSSSymbolField& symbol, long orderId);
+
+//    int ReqQryTicker(short source, const DCSSSymbolField& symbol);
 public:
     virtual ~IDCSSStrategy();
 
-    IDCSSStrategy(const std::string& name);
-
+    explicit IDCSSStrategy(const std::string& name);
+    /*start data thread*/
     virtual void Start();
-
+    /*run strategy in front end*/
     void Run();
-
+    /*terminate data thread, should never be called within data thread*/
     void Terminate();
-
+    /*send stop signal to data thread*/
     void Stop();
-
+    /*block process by data thread*/
     void Block();
 
 protected:
     bool IsTdReady(short source) const;
+
     bool IsTdConnected(short source) const;
+
 protected:
+    /*logger*/
     DCSSLogPtr mLogger;
     /*strategy name*/
     const std::string mName;

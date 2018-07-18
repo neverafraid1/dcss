@@ -8,17 +8,23 @@
 #include "PageUtil.h"
 #include "json.hpp"
 #include "SysMessages.h"
+#include "Constants.h"
 
 #include <mutex>
 #include <csignal>
 #include <iostream>
 #include <unistd.h>
 
+USING_UNIT_NAMESPACE
+
 using json = nlohmann::json;
 
 std::mutex gPagedMutex;
 
-const int SLEEP_MILLISEC =1000000;
+#define COMM_FILE DCSS_UNIT_FOLDER "PAGED_ENGINE_COMM"
+const std::string gCommFileName = COMM_FILE;
+
+const int SLEEP_MILLISEC = 1000000;
 
 DCSSLogPtr gStaticLogger;
 
@@ -36,9 +42,11 @@ void PageEngine::AcquireMutex() const
 void PageEngine::ReleaseMutex() const
 {
     gPagedMutex.unlock();
-}
+};
 
 PageEngine::PageEngine()
+: mCommBuffer(nullptr), mCommFile(gCommFileName), mMaxIdx(0), mMicroSecFreq(SLEEP_MILLISEC),
+  mTaskRunning(false), mCommRunning(false)
 {
     mLogger = DCSSLog::GetLogger("PageEngine");
     gStaticLogger = mLogger;
@@ -51,9 +59,6 @@ PageEngine::PageEngine()
     mTasks.clear();
     AddTask(PstBasePtr(new PstPidCheck(this)));
 }
-
-PageEngine::~PageEngine()
-{ }
 
 bool PageEngine::Write(const std::string& content, uint8_t msgType, bool isLast, short source)
 {
@@ -68,31 +73,35 @@ void PageEngine::Start()
     DCSS_LOG_INFO(mLogger, "reset socket: " << PAGED_SOCKET_FILE);
     remove(PAGED_SOCKET_FILE);
 
-    /*step 0: init communicate buffer*/
-    DCSS_LOG_INFO(mLogger, "loading page buffer: " << mCommFile);
+    /*step 0: init communicate mBuffer*/
+    DCSS_LOG_INFO(mLogger, "loading page mBuffer: " << mCommFile);
     mCommBuffer = PageUtil::LoadPageBuffer(mCommFile, COMM_SIZE, true, true);
     memset(mCommBuffer, 0, COMM_SIZE);
 
-    /*step 1: start communicate buffer check thread*/
+    /*step 1: start communicate mBuffer check thread*/
     mCommRunning = false;
-    mCommThread = ThreadPtr(new std::thread(std::bind(&PageEngine::StartComm, this)));
+    mCommThread.reset(new std::thread(std::bind(&PageEngine::StartComm, this)));
 
     /*step 2: start listening socket*/
-    mSocketThread = ThreadPtr(new std::thread(std::bind(&PageEngine::StartSocket, this)));
+    mSocketThread.reset(new std::thread(std::bind(&PageEngine::StartSocket, this)));
 
-    /*wait until buffer/socket thread are running*/
-    while (!(PageSocketHandler::GetInstance()->IsRunning()) && mCommRunning)
+    /*wait until mBuffer/socket thread are running
+     * sleep one more loop to avoid conflict*/
+    do
     {
         std::this_thread::sleep_for(std::chrono::microseconds(SLEEP_MILLISEC / 10));
     }
-    DCSS_LOG_INFO(mLogger, "creating writer: (Folder)" << PAGED_UNIT_FOLDER << "(Name)" << PAGED_UNIT_NAME);
+    while (!(PageSocketHandler::GetInstance()->IsRunning() && mCommRunning));
+
+    DCSS_LOG_INFO(mLogger, "creating writer: (folder)" << PAGED_UNIT_FOLDER << "(name)" << PAGED_UNIT_NAME);
     mWriter = UnitWriter::Create(PAGED_UNIT_FOLDER, PAGED_UNIT_NAME, "paged");
 
     if (mMicroSecFreq <= 0)
         throw std::runtime_error("unaccepted task time interval");
 
     mTaskRunning = true;
-    mTaskThread = ThreadPtr(new std::thread(std::bind(&PageEngine::StartTask, this)));
+    mTaskThread.reset(new std::thread(std::bind(&PageEngine::StartTask, this)));
+    Write("", MSG_TYPE_PAGED_START);
 }
 
 void PageEngine::SetFreq(double secondInterVal)
@@ -104,6 +113,8 @@ void PageEngine::SetFreq(double secondInterVal)
 void PageEngine::Stop()
 {
     DCSS_LOG_INFO(mLogger, "(stop) try...");
+
+    Write("", MSG_TYPE_PAGED_END);
 
     mWriter.reset();
 
@@ -154,12 +165,12 @@ void PageEngine::StartTask()
 
 bool PageEngine::AddTask(PstBasePtr task)
 {
-    AcquireMutex();
     std::string name = task->GetName();
+    AcquireMutex();
     bool exist = (mTasks.find(name) != mTasks.end());
     mTasks[name] = task;
-    DCSS_LOG_INFO(mLogger, "(add task) (Name)" << name << " (exist)" << (int)exist);
     ReleaseMutex();
+    DCSS_LOG_INFO(mLogger, "(add task) (Name)" << name << " (exist)" << (int)exist);
     return !exist;
 }
 
@@ -179,14 +190,14 @@ bool PageEngine::RemoveTaskByName(const std::string& name)
         return false;
     }
     mTasks.erase(iter);
-    DCSS_LOG_INFO(mLogger, "(rm task) (Name)" << name);
     ReleaseMutex();
+    DCSS_LOG_INFO(mLogger, "(rm task) (Name)" << name);
     return true;
 }
 
 void PageEngine::StartSocket()
 {
-    PageSocketHandler::GetInstance()->Run(shared_from_this());
+    PageSocketHandler::GetInstance()->Run(this);
 }
 
 int PageEngine::RegUnit(const std::string& clientName)
@@ -217,65 +228,36 @@ int PageEngine::RegUnit(const std::string& clientName)
         DCSS_LOG_ERROR(mLogger, "cannot find the client in reg unit (client)" << clientName);
         return -1;
     }
+    it->second.UserIndexVec.emplace_back(idx);
     DCSS_LOG_INFO(mLogger, "[RegUnit] (client)" << clientName << " (idx)" << idx);
-    return idx;
+    return (int)idx;
 }
 
-void PageEngine::ReleasePage(const PageCommMsg& msg)
+bool PageEngine::RegClient(std::string& commFile, int& fileSize, const std::string& clientName, int pid, bool isWriter)
 {
-    DCSS_LOG_INFO(mLogger, "[release page] (folder)" << msg.Folder
-                                                     << " (name)" << msg.Name << " (page num)" << msg.PageNum
-                                                     << " (last page num)" << msg.LastPageNum);
+    DCSS_LOG_INFO(mLogger, "[RegClient] (name)" << clientName << " (writer?)" << isWriter);
+    if (mClientUnits.find(clientName) != mClientUnits.end())
+        return false;
 
-    std::map<PageCommMsg, int>::iterator countIt;
-
-    if (msg.IsWriter)
-    {
-        countIt = mFileWriterCounts.find(msg);
-        if (countIt == mFileWriterCounts.end())
-        {
-            DCSS_LOG_ERROR(mLogger, "cannot find key at mFileWriterCounts in exit_client");
-            return;
-        }
-    }
+    auto iter = mPidClientMap.find(pid);
+    if (iter == mPidClientMap.end())
+        mPidClientMap[pid] = {clientName};
     else
-    {
-        countIt = mFileReaderCounts.find(msg);
-        if (countIt == mFileReaderCounts.end())
-        {
-            DCSS_LOG_ERROR(mLogger, "cannot find key at mFileReaderCounts in exit_client");
-            return;
-        }
-    }
+        mPidClientMap[pid].emplace_back(clientName);
 
-    --countIt->second;
-    if (countIt->second == 0)
-    {
-        bool otherSideIsEmpty = false;
-        if (msg.IsWriter)
-        {
-            mFileWriterCounts.erase(countIt);
-            otherSideIsEmpty = mFileReaderCounts.find(msg) == mFileReaderCounts.end();
-        }
-        else
-        {
-            mFileReaderCounts.erase(countIt);
-            otherSideIsEmpty = mFileWriterCounts.find(msg) == mFileWriterCounts.end();
-        }
+    std::stringstream ss;
 
-        if (otherSideIsEmpty)
-        {
-            std::string path = PageUtil::GenPageFullPath(msg.Folder, msg.Name, msg.PageNum);
-            auto fileIt = mFildAddrs.find(path);
-            if (fileIt != mFildAddrs.end())
-            {
-                void * addr = fileIt->second;
-                DCSS_LOG_INFO(mLogger, "[addr rm] (path)" << path << " (addr)" << addr);
-                PageUtil::ReleasePageBuffer(addr, UNIT_PAGE_SIZE, true);
-                mFildAddrs.erase(fileIt);
-            }
-        }
-    }
+    PageClientInfo& clientInfo = mClientUnits[clientName];
+    clientInfo.UserIndexVec.clear();
+    clientInfo.RegNano = GetNanoTime();
+    clientInfo.IsWriter = isWriter;
+    clientInfo.IsStrategy = false;
+    clientInfo.RidStart = -1;
+    clientInfo.RidEnd = -1;
+    clientInfo.Pid = pid;
+    commFile = this->mCommFile;
+    fileSize = COMM_SIZE;
+    return true;
 }
 
 uint8_t PageEngine::InitiatePage(const PageCommMsg& msg)
@@ -339,6 +321,63 @@ uint8_t PageEngine::InitiatePage(const PageCommMsg& msg)
     return PAGED_COMM_ALLOCATED;
 }
 
+void PageEngine::ReleasePage(const PageCommMsg& msg)
+{
+    DCSS_LOG_INFO(mLogger, "[release page] (folder)" << msg.Folder
+                                                     << " (name)" << msg.Name << " (page num)" << msg.PageNum
+                                                     << " (last page num)" << msg.LastPageNum);
+
+    std::map<PageCommMsg, int>::iterator countIt;
+
+    if (msg.IsWriter)
+    {
+        countIt = mFileWriterCounts.find(msg);
+        if (countIt == mFileWriterCounts.end())
+        {
+            DCSS_LOG_ERROR(mLogger, "cannot find key at mFileWriterCounts in exit_client");
+            return;
+        }
+    }
+    else
+    {
+        countIt = mFileReaderCounts.find(msg);
+        if (countIt == mFileReaderCounts.end())
+        {
+            DCSS_LOG_ERROR(mLogger, "cannot find key at mFileReaderCounts in exit_client");
+            return;
+        }
+    }
+
+    --countIt->second;
+    if (countIt->second == 0)
+    {
+        bool otherSideIsEmpty = false;
+        if (msg.IsWriter)
+        {
+            mFileWriterCounts.erase(countIt);
+            otherSideIsEmpty = mFileReaderCounts.find(msg) == mFileReaderCounts.end();
+        }
+        else
+        {
+            mFileReaderCounts.erase(countIt);
+            otherSideIsEmpty = mFileWriterCounts.find(msg) == mFileWriterCounts.end();
+        }
+
+        if (otherSideIsEmpty)
+        {
+            std::string path = PageUtil::GenPageFullPath(msg.Folder, msg.Name, msg.PageNum);
+            auto fileIt = mFildAddrs.find(path);
+            if (fileIt != mFildAddrs.end())
+            {
+                void * addr = fileIt->second;
+                DCSS_LOG_INFO(mLogger, "[addr rm] (path)" << path << " (addr)" << addr);
+                PageUtil::ReleasePageBuffer(addr, UNIT_PAGE_SIZE, true);
+                mFildAddrs.erase(fileIt);
+            }
+        }
+    }
+}
+
 void PageEngine::StartComm()
 {
     mCommRunning = true;
@@ -380,6 +419,15 @@ IntPair PageEngine::RegStrategy(const std::string& strategyName)
     info.RidStart = (idx + 1) * REQUEST_ID_RANGE;
     info.RidEnd = (idx + 2) * REQUEST_ID_RANGE - 1;
 
+    PageCommMsg* msg = GET_COMM_MSG(mCommBuffer, idx);
+    json request;
+    request["name"] = strategyName;
+    request["folder"] = msg->Folder;
+    request["rid_s"] = info.RidStart;
+    request["rid_e"] = info.RidEnd;
+    request["pid"] = info.Pid;
+    Write(request.dump(), MSG_TYPE_STRATEGY_START);
+    DCSS_LOG_INFO(mLogger, "[RegStrategy] (name)" << strategyName << " (rid)" << info.RidStart << "-" << info.RidEnd);
     return std::make_pair(info.RidStart, info.RidEnd);
 }
 
@@ -411,15 +459,19 @@ bool PageEngine::LoginTd(const std::string& clientName, short source)
     return true;
 }
 
-bool PageEngine::SubTicker(const std::vector<std::string>& tickers, short source, short msgType, bool isLast)
+bool PageEngine::SubTicker(const std::vector<DCSSSymbolField>& tickers, short source, bool isLast)
 {
-    DCSS_LOG_INFO(mLogger, "(subscribe) (source)" << source << " (msg type)" << )
+    DCSS_LOG_INFO(mLogger, "(subscribe) (source)" << source);
 
-    bool written = true;
+    if (mWriter.get() == nullptr)
+        return false;
+
     for (size_t i = 0; i < tickers.size(); ++i)
-        written &= Write(tickers[i], msgType, isLast && (i == tickers.size() - 1), source);
+    {
+        mWriter->WriteFrame(&tickers[i], sizeof(DCSSSymbolField) + 1, source, MSG_TYPE_SUB_TICKER, -1);
+    }
 
-    return written;
+    return true;
 }
 
 void PageEngine::ExitClient(const std::string& clientName)
@@ -453,7 +505,7 @@ void PageEngine::ExitClient(const std::string& clientName)
     DCSS_LOG_INFO(mLogger, "[rm client] (name)" << clientName << " (start)" << info.RegNano << " (end)" << GetNanoTime());
     auto& clients = mPidClientMap[info.Pid];
     clients.erase(remove(clients.begin(), clients.end(), clientName), clients.end());
-    if (clients.size() == 0)
+    if (clients.empty())
         mPidClientMap.erase(info.Pid);
 
     mClientUnits.erase(it);

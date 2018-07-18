@@ -5,19 +5,23 @@
 #ifndef DIGITALCURRENCYSTRATEGYSYSTEM_PAGEPROVIDER_H
 #define DIGITALCURRENCYSTRATEGYSYSTEM_PAGEPROVIDER_H
 
-#include "Declare.h"
 #include "IPageProvider.h"
 
-class Page;
+UNIT_NAMESPACE_START
 
+/**
+ * PageProvider
+ * abstract class, utilized by UnitHandler
+ */
 class PageProvider : public IPageProvider
 {
 public:
+    /*register unit when added into UnitHandler*/
     virtual int RegisterUnit(const std::string& dir, const std::string& uname) { return -1; };
+    /*exit client after UnitHandler is released*/
+    virtual void ExitClient() {};
 
-    virtual void ClientExit() {};
-
-    virtual bool IsWriter() const { return mIsWriter; }
+    bool IsWriter() const final { return mIsWriter; }
 
 protected:
     bool mIsWriter;
@@ -27,27 +31,35 @@ protected:
 
 DECLARE_PTR(PageProvider);
 
+/**
+ * client page provider
+ * provider page via memory service, socket & comm
+ */
 class ClientPageProvider : public PageProvider
 {
 public:
     ClientPageProvider(const std::string& clientName, bool isWriting, bool reviseAllowed = false);
 
-    virtual int RegisterUnit(const std::string& dir, const std::string& uname);
+    int RegisterUnit(const std::string& dir, const std::string& uname) override ;
 
-    virtual void ClientExit();
+    void ExitClient() override ;
 
-    virtual PagePtr GetPage(const std::string& dir, const std::string& uname, int serviceIdx, short pageNum);
+    PagePtr GetPage(const std::string& dir, const std::string& uname, int serviceIdx, short pageNum) override ;
 
-    virtual void ReleasePage(void* buffer, int size, int serviceIdx);
+    void ReleasePage(void* buffer, int size, int serviceIdx) override ;
 
 protected:
+    /*register to service as a client*/
     void RegisterClient();
 
 protected:
     std::string mClientName;
+
     void* mCommBuffer;
 };
 
 DECLARE_PTR(ClientPageProvider);
+
+UNIT_NAMESPACE_END
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_PAGEPROVIDER_H

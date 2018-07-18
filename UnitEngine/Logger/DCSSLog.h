@@ -7,17 +7,16 @@
 
 #include <log4cplus/logger.h>
 #include <log4cplus/loggingmacros.h>
-#include "Declare.h"
+#include "UnitDeclare.h"
+
+UNIT_NAMESPACE_START
 
 #define DCSS_LOG_FATAL(DCSSlogger, content) LOG4CPLUS_FATAL(DCSSlogger->getLogger(), content)
-//#define DCSS_LOG_ERROR(DCSSlogger, content) LOG4CPLUS_ERROR(DCSSlogger->getLogger(), content)
-#define DCSS_LOG_ERROR(DCSSlogger, content) do {std::cout << __LINE__ << content << std::endl;} while(0);
-//#define DCSS_LOG_INFO(DCSSlogger, content) LOG4CPLUS_INFO(DCSSlogger->getLogger(), content)
-#define DCSS_LOG_INFO(DCSSlogger, content) do {std::cout << __LINE__ << content << std::endl;} while(0);
+#define DCSS_LOG_ERROR(DCSSlogger, content) LOG4CPLUS_ERROR(DCSSlogger->getLogger(), content)
+#define DCSS_LOG_INFO(DCSSlogger, content) LOG4CPLUS_INFO(DCSSlogger->getLogger(), content)
 #define DCSS_LOG_DEBUG(DCSSlogger, content) LOG4CPLUS_DEBUG(DCSSlogger->getLogger(), content)
 
-class DCSSLog;
-DECLARE_PTR(DCSSLog);
+PRE_DECLARE_PTR(DCSSLog);
 
 class DCSSLog
 {
@@ -69,4 +68,5 @@ public:
 
 DECLARE_PTR(DCSSStrategyLog);
 
+UNIT_NAMESPACE_END
 #endif //DEMO_DCSSLOG_H

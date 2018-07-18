@@ -11,11 +11,30 @@
 #include <iomanip>
 #include <cstring>
 #include <cmath>
+#include "DataStruct.h"
+
+/*convert btc_ltc to struct*/
+bool ConvStringSymbol(const std::string& str, DCSSSymbolField& symbol)
+{
+    auto idx = str.find('_');
+    if (idx == std::string::npos)
+        return false;
+    memcpy(symbol.Base, str.c_str(), idx);
+    memcpy(symbol.Quote, str.c_str() + idx + 1, str.length() - idx - 1);
+    return true;
+}
+/*convert struct to btc_ltc*/
+std::string ConvStructSymbol(const DCSSSymbolField& symbol)
+{
+    std::stringstream ss;
+    ss << symbol.Base << "_" << symbol.Quote;
+    return std::move(ss.str());
+}
 
 inline void SplitLongTime(const long& t, char* date, char* time, int& milliSec)
 {
-    milliSec = t%1000;
-    time_t tmp = t/1000;
+    milliSec = (int)(t % 1000);
+    time_t tmp = t / 1000;
     tm* ptm = localtime(&tmp);
 
     std::stringstream ssdate, sstime;

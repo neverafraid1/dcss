@@ -5,6 +5,12 @@
 #ifndef DCSS_CONSTANTS_H
 #define DCSS_CONSTANTS_H
 
+/**
+ * when start a strategy, should declare the source(exchange)
+ * and account (may use index in mysql?)
+ */
+
+// sources
 const short EXCHANGE_OKCOIN = 0x0001;
 
 //const short MSG_TYPE_REQ_QRY_POS        = 0x0101;
@@ -85,7 +91,7 @@ typedef char TradeTypeType;
 // OrderStatusType: 报单状态类型
 ///////////////////////////////////
 //已撤销
-#define ALL_CANCELED        -1
+#define ALL_CANCELED        (-1)
 //等待成交
 #define SUBMITTED           0
 //部分成交

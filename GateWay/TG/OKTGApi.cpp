@@ -10,8 +10,6 @@
 #include <algorithm>
 #include <thread>
 
-using namespace DCSS;
-
 std::map<KlineTypeType, std::string> OKTGApi::klineStringMap = {
         {KLINE_1MIN, "1min"},
         {KLINE_3MIN, "3min"},
@@ -58,14 +56,11 @@ std::map<std::string, TradeTypeType> OKTGApi::stringTradeTypeMap = {
         {"sell_market", SELL_MARKET}
 };
 
-
-
-OKTGApi::OKTGApi(std::string apiKey, std::string secretKey)
-        :mApiKey(apiKey), mSecretKey(secretKey), IsRestConnected(false), IsWsConnected(false)
+OKTGApi::OKTGApi(short source)
+        :ITGApi(source), IsRestConnected(false), IsWsConnected(false)//, mSourceId(EXCHANGE_OKCOIN)
 {
     web_proxy proxy("http://192.168.1.164:1080");
     websocket_client_config config;
-//    config.set_t
     config.set_proxy(proxy);
 
     http_client_config config1;
@@ -89,7 +84,7 @@ OKTGApi::~OKTGApi()
 void OKTGApi::OnWsClose(web::websockets::client::websocket_close_status close_status,
         const utility::string_t& reason, const std::error_code& error)
 {
-    DCSS_LOG_INFO(logger, "[ok_tg][wsclose](" << mApiKey << ")(close_status)" << (int)close_status
+    DCSS_LOG_INFO(mLogger, "[ok_tg][wsclose](" << mApiKey << ")(close_status)" << (int)close_status
     << "(reason)" << reason << "(error)" << error.message());
 
     IsWsConnected = false;
@@ -100,7 +95,6 @@ void OKTGApi::OnWSMessage(const web::websockets::client::websocket_incoming_mess
     try
     {
         json::value jvalue = json::value::parse(msg.extract_string().get());
-        std::cout << jvalue.serialize() << std::endl;
         const json::array& jarray = jvalue.as_array();
         for (auto i : jarray)
         {
@@ -114,7 +108,6 @@ void OKTGApi::OnWSMessage(const web::websockets::client::websocket_incoming_mess
             }
             if (channel.find("balance") != std::string::npos)
             {
-                std::string ss = jvalue.serialize();
                 OnRtnBalance(data);
                 break;
             }
@@ -127,7 +120,7 @@ void OKTGApi::OnWSMessage(const web::websockets::client::websocket_incoming_mess
     }
     catch (const std::exception& e)
     {
-        DCSS_LOG_ERROR(logger, "[ok_tg][onwsmessage]" << "(error)" << e.what());
+        DCSS_LOG_ERROR(mLogger, "[ok_tg][onwsmessage]" << "(error)" << e.what());
     }
 
 }
@@ -136,8 +129,9 @@ void OKTGApi::OnRtnOrder(const json::object& jorder)
 {
     DCSSOrderField order;
 
-    memcpy(order.Symbol, jorder.at(U("symbol")).as_string().c_str(),
-            sizeof(jorder.at(U("symbol")).as_string().length()));
+    if (!ConvStringSymbol(jorder.at(U("symbol")).as_string(), order.Symbol))
+        return;;
+
     SplitLongTime(std::stol(jorder.at(U("createdDate")).as_string()), order.CreateDate, order.CreateTime,
             order.Millisec);
     order.OrderID = jorder.at(U("orderId")).as_number().to_int64();
@@ -156,7 +150,7 @@ void OKTGApi::OnRtnOrder(const json::object& jorder)
     order.OrderStatus = (OrderStatusType) (jorder.at(U("Status")).as_integer());
 
 
-    mSpi->OnRtnOrder(&order);
+    mSpi->OnRtnOrder(&order, mSourceId);
 }
 
 void OKTGApi::OnRtnBalance(const web::json::object& j)
@@ -168,16 +162,22 @@ void OKTGApi::OnUserLogin(const web::json::object& j)
     IsLoggined = j.at(U("result")).as_bool();
     if (IsLoggined)
     {
-        DCSS_LOG_INFO(logger, "[ok_tg][login]" << "\t(" << mApiKey << ")"
+        DCSS_LOG_INFO(mLogger, "[ok_tg][login]" << "\t(" << mApiKey << ")"
         << " login success");
     }
     else
     {
-        DCSS_LOG_INFO(logger, "[ok_tg][login]" << "\t(" << mApiKey << ")"
+        DCSS_LOG_INFO(mLogger, "[ok_tg][login]" << "\t(" << mApiKey << ")"
         << " login fail!");
-        DCSS_LOG_INFO(logger, "[ok_tg][login]" << "(error_msg)" <<
+        DCSS_LOG_INFO(mLogger, "[ok_tg][login]" << "(error_msg)" <<
         j.at(U("error_msg")).as_string());
     }
+}
+
+void OKTGApi::LoadAccount(const nlohmann::json& config)
+{
+    mApiKey = config.at("api_key");
+    mSecretKey = config.at("secret_key");
 }
 
 void OKTGApi::Connect()
@@ -185,24 +185,26 @@ void OKTGApi::Connect()
     mWsClient->connect(U(OK_WS_ADDRESS))
             .then([this]()
             {
-              OnWsConnected();
+                OnWsConnected();
             })
             .then([&](pplx::task<void> task)
             {
-              try
-              {
-                  task.get();
-              }
-              catch (const std::exception& e)
-              {
-                  DCSS_LOG_ERROR(logger, "[ok_tg][connect]\t(" << mApiKey << ")" << "ws send connect failed!(exception)" << e.what());
-              }
+                try
+                {
+                    task.get();
+                }
+                catch (const std::exception& e)
+                {
+                    DCSS_LOG_ERROR(mLogger,
+                            "[ok_tg][connect]\t(" << mApiKey << ")" << "ws send connect failed!(exception)"
+                                                  << e.what());
+                }
             });
 }
 
 void OKTGApi::OnWsConnected()
 {
-    DCSS_LOG_INFO(logger, "[ok_tg][connect]\t(" << mApiKey << ")" << " ws connect success!");
+    DCSS_LOG_INFO(mLogger, "[ok_tg][connect]\t(" << mApiKey << ")" << " ws connect success!");
     IsWsConnected = true;
 }
 
@@ -213,7 +215,7 @@ void OKTGApi::Login()
     {
         if (i++ >= 10)
         {
-            DCSS_LOG_ERROR(logger, "[ok_tg][login]\t" << "(" << mApiKey << ")"
+            DCSS_LOG_ERROR(mLogger, "[ok_tg][login]\t" << "(" << mApiKey << ")"
             << "connect to " << OK_WS_ADDRESS << " timeout!");
             return;
         }
@@ -237,7 +239,7 @@ void OKTGApi::Login()
 
     mWsClient->send(msg).then([&]()
     {
-        DCSS_LOG_INFO(logger, "[ok_tg][login]\t" << "(" << mApiKey << ")" << " send request success!");
+        DCSS_LOG_INFO(mLogger, "[ok_tg][login]\t" << "(" << mApiKey << ")" << " send request success!");
     }).then([&](pplx::task<void> task)
     {
         try
@@ -246,7 +248,7 @@ void OKTGApi::Login()
         }
         catch (const std::exception& e)
         {
-            DCSS_LOG_ERROR(logger, "[ok_tg][login]\t" << "(" << mApiKey << ")"
+            DCSS_LOG_ERROR(mLogger, "[ok_tg][login]\t" << "(" << mApiKey << ")"
                                                    << " send request failed!(exception)" << e.what() );
         }
     });
@@ -256,6 +258,7 @@ void OKTGApi::Login()
 void OKTGApi::Register(ITGEnginePtr spi)
 {
     mSpi = spi;
+    mLogger = mSpi->GetLogger();
 }
 
 bool OKTGApi::IsLogged()
@@ -271,7 +274,7 @@ bool OKTGApi::IsConnected() const
 void OKTGApi::ReqQryTicker(const DCSSReqQryTickerField* req, int requestID)
 {
     uri_builder builder(U(OK_REST_TICK_URL));
-    builder.append_query(U(OK_SYMBOL_STRING), U(req->Symbol));
+    builder.append_query(U(OK_SYMBOL_STRING), U(ConvStructSymbol(req->Symbol)));
     mRestClient->request(methods::GET, builder.to_string())
             .then([&](http_response response)
             {
@@ -285,7 +288,7 @@ void OKTGApi::ReqQryTicker(const DCSSReqQryTickerField* req, int requestID)
               }
               catch (const std::exception& e)
               {
-                  DCSS_LOG_ERROR(logger, "[ok_tg][qryticker]\t" << "(" << mApiKey << ")"
+                  DCSS_LOG_ERROR(mLogger, "[ok_tg][qryticker]\t" << "(" << mApiKey << ")"
                                                          << " send request failed!(exception)" << e.what());
               }
             });
@@ -296,12 +299,12 @@ void OKTGApi::ReqQryKline(const DCSSReqQryKlineField* req, int requestID)
 {
     if (klineStringMap.find(req->KlineType)==klineStringMap.end())
     {
-        DCSS_LOG_ERROR(logger, "[ok_tg][qrykline]\t" << "(" << mApiKey << ")"
+        DCSS_LOG_ERROR(mLogger, "[ok_tg][qrykline]\t" << "(" << mApiKey << ")"
                                                   << " unknown kline type "<< req->KlineType);
         return;
     }
     uri_builder builder(U("kline.do"));
-    builder.append_query(U("symbol"), U(req->Symbol));
+    builder.append_query(U("symbol"), U(ConvStructSymbol(req->Symbol)));
     builder.append_query(U("type"), U(klineStringMap.at(req->KlineType)));
     if (req->Size!=0)
         builder.append_query(U("size"), req->Size);
@@ -321,7 +324,7 @@ void OKTGApi::ReqQryKline(const DCSSReqQryKlineField* req, int requestID)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(logger, "[ok_tg][qrykline]\t" << "(" << mApiKey << ")"
+                    DCSS_LOG_ERROR(mLogger, "[ok_tg][qrykline]\t" << "(" << mApiKey << ")"
                                                               << " send request failed!(exception)" << e.what());
                 }
             });
@@ -346,7 +349,7 @@ void OKTGApi::ReqQryUserInfo(int requestID)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(logger, "[ok_tg][qryuserinfo]\t" << "(" << mApiKey << ")"
+                    DCSS_LOG_ERROR(mLogger, "[ok_tg][qryuserinfo]\t" << "(" << mApiKey << ")"
                                                               << " send request failed!(exception)" << e.what());
                 }
 
@@ -359,7 +362,7 @@ void OKTGApi::ReqQryOrder(const DCSSReqQryOrderField* req, int requestID)
 
     AddApiKey(builder);
     builder.append_query(U("order_id"), req->OrderID);
-    builder.append_query(U("symbol"), U(req->Symbol));
+    builder.append_query(U("symbol"), U(ConvStructSymbol(req->Symbol)));
     AddSecKeyAndSign(builder);
 
     mRestClient->request(methods::POST, builder.to_string())
@@ -375,7 +378,7 @@ void OKTGApi::ReqQryOrder(const DCSSReqQryOrderField* req, int requestID)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(logger, "[ok_tg][qryorder]\t" << "(" << mApiKey << ")"
+                    DCSS_LOG_ERROR(mLogger, "[ok_tg][qryorder]\t" << "(" << mApiKey << ")"
                                                               << " send request failed!(exception)" << e.what());
                 }
             });
@@ -389,7 +392,7 @@ void OKTGApi::ReqInsertOrder(const DCSSReqInsertOrderField* req, int requestID)
     AddApiKey(builder);
     if (req->TradeType == BUY || req->TradeType == SELL)
         builder.append_query(U("price"), req->Price);
-    builder.append_query(U("symbol"), U(req->Symbol));
+    builder.append_query(U("symbol"), U(ConvStructSymbol(req->Symbol)));
     builder.append_query(U("type"), U(tradeTypeStringMap.at(req->TradeType)));
     AddSecKeyAndSign(builder);
 
@@ -406,7 +409,7 @@ void OKTGApi::ReqInsertOrder(const DCSSReqInsertOrderField* req, int requestID)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(logger, "[ok_tg][insertorder]\t" << "(" << mApiKey << ")"
+                    DCSS_LOG_ERROR(mLogger, "[ok_tg][insertorder]\t" << "(" << mApiKey << ")"
                                                               << " send request failed!(exception)" << e.what());
                 }
             });
@@ -418,7 +421,7 @@ void OKTGApi::ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID)
     uri_builder builder(U("cancel_order.do"));
 
     AddApiKey(builder);
-    builder.append_query(U("symbol"), U(req->Symbol));
+    builder.append_query(U("symbol"), U(ConvStructSymbol(req->Symbol)));
 
     std::stringstream ssorderid;
 
@@ -447,14 +450,14 @@ void OKTGApi::ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(logger, "[ok_tg][cancelorder]\t" << "(" << mApiKey << ")"
+                    DCSS_LOG_ERROR(mLogger, "[ok_tg][cancelorder]\t" << "(" << mApiKey << ")"
                                                               << " send request failed!(exception)" << e.what());
                 }
 
             });
 }
 
-void OKTGApi::OnRspQryTicker(http_response& response, int requestID, const char10& symbol)
+void OKTGApi::OnRspQryTicker(http_response& response, int requestID, const DCSSSymbolField& symbol)
 {
     const json::value& jv = response.extract_json().get();
     const json::object& jobj = jv.as_object();
@@ -465,7 +468,7 @@ void OKTGApi::OnRspQryTicker(http_response& response, int requestID, const char1
         {
             DCSSTickerField ticker;
             SplitTime(std::stol(jobj.at(U("date")).as_string()), ticker.Date, ticker.Time);
-            memcpy(ticker.Symbol, symbol, sizeof(symbol));
+            memcpy(&ticker.Symbol, &symbol, sizeof(symbol));
             const json::object& tickobj = jobj.at(U("ticker")).as_object();
             ticker.BuyPrice = std::stod(tickobj.at(U("buy")).as_string());
             ticker.SellPrice = std::stod(tickobj.at(U("sell")).as_string());
@@ -474,20 +477,20 @@ void OKTGApi::OnRspQryTicker(http_response& response, int requestID, const char1
             ticker.LastPrice = std::stod(tickobj.at(U("last")).as_string());
             ticker.Volume = std::stod(tickobj.at(U("vol")).as_string());
 
-            mSpi->OnRspQryTicker(&ticker, requestID);
+            mSpi->OnRspQryTicker(&ticker, mSourceId, requestID);
 
             // writer
         }
         catch (const std::exception& e)
         {
-            DCSS_LOG_ERROR(logger, "[ok_tg][qryticker]\t" << "(" << mApiKey << ")"
+            DCSS_LOG_ERROR(mLogger, "[ok_tg][qryticker]\t" << "(" << mApiKey << ")"
                                                       << " parse rsp failed!(exception)" << e.what());
         }
     }
     else
     {
-        mSpi->OnRspQryTicker(nullptr, requestID, jobj.at(U("error_code")).as_integer(), nullptr);
-        DCSS_LOG_INFO(logger, "[ok_tg][qryticker]\t" << "(" << mApiKey << ")"
+        mSpi->OnRspQryTicker(nullptr, mSourceId, requestID, jobj.at(U("error_code")).as_integer(), nullptr);
+        DCSS_LOG_INFO(mLogger, "[ok_tg][qryticker]\t" << "(" << mApiKey << ")"
                                                     << " qry failed !(error_id)" << jobj.at(U("error_code")).as_integer());
     }
 
@@ -504,7 +507,7 @@ void OKTGApi::OnRspQryKline(http_response& response, const DCSSReqQryKlineField*
             const json::array& jarr = jv.as_array();
 
             DCSSKlineHeaderField header;
-            memcpy(header.Symbol, req->Symbol, sizeof(req->Symbol));
+            memcpy(&header.Symbol, &req->Symbol, sizeof(req->Symbol));
             header.KlineType = req->KlineType;
             header.Size = jarr.size();
 
@@ -514,7 +517,7 @@ void OKTGApi::OnRspQryKline(http_response& response, const DCSSReqQryKlineField*
             {
                 if (i.is_array())
                 {
-                    DCSSKlineField& kline = klineVec[idx];
+                    DCSSKlineField& kline = klineVec[idx++];
                     const json::array& klineArr = i.as_array();
                     SplitLongTime(klineArr.at(0).as_number().to_int64(), kline.Date, kline.Time, kline.Millisec);
                     kline.OpenPrice = std::stod(klineArr.at(1).as_string());
@@ -524,14 +527,13 @@ void OKTGApi::OnRspQryKline(http_response& response, const DCSSReqQryKlineField*
                     kline.Volume = std::stod(klineArr.at(5).as_string());
                     klineVec.push_back(kline);
                 }
-                ++idx;
             }
 
-            mSpi->OnRspQryKline(&header, klineVec, true, requestID);
+            mSpi->OnRspQryKline(&header, mSourceId, klineVec, true, requestID);
         }
         catch (const std::exception& e)
         {
-            DCSS_LOG_ERROR(logger, "[ok_tg][qrykline]\t" << "(" << mApiKey << ")"
+            DCSS_LOG_ERROR(mLogger, "[ok_tg][qrykline]\t" << "(" << mApiKey << ")"
                                                        << " parse rsp failed!(exception)" << e.what());
         }
     }
@@ -540,9 +542,9 @@ void OKTGApi::OnRspQryKline(http_response& response, const DCSSReqQryKlineField*
         const json::object& jobj = jv.as_object();
         if (jobj.find(U(OK_REST_ERROR_CODE))!=jobj.end())
         {
-            mSpi->OnRspQryKline(nullptr, std::vector<DCSSKlineField>(), requestID, jobj.at(U("error_code")).as_integer(),
+            mSpi->OnRspQryKline(nullptr, mSourceId, std::vector<DCSSKlineField>(), requestID, jobj.at(U("error_code")).as_integer(),
                     nullptr);
-            DCSS_LOG_INFO(logger, "[ok_tg][qrykline]\t" << "(" << mApiKey << ")"
+            DCSS_LOG_INFO(mLogger, "[ok_tg][qrykline]\t" << "(" << mApiKey << ")"
                                                       << " qry failed !(error_id)" << jobj.at(U("error_code")).as_integer());
         }
     }
@@ -589,27 +591,27 @@ void OKTGApi::OnRspQryUserInfo(http_response& response, int requestID)
                     }
                 }
 
-                mSpi->OnRspQryUserInfo(&rsp, requestID);
+                mSpi->OnRspQryUserInfo(&rsp, mSourceId, requestID);
             }
             else
             {
                 // TODO
-                DCSS_LOG_INFO(logger, "[ok_tg][qryuserinfo]\t" << "(" << mApiKey << ")"
+                DCSS_LOG_INFO(mLogger, "[ok_tg][qryuserinfo]\t" << "(" << mApiKey << ")"
                 << " result is false !");
             }
 
         }
         catch (const std::exception& e)
         {
-            DCSS_LOG_ERROR(logger, "[ok_tg][qryuserinfo]\t" << "(" << mApiKey << ")"
+            DCSS_LOG_ERROR(mLogger, "[ok_tg][qryuserinfo]\t" << "(" << mApiKey << ")"
                                                          << " parse rsp failed!(exception)" << e.what());
         }
 
     }
     else
     {
-        mSpi->OnRspQryUserInfo(nullptr, requestID, jobj.at(U("error_code")).as_integer(), nullptr);
-        DCSS_LOG_INFO(logger, "[ok_tg][qryuserinfo]\t" << "(" << mApiKey << ")"
+        mSpi->OnRspQryUserInfo(nullptr, mSourceId, requestID, jobj.at(U("error_code")).as_integer(), nullptr);
+        DCSS_LOG_INFO(mLogger, "[ok_tg][qryuserinfo]\t" << "(" << mApiKey << ")"
                 << " qry failed !(error_id)" << jobj.at(U("error_code")).as_integer());
     }
 }
@@ -628,18 +630,18 @@ void OKTGApi::OnRspInsertOrder(web::http::http_response& response, int requestID
             rsp.Result = jobj.at(U("result")).as_bool();
             rsp.OrderID = jobj.at(U("order_id")).as_number().to_int64();
 
-            mSpi->OnRspOrderInsert(&rsp, true, requestID);
+            mSpi->OnRspOrderInsert(&rsp, mSourceId, requestID);
         }
         catch (const std::exception& e)
         {
-            DCSS_LOG_ERROR(logger, "[ok_tg][insertorder]\t" << "(" << mApiKey << ")"
+            DCSS_LOG_ERROR(mLogger, "[ok_tg][insertorder]\t" << "(" << mApiKey << ")"
                                                        << " parse rsp failed!(exception)" << e.what());
         }
     }
     else
     {
-        mSpi->OnRspOrderInsert(nullptr, requestID, jobj.at(U("error_code")).as_integer());
-        DCSS_LOG_INFO(logger, "[ok_tg][insertorder]\t" << "(" << mApiKey << ")"
+        mSpi->OnRspOrderInsert(nullptr, mSourceId, requestID, jobj.at(U("error_code")).as_integer());
+        DCSS_LOG_INFO(mLogger, "[ok_tg][insertorder]\t" << "(" << mApiKey << ")"
         << " receive error rsp (error_code)" << jobj.at(U("error_code")).as_integer());
     }
 }
@@ -685,17 +687,17 @@ void OKTGApi::OnRspCancelOrder(web::http::http_response& response, int requestID
                     }
                 }
             }
-            mSpi->OnRspOrderAction(&rsp, requestID);
+            mSpi->OnRspOrderAction(&rsp, mSourceId, requestID);
         }
         catch (const std::exception& e)
         {
-            DCSS_LOG_ERROR(logger, "[ok_tg][cancelorder]\t" << "(" << mApiKey << ")"
+            DCSS_LOG_ERROR(mLogger, "[ok_tg][cancelorder]\t" << "(" << mApiKey << ")"
                                                        << " parse rsp failed!(exception)" << e.what());
         }
     }
     else
     {
-        mSpi->OnRspOrderAction(nullptr, requestID, jobj.at(U("error_code")).as_integer(), nullptr);
+        mSpi->OnRspOrderAction(nullptr, mSourceId, requestID, jobj.at(U("error_code")).as_integer(), nullptr);
     }
 }
 
@@ -713,7 +715,7 @@ void OKTGApi::OnRspQryOrder(web::http::http_response& response, const DCSSReqQry
                 const json::array& orderArray = jobj.at(U("orders")).as_array();
 
                 DCSSRspQryOrderHeaderField header;
-                memcpy(header.Symbol, req->Symbol, sizeof(header.Symbol));
+                memcpy(&header.Symbol, &req->Symbol, sizeof(header.Symbol));
                 header.Size = orderArray.size();
 
                 std::vector<DCSSRspQryOrderField> vec(header.Size);
@@ -735,18 +737,18 @@ void OKTGApi::OnRspQryOrder(web::http::http_response& response, const DCSSReqQry
                     order.TradeType = stringTradeTypeMap.at(orderObj.at(U("type")).as_string());
                 }
 
-                mSpi->OnRspQryOrder(&header, vec, requestID);
+                mSpi->OnRspQryOrder(&header, mSourceId, vec, requestID);
             }
         }
         catch (const std::exception& e)
         {
-            DCSS_LOG_ERROR(logger, "[ok_tg][qryorder]\t" << "(" << mApiKey << ")"
+            DCSS_LOG_ERROR(mLogger, "[ok_tg][qryorder]\t" << "(" << mApiKey << ")"
                                                        << " parse rsp failed!(exception)" << e.what());
         }
     }
     else
     {
-        mSpi->OnRspQryOrder(nullptr, std::vector<DCSSRspQryOrderField>(), requestID, jobj.at(U("error_code")).as_integer(), nullptr);
+        mSpi->OnRspQryOrder(nullptr, mSourceId, std::vector<DCSSRspQryOrderField>(), requestID, jobj.at(U("error_code")).as_integer(), nullptr);
     }
 }
 

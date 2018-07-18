@@ -14,9 +14,22 @@
 #include <utility>
 #include <thread>
 
+UNIT_NAMESPACE_START
+
+/**
+ * we call each unit handler(writer or reader) a client for page engine
+ * we call each unit linked by client a user of page engine
+ * client == handler(writer or reader)
+ * user == unit
+ * so:
+ * each writer client may have only 1 user
+ * each reader client may have several users
+ * all the necessary information are stored here
+ */
 struct PageClientInfo
 {
-    /*the index of each user linked by this client*/
+    /*the index of each user linked by this client
+     * when is a writer, size==1*/
     std::vector<int> UserIndexVec;
     /*register nano time*/
     long    RegNano;
@@ -35,7 +48,7 @@ struct PageClientInfo
 };
 
 
-class PageEngine : public IPageSocketUtil, public std::enable_shared_from_this<PageEngine>
+class PageEngine : public IPageSocketUtil
 {
     friend class PstPidCheck;
     friend class PstTimeTick;
@@ -43,7 +56,7 @@ class PageEngine : public IPageSocketUtil, public std::enable_shared_from_this<P
 public:
     PageEngine();
 
-    virtual ~PageEngine();
+    virtual ~PageEngine() = default;
 
     void Start();
 
@@ -62,15 +75,15 @@ public:
 
 public:
     /** functions requested by IPageSocketUtil */
-    DCSSLogPtr GetLogger() const { return mLogger;}
-    int RegUnit(const std::string& clientName);
-    virtual IntPair RegStrategy(const std::string& strategyName);
-    virtual bool RegClient();
-    virtual void ExitClient(const std::string& clientName);
-    virtual bool LoginTd(const std::string& clientName, short source);
-    virtual bool SubTicker(const std::vector<std::string>& tickers, short source, short msgType, bool isLast);
-    virtual void AcquireMutex() const;
-    virtual void ReleaseMutex() const;
+    DCSSLogPtr GetLogger() const override { return mLogger;}
+    int RegUnit(const std::string& clientName) override ;
+    IntPair RegStrategy(const std::string& strategyName) override ;
+    bool RegClient(std::string& commFile, int& fileSize, const std::string& clientName, int pid, bool isWriter) override ;
+    void ExitClient(const std::string& clientName) override ;
+    bool LoginTd(const std::string& clientName, short source) override ;
+    bool SubTicker(const std::vector<DCSSSymbolField>& tickers, short source, bool isLast) override ;
+    void AcquireMutex() const override ;
+    void ReleaseMutex() const override ;
 
 private:
     /*comm = communicate*/
@@ -86,14 +99,14 @@ private:
     int mMicroSecFreq;
     /*whether task thread is running*/
     bool mTaskRunning;
-    /*whether communicate buffer checking thread is running*/
+    /*whether communicate mBuffer checking thread is running*/
     volatile bool mCommRunning;
     /*max index of current assigned comm block*/
     size_t mMaxIdx;
 
     /*thread for task running*/
     ThreadPtr mTaskThread;
-    /*thread for communicate buffer checking*/
+    /*thread for communicate mBuffer checking*/
     ThreadPtr mCommThread;
     /*thread for socket listening*/
     ThreadPtr mSocketThread;
@@ -121,10 +134,12 @@ private:
     std::map<PageCommMsg, int> mFileReaderCounts;
     /*map : <pid, client>*/
     std::map<int, std::vector<std::string> > mPidClientMap;
-    /*map : <file, page buffer>*/
+    /*map : <file, page mBuffer>*/
     std::map<std::string, void*> mFildAddrs;
     /*map : <task name; task ptr>*/
     std::map<std::string, PstBasePtr> mTasks;
 };
+
+UNIT_NAMESPACE_END
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_PAGEENGINE_H
