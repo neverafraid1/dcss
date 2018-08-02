@@ -13,20 +13,15 @@ typedef char char9[9];
 typedef char char10[10];
 typedef char char11[11];
 typedef char char18[18];
+typedef char char21[21];
 typedef char char5[5];
 typedef long long3[3];
 
-struct DCSSSymbolField
-{
-    char5 Base;
-
-    char5 Quote;
-
-    DCSSSymbolField()
-    {
-        memset(this, 0, sizeof(DCSSSymbolField));
-    }
-};
+/**
+ * attention:
+ * if you have a c++ composite object (etc : std::string, std::vector) in a struct
+ * or it's a class with virtual function table, DONOT use memset(0) in construction function!!!
+ */
 
 struct DCSSTickerField
 {
@@ -36,8 +31,8 @@ struct DCSSTickerField
     char10 Time;
     // 毫秒
     int MilliSec;
-    // 币对
-    DCSSSymbolField Symbol;
+    // 币对   btc_ltc
+    char21 Symbol;
     // 买一价
     double BuyPrice;
     // 卖一价
@@ -61,7 +56,7 @@ struct DCSSTickerField
 struct DCSSKlineHeaderField
 {
     // 币对
-    DCSSSymbolField Symbol;
+    char21 Symbol;
     // K线时间周期
     KlineTypeType KlineType;
     // K线条数
@@ -110,13 +105,15 @@ struct BalanceField
 
 struct DCSSDepthHeaderField
 {
-    DCSSSymbolField Symbol;
+    char21 Symbol;
     // 日期 YYYYMMDD
     char10 Date;
     // 时间 hh:mm:ss
     char10 Time;
     // 毫秒
     int Millisec;
+    // 深度
+    int Depth;
 
     size_t AskNum;
 
@@ -140,22 +137,35 @@ struct DCSSDepthField
     }
 };
 
-struct DCSSUserInfoField
-{
-    struct Fund
-    {
-        char5 Currency;
-        double Balance;
-    };
 
-    Fund Free[MAX_CURRENCY_NUM];
-    Fund Freezed[MAX_CURRENCY_NUM];
+struct DCSSBalanceField
+{
+    char5 Currency;
+
+    double Free;
+
+    double Freezed;
+
+    DCSSBalanceField()
+    {
+        memset(this, 0, sizeof(DCSSBalanceField));
+    }
+};
+
+struct DCSSTradingAccountField
+{
+    DCSSBalanceField Balance[MAX_CURRENCY_NUM];
+
+    DCSSTradingAccountField()
+    {
+        memset(this, 0, sizeof(DCSSTradingAccountField));
+    }
 
 };
 
 struct DCSSReqQryTickerField
 {
-    DCSSSymbolField Symbol;
+    char21 Symbol;
 
     DCSSReqQryTickerField()
     {
@@ -166,7 +176,7 @@ struct DCSSReqQryTickerField
 struct DCSSReqQryKlineField
 {
     // 币对如ltc_btc
-    DCSSSymbolField Symbol;
+    char21 Symbol;
     // K线时间周期类型
     KlineTypeType KlineType;
     // 指定获取数据的条数 非必填(默认全部获取)
@@ -183,7 +193,7 @@ struct DCSSReqQryKlineField
 struct DCSSReqInsertOrderField
 {
     // 币对如ltc_btc
-    DCSSSymbolField Symbol;
+    char21 Symbol;
     // 买卖类型
     TradeTypeType TradeType;
     // 下单价格 市价单不传price
@@ -212,7 +222,7 @@ struct DCSSRspInsertOrderField
 struct DCSSReqCancelOrderField
 {
     // 币对如ltc_btc
-    DCSSSymbolField Symbol;
+    char21 Symbol;
     // 订单ID(一次最多取消三笔订单)
     long3 OrderID;
 
@@ -238,7 +248,7 @@ struct DCSSRspCancelOrderField
 struct DCSSReqQryOrderField
 {
     // 币对如ltc_btc
-    DCSSSymbolField Symbol;
+    char21 Symbol;
     // 订单ID -1:未完成订单，否则查询相应订单号的订单
     long OrderID;
 
@@ -250,9 +260,9 @@ struct DCSSReqQryOrderField
 
 struct DCSSRspQryOrderHeaderField
 {
-    DCSSSymbolField Symbol;
+    char21 Symbol;
 
-    int Size;
+    size_t Size;
 
     DCSSRspQryOrderHeaderField()
     {
@@ -263,7 +273,7 @@ struct DCSSRspQryOrderHeaderField
 struct DCSSRspQryOrderField
 {
     // 币对如ltc_btc
-    DCSSSymbolField Symbol;
+    char21 Symbol;
     // 委托数量
     double Amount;
     // 委托日期
@@ -296,7 +306,7 @@ struct DCSSRspQryOrderField
 struct DCSSOrderField
 {
     // 币对如ltc_btc
-    DCSSSymbolField Symbol;
+    char21 Symbol;
     // 委托日期
     char10 CreateDate;
     // 委托时间
@@ -332,14 +342,9 @@ struct DCSSOrderField
     }
 };
 
-struct DCSSBalanceField
-{
-
-};
-
 struct DCSSSubTickerField
 {
-    DCSSSymbolField Symbol;
+    char21 Symbol;
 
     DCSSSubTickerField()
     {
@@ -349,7 +354,7 @@ struct DCSSSubTickerField
 
 struct DCSSSubDepthField
 {
-    DCSSSymbolField Symbol;
+    char21 Symbol;
 
     int Depth;
 
@@ -361,7 +366,7 @@ struct DCSSSubDepthField
 
 struct DCSSSubKlineField
 {
-    DCSSSymbolField Symbol;
+    char21 Symbol;
 
     KlineTypeType KlineType;
 

@@ -11,18 +11,18 @@
 
 UNIT_NAMESPACE_START
 
-#define DCSS_LOG_FATAL(DCSSlogger, content) LOG4CPLUS_FATAL(DCSSlogger->getLogger(), content)
-#define DCSS_LOG_ERROR(DCSSlogger, content) LOG4CPLUS_ERROR(DCSSlogger->getLogger(), content)
-#define DCSS_LOG_INFO(DCSSlogger, content) LOG4CPLUS_INFO(DCSSlogger->getLogger(), content)
-#define DCSS_LOG_DEBUG(DCSSlogger, content) LOG4CPLUS_DEBUG(DCSSlogger->getLogger(), content)
+#define DCSS_LOG_FATAL(DCSSlogger, content) LOG4CPLUS_FATAL((DCSSlogger)->getLogger(), "[" << __func__ << "]" << content)
+#define DCSS_LOG_ERROR(DCSSlogger, content) LOG4CPLUS_ERROR((DCSSlogger)->getLogger(), "[" << __func__ << "]" << content)
+#define DCSS_LOG_INFO(DCSSlogger, content)  LOG4CPLUS_INFO((DCSSlogger)->getLogger(), "[" << __func__ << "]" << content)
+#define DCSS_LOG_DEBUG(DCSSlogger, content) LOG4CPLUS_DEBUG((DCSSlogger)->getLogger(), "[" << __func__ << "]" << content)
 
 PRE_DECLARE_PTR(DCSSLog);
 
 class DCSSLog
 {
 protected:
-    DCSSLog() {};
-    DCSSLog(std::string name);
+    DCSSLog() = default;
+    explicit DCSSLog(std::string name);
 
 public:
     inline log4cplus::Logger& getLogger()

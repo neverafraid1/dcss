@@ -5,41 +5,8 @@
 #ifndef DCSS_CONSTANTS_H
 #define DCSS_CONSTANTS_H
 
-/**
- * when start a strategy, should declare the source(exchange)
- * and account (may use index in mysql?)
- */
-
 // sources
-const short EXCHANGE_OKCOIN = 0x0001;
-
-//const short MSG_TYPE_REQ_QRY_POS        = 0x0101;
-//const short MSG_TYPE_RSP_QRY_POS        = 0x0102;
-const short MSG_TYPE_REQ_ORDER_INSERT   = 0x0103;
-const short MSG_TYPE_RSP_ORDER_INSERT   = 0X0104;
-const short MSG_TYPE_RTN_ORDER          = 0x0105;
-const short MSG_TYPE_RTN_TRADE          = 0x0106;
-const short MSG_TYPE_REQ_ORDER_ACTION   = 0x0107;
-const short MSG_TYPE_RSP_ORDER_ACTION   = 0x0108;
-const short MSG_TYPE_REQ_QRY_ACCOUNT    = 0x0109;
-const short MSG_TYPE_RSP_QRY_ACCOUNT    = 0x010a;
-const short MSG_TYPE_REQ_QRY_TICKER     = 0x010b;
-const short MSG_TYPE_RSP_QRY_TICKER     = 0x010c;
-const short MSG_TYPE_RSP_QRY_ORDER      = 0x010d;
-const short MSG_TYPE_REQ_QRY_KLINE      = 0x010e;
-const short MSG_TYPE_RSP_QRY_KLINE      = 0x010f;
-
-const short MSG_TYPE_SUB_TICKER         = 0x0201;
-const short MSG_TYPE_SUB_KLINE          = 0x0202;
-const short MSG_TYPE_SUB_DEPTH          = 0x0203;
-const short MSG_TYPE_UNSUB_TICKER       = 0x0204;
-const short MSG_TYPE_UNSUB_KLINE        = 0x0205;
-const short MSG_TYPE_UNSUB_DEPTH        = 0x0206;
-const short MSG_TYPE_RTN_TICKER         = 0x0207;
-const short MSG_TYPE_RTN_KLINE          = 0x0208;
-const short MSG_TYPE_RTN_DEPTH          = 0x0209;
-
-
+#define EXCHANGE_OKCOIN     1
 
 ///////////////////////////////////
 // KlineTypeType: K线时间周期类型
@@ -104,5 +71,26 @@ typedef char TradeTypeType;
 typedef int OrderStatusType;
 
 #define MAX_CURRENCY_NUM 500
+
+
+///////////////////////////////////
+// GateWayStatusType: 网关状态类型
+///////////////////////////////////
+// 未知（初始状态）
+#define TD_STATUS_UNKNOWN       '0'
+// 已添加
+#define TD_STATUS_ADDED         '1'
+// 请求连接
+#define TD_STATUS_REQUESTED     '2'
+// 已连接
+#define TD_STATUS_CONNECTED     '3'
+// 已登录
+#define TD_STATUS_LOGINED       '4'
+// 连接断开
+#define TD_STATUS_DISCONNECTED  '5'
+// 登陆失败
+#define TD_STATUS_LOGINFAILED   '6'
+
+typedef unsigned char GateWayStatusType;
 
 #endif //DEMO_CONSTANTS_H

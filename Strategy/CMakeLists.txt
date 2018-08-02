@@ -4,7 +4,7 @@ PROJECT(dcssstrategy)
 set(CMAKE_CXX_STANDARD 11)
 add_compile_options(-g)
 
-SET(STRATEGY_SOURCE_FILES DCSSDataWrapper.cpp DCSSDataWrapper.h IDCSSStrategy.h IDCSSStrategy.cpp DCSSStrategyUtil.h DCSSStrategyUtil.cpp IDCSSDataProcessor.h)
+SET(STRATEGY_SOURCE_FILES DCSSDataWrapper.cpp DCSSDataWrapper.h IDCSSStrategy.h IDCSSStrategy.cpp DCSSStrategyUtil.h DCSSStrategyUtil.cpp IDCSSDataProcessor.h ../Dao/Symbol.hpp ../Dao/Dao.hpp)
 
 LINK_DIRECTORIES(/usr/local/lib/unit/)
 ADD_LIBRARY(${PROJECT_NAME} SHARED ${STRATEGY_SOURCE_FILES})

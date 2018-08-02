@@ -71,17 +71,22 @@ public:
     bool RemoveTaskByName(const std::string& name);
     /* write string content to system unit
      * return true if msg is written in system unit*/
-    bool Write(const std::string& content, uint8_t msgType, bool isLast = true, short source = 0);
+    bool Write(const std::string& content, short msgType, bool isLast = true, uint8_t source = 0);
 
 public:
     /** functions requested by IPageSocketUtil */
     DCSSLogPtr GetLogger() const override { return mLogger;}
     int RegUnit(const std::string& clientName) override ;
     IntPair RegStrategy(const std::string& strategyName) override ;
-    bool RegClient(std::string& commFile, int& fileSize, const std::string& clientName, int pid, bool isWriter) override ;
+    bool RegClient(std::string& commFile, size_t& fileSize, const std::string& clientName, int pid, bool isWriter) override ;
     void ExitClient(const std::string& clientName) override ;
-    bool LoginTd(const std::string& clientName, short source) override ;
-    bool SubTicker(const std::vector<DCSSSymbolField>& tickers, short source, bool isLast) override ;
+    bool LoginTd(const std::string& clientName, uint8_t source) override ;
+    bool SubTicker(const std::string& symbol, uint8_t source) override ;
+    bool SubKline(const std::string& symbol, char klineType, uint8_t source) override ;
+    bool SubDepth(const std::string& symbol, int depth, uint8_t source) override ;
+    bool UnSubTicker(const std::string& symbol, uint8_t source) override ;
+    bool UnSubKline(const std::string& symbol, char klineType, uint8_t source) override ;
+    bool UnSubDepth(const std::string& symbol, int depth, uint8_t source) override ;
     void AcquireMutex() const override ;
     void ReleaseMutex() const override ;
 
@@ -89,7 +94,7 @@ private:
     /*comm = communicate*/
     /*writer for system unit*/
     UnitWriterPtr mWriter;
-    /*ogger*/
+    /*logger*/
     DCSSLogPtr mLogger;
     /*communicate memory*/
     void* mCommBuffer;

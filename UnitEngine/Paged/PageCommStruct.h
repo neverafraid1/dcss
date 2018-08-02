@@ -55,7 +55,7 @@ struct PageCommMsg
 /** REQUEST_ID_RANGE * MAX_COMM_USER_NUMBER < 2147483647(max num of int) */
 #define REQUEST_ID_RANGE 1000000
 /** based on the max number, the comm file size is determined */
-const int COMM_SIZE = MAX_COMM_USER_NUMBER * sizeof(PageCommMsg) + 1024;
+const size_t COMM_SIZE = MAX_COMM_USER_NUMBER * sizeof(PageCommMsg) + 1024;
 /** fast type convert */
 #define GET_COMM_MSG(buffer, idx) ((PageCommMsg*)(ADDRESS_ADD(buffer, idx * sizeof(PageCommMsg))))
 

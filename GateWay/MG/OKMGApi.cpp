@@ -23,23 +23,7 @@ std::map<KlineTypeType, std::string> OKMGApi::klineStringMap = {
         {KLINE_1WEEK, "1week"}
 };
 
-std::map<std::string, KlineTypeType> OKMGApi::stringKlineMap = {
-        {"1min", KLINE_1MIN},
-        {"3min", KLINE_3MIN},
-        {"5min", KLINE_5MIN},
-        {"15min", KLINE_15MIN},
-        {"30min", KLINE_30MIN},
-        {"1hour", KLINE_1HOUR},
-        {"2hour", KLINE_2HOUR},
-        {"4hour", KLINE_4HOUR},
-        {"6hour", KLINE_6HOUR},
-        {"12hour", KLINE_12HOUR},
-        {"1day", KLINE_1DAY},
-        {"3day", KLINE_3DAY},
-        {"1week", KLINE_1WEEK}
-};
-
-OKMGApi::OKMGApi(short source)
+OKMGApi::OKMGApi(uint8_t source)
 : IMGApi(source), IsWsConnected(false), Ponged(true)
 {
     web_proxy proxy("http://192.168.1.164:1080");
@@ -72,7 +56,7 @@ void OKMGApi::Connect()
             {
                 OnWsConnect();
             })
-            .then([&](pplx::task<void> task)
+            .then([=](pplx::task<void> task)
             {
                 try
                 {
@@ -93,7 +77,7 @@ void OKMGApi::OnWsMessage(const web::websockets::client::websocket_incoming_mess
         std::string event = jv.as_object().at(U("event")).as_string();
         if (event == "pong")
         {
-            DCSS_LOG_DEBUG(mLogger, "[on message] recv pong from remove");
+            DCSS_LOG_DEBUG(mLogger, "[on message] recv pong from remote");
             Ponged = true;
         }
     }
@@ -159,18 +143,18 @@ void OKMGApi::OnWsClose(web::websockets::client::websocket_close_status close_st
 
 void OKMGApi::OnWsConnect()
 {
-    DCSS_LOG_INFO(mLogger, "[connect] connect to okes success!");
+    DCSS_LOG_INFO(mLogger, "[connect] connect to okex success!");
     IsWsConnected = true;
 
     mPingThread.reset(new std::thread(&OKMGApi::Ping, this));
 }
 
-void OKMGApi::OnRtnTick(const json::value& v, const DCSSSymbolField& symbol)
+void OKMGApi::OnRtnTick(const json::value& v, const std::string& symbol)
 {
     const json::object& j = v.as_object();
     DCSSTickerField ticker;
 
-    ticker.Symbol = symbol;
+    strcpy(ticker.Symbol, symbol.c_str());
     SplitLongTime(j.at(U("timestamp")).as_number().to_int64(), ticker.Date, ticker.Time, ticker.MilliSec);
     ticker.BuyPrice = std::stod(j.at(U("buy")).as_string());
     ticker.SellPrice = std::stod(j.at(U("sell")).as_string());
@@ -182,13 +166,13 @@ void OKMGApi::OnRtnTick(const json::value& v, const DCSSSymbolField& symbol)
     mSpi->OnRtnTicker(&ticker, mSourceId);
 }
 
-void OKMGApi::OnRtnKline(const web::json::value& v, const std::pair<DCSSSymbolField, KlineTypeType>& pair)
+void OKMGApi::OnRtnKline(const web::json::value& v, const std::pair<std::string, KlineTypeType>& pair)
 {
     const json::array& arr = v.as_array();
     size_t size = arr.size();
 
     DCSSKlineHeaderField header;
-    header.Symbol = pair.first;
+    strcpy(header.Symbol, pair.first.c_str());
     header.KlineType = pair.second;
     header.Size = size;
 
@@ -209,16 +193,17 @@ void OKMGApi::OnRtnKline(const web::json::value& v, const std::pair<DCSSSymbolFi
     mSpi->OnRtnKline(&header, klineVec, mSourceId);
 }
 
-void OKMGApi::OnRtnDepth(const web::json::value& v, const std::pair<DCSSSymbolField, int>& pair)
+void OKMGApi::OnRtnDepth(const web::json::value& v, const std::pair<std::string, int>& pair)
 {
     const json::array& ask = v.as_object().at(U("asks")).as_array();
     const json::array& bid = v.as_object().at(U("bids")).as_array();
 
     DCSSDepthHeaderField header;
-    header.Symbol = pair.first;
-    SplitLongTime(std::stol(v.at(U("timestamp")).as_string()), header.Date, header.Time, header.Millisec);
+    strcpy(header.Symbol, pair.first.c_str());
+    SplitLongTime(v.at(U("timestamp")).as_number().to_int64(), header.Date, header.Time, header.Millisec);
     header.AskNum = ask.size();
     header.BidNum = bid.size();
+    header.Depth = pair.second;
 
     size_t length = header.AskNum + header.BidNum;
 
@@ -230,11 +215,11 @@ void OKMGApi::OnRtnDepth(const web::json::value& v, const std::pair<DCSSSymbolFi
         depthVec[i].Price = std::stod(arr.at(0).as_string());
         depthVec[i].Volume = std::stod(arr.at(1).as_string());
     }
-    for (size_t i = header.AskNum; i < length; ++i)
+    for (size_t i = 0; i < header.BidNum; ++i)
     {
         const json::array& arr = bid.at(i).as_array();
-        depthVec[i].Price = std::stod(arr.at(0).as_string());
-        depthVec[i].Volume = std::stod(arr.at(1).as_string());
+        depthVec[i + header.AskNum].Price = std::stod(arr.at(0).as_string());
+        depthVec[i + header.AskNum].Volume = std::stod(arr.at(1).as_string());
     }
 
     mSpi->OnRtnDepth(&header, depthVec, mSourceId);
@@ -247,12 +232,7 @@ bool OKMGApi::IsConnected() const
 
 void OKMGApi::Ping()
 {
-    while (!IsConnected())
-    {
-        std::this_thread::sleep_for(std::chrono::microseconds(100000));
-    }
-
-    while (true)
+    while (IsConnected())
     {
         if (!Ponged)
         {
@@ -273,7 +253,7 @@ void OKMGApi::Ping()
     }
 }
 
-void OKMGApi::ReqSubTicker(const DCSSSymbolField& symbol)
+void OKMGApi::ReqSubTicker(const std::string& symbol)
 {
     if (!IsWsConnected)
     {
@@ -281,8 +261,14 @@ void OKMGApi::ReqSubTicker(const DCSSSymbolField& symbol)
         return;
     }
 
-    std::string sub;
-    sub.append("ok_sub_spot_").append(symbol.Base).append("_").append(symbol.Quote).append("_ticker");
+    if (mSubTickNum.count(symbol) > 0)
+    {
+        ++mSubTickNum.at(symbol);
+        return;
+    }
+
+    mSubTickNum[symbol] = 1;
+    std::string sub = "ok_sub_spot_" + symbol + "_ticker";
     json::value jv;
     jv[U("event")] = json::value::string("addChannel");
     jv[U("channel")] = json::value::string(sub);
@@ -293,9 +279,9 @@ void OKMGApi::ReqSubTicker(const DCSSSymbolField& symbol)
             .then([=]()
             {
                 DCSS_LOG_INFO(mLogger, "[sub_tick] send sub "
-                                      << symbol.Base << "_" << symbol.Quote << " tick request success");
+                                      << symbol << " tick request success");
                 mSubTickMap[sub] = symbol;
-            }).then([&](pplx::task<void> task)
+            }).then([=](pplx::task<void> task)
             {
                 try
                 {
@@ -304,12 +290,12 @@ void OKMGApi::ReqSubTicker(const DCSSSymbolField& symbol)
                 catch (const std::exception& e)
                 {
                     DCSS_LOG_ERROR(mLogger, "[sub_tick] send sub "
-                    << ConvStructSymbol(symbol) << " tick request fail!(exception)" << e.what());
+                    << symbol << " tick request fail!(exception)" << e.what());
                 }
             });
 }
 
-void OKMGApi::ReqSubDepth(const DCSSSymbolField& symbol, int depth)
+void OKMGApi::ReqSubDepth(const std::string& symbol, int depth)
 {
     if (!IsWsConnected)
     {
@@ -317,8 +303,14 @@ void OKMGApi::ReqSubDepth(const DCSSSymbolField& symbol, int depth)
         return;
     }
 
-    std::string sub;
-    sub.append("ok_sub_spot_").append(symbol.Base).append("_").append(symbol.Quote).append("_depth");
+    if (mSubDepthNum.count(symbol) > 0 && mSubDepthNum.at(symbol).count(depth) > 0)
+    {
+        ++mSubDepthNum.at(symbol).at(depth);
+        return;
+    }
+    mSubDepthNum[symbol][depth] = 1;
+
+    std::string sub = "ok_sub_spot_" + symbol + "_depth";
     if (depth > 0)
         sub.append("_").append(std::to_string(depth));
 
@@ -329,13 +321,13 @@ void OKMGApi::ReqSubDepth(const DCSSSymbolField& symbol, int depth)
     websocket_outgoing_message msg;
     msg.set_utf8_message(jv.serialize());
     mWsClient->send(msg)
-            .then([&]()
+            .then([=]()
             {
                 DCSS_LOG_INFO(mLogger, "[sub_depth] send sub "
-                        << symbol.Base << "_" << symbol.Quote << " tick request success");
+                        << symbol << " depth " << depth << " request success");
 
                 mSubDepthMap[sub] = std::make_pair(symbol, depth);
-            }).then([&](pplx::task<void> task)
+            }).then([=](pplx::task<void> task)
             {
                 try
                 {
@@ -344,12 +336,12 @@ void OKMGApi::ReqSubDepth(const DCSSSymbolField& symbol, int depth)
                 catch (const std::exception& e)
                 {
                     DCSS_LOG_ERROR(mLogger, "[sub_depth] send sub "
-                            << symbol.Base << "_" << symbol.Quote << " tick request fail!(exception)" << e.what());
+                            << symbol << " depth "<< depth << "  request fail!(exception)" << e.what());
                 }
             });
 }
 
-void OKMGApi::ReqSubKline(const DCSSSymbolField& symbol, KlineTypeType klineType)
+void OKMGApi::ReqSubKline(const std::string& symbol, KlineTypeType klineType)
 {
     if (!IsWsConnected)
     {
@@ -363,8 +355,15 @@ void OKMGApi::ReqSubKline(const DCSSSymbolField& symbol, KlineTypeType klineType
         return;
     }
 
-    std::string sub;
-    sub.append("ok_sub_spot_").append(symbol.Base).append("_").append(symbol.Quote).append("_kline_").append(klineStringMap.at(klineType));
+    if (mSubKlineNum.count(symbol) > 0 && mSubKlineNum.at(symbol).count(klineType) > 0)
+    {
+        ++mSubKlineNum.at(symbol).at(klineType);
+        return;
+    }
+
+    mSubKlineNum[symbol][klineType] = 1;
+
+    std::string sub = "ok_sub_spot_" + symbol + "_kline_" + klineStringMap.at(klineType);
 
     json::value jv;
     jv[U("event")] = json::value::string("addChannel");
@@ -373,13 +372,13 @@ void OKMGApi::ReqSubKline(const DCSSSymbolField& symbol, KlineTypeType klineType
     websocket_outgoing_message msg;
     msg.set_utf8_message(jv.serialize());
     mWsClient->send(msg)
-            .then([&]()
+            .then([=]()
             {
                 DCSS_LOG_INFO(mLogger, "[sub_kline] send sub "
-                        << symbol.Base << "_" << symbol.Quote << " tick request success");
+                        << symbol << " tick request success");
 
                 mSubKlineMap[sub] = std::make_pair(symbol, klineType);
-            }).then([&](pplx::task<void> task)
+            }).then([=](pplx::task<void> task)
             {
                 try
                 {
@@ -388,12 +387,12 @@ void OKMGApi::ReqSubKline(const DCSSSymbolField& symbol, KlineTypeType klineType
                 catch (const std::exception& e)
                 {
                     DCSS_LOG_ERROR(mLogger, "[sub_kline] send sub "
-                            << symbol.Base << "_" << symbol.Quote << " tick request fail!(exception)" << e.what());
+                            << symbol << " tick request fail!(exception)" << e.what());
                 }
             });
 }
 
-void OKMGApi::ReqUnSubTicker(const DCSSSymbolField& symbol)
+void OKMGApi::ReqUnSubTicker(const std::string& symbol)
 {
     if (!IsWsConnected)
     {
@@ -401,12 +400,14 @@ void OKMGApi::ReqUnSubTicker(const DCSSSymbolField& symbol)
         return;
     }
 
-    std::string unsub;
-    unsub.append("ok_sub_spot_").append(symbol.Base).append("_").append(symbol.Quote).append("_ticker");
+    if (--mSubTickNum[symbol] > 0)
+        return;
+
+    std::string unsub = "ok_sub_spot_" + symbol + "_ticker";
 
     if (mSubTickMap.count(unsub) == 0)
     {
-        DCSS_LOG_INFO(mLogger, "[unsub_tick] " << symbol.Base << "_" << symbol.Quote << " tick is not sub");
+        DCSS_LOG_INFO(mLogger, "[unsub_tick] " << symbol << " tick is not sub");
         return;
     }
 
@@ -417,11 +418,11 @@ void OKMGApi::ReqUnSubTicker(const DCSSSymbolField& symbol)
     websocket_outgoing_message msg;
     msg.set_utf8_message(jv.serialize());
     mWsClient->send(msg)
-            .then([&]()
+            .then([=]()
             {
                 DCSS_LOG_INFO(mLogger, "[unsub_tick] send unsub "
-                        << symbol.Base << "_" << symbol.Quote << " tick request success");
-            }).then([&](pplx::task<void> task)
+                        << symbol << " tick request success");
+            }).then([=](pplx::task<void> task)
             {
                 try
                 {
@@ -430,12 +431,12 @@ void OKMGApi::ReqUnSubTicker(const DCSSSymbolField& symbol)
                 catch (const std::exception& e)
                 {
                     DCSS_LOG_ERROR(mLogger, "[unsub_tick] send unsub "
-                            << symbol.Base << "_" << symbol.Quote << " tick request fail!(exception)" << e.what());
+                            << symbol << " tick request fail!(exception)" << e.what());
                 }
             });
 }
 
-void OKMGApi::ReqUnSubDepth(const DCSSSymbolField& symbol, int depth)
+void OKMGApi::ReqUnSubDepth(const std::string& symbol, int depth)
 {
     if (!IsWsConnected)
     {
@@ -443,25 +444,27 @@ void OKMGApi::ReqUnSubDepth(const DCSSSymbolField& symbol, int depth)
         return;
     }
 
-    std::stringstream ss;
-    ss << "ok_sub_spot_" << symbol.Base << "_" << symbol.Quote << "_depth";
+    if (--mSubDepthNum[symbol][depth] > 0)
+        return;
+
+    std::string unsub = "ok_sub_spot_" + symbol + "_depth";
     if (depth > 0)
-        ss << "_" << depth;
+        unsub + "_" + std::to_string(depth);
 
     json::value jv;
     jv[U("event")] = json::value::string("removeChannel");
-    jv[U("channel")] = json::value::string(ss.str());
+    jv[U("channel")] = json::value::string(unsub);
 
     websocket_outgoing_message msg;
     msg.set_utf8_message(jv.serialize());
     mWsClient->send(msg)
-            .then([&]()
+            .then([=]()
             {
                 DCSS_LOG_INFO(mLogger, "[unsub_depth] send unsub "
-                        << symbol.Base << "_" << symbol.Quote << " tick request success");
+                        << symbol << " tick request success");
 
-                mSubDepthMap[ss.str()] = std::make_pair(symbol, depth);
-            }).then([&](pplx::task<void> task)
+                mSubDepthMap[unsub] = std::make_pair(symbol, depth);
+            }).then([=](pplx::task<void> task)
             {
                 try
                 {
@@ -470,12 +473,12 @@ void OKMGApi::ReqUnSubDepth(const DCSSSymbolField& symbol, int depth)
                 catch (const std::exception& e)
                 {
                     DCSS_LOG_ERROR(mLogger, "[unsub_depth] send unsub "
-                            << symbol.Base << "_" << symbol.Quote << " tick request fail!(exception)" << e.what());
+                            << symbol << " tick request fail!(exception)" << e.what());
                 }
             });
 }
 
-void OKMGApi::ReqUnSubKline(const DCSSSymbolField& symbol, KlineTypeType klineType)
+void OKMGApi::ReqUnSubKline(const std::string& symbol, KlineTypeType klineType)
 {
     if (!IsWsConnected)
     {
@@ -489,23 +492,25 @@ void OKMGApi::ReqUnSubKline(const DCSSSymbolField& symbol, KlineTypeType klineTy
         return;
     }
 
-    std::stringstream ss;
-    ss << "ok_sub_spot_" << symbol.Base << "_" << symbol.Quote << "_kline_" << klineStringMap.at(klineType);
+    if (--mSubKlineNum[symbol][klineType] > 0)
+        return;
+
+    std::string unsub = "ok_sub_spot_" + symbol + "_kline_" + klineStringMap.at(klineType);
 
     json::value jv;
     jv[U("event")] = json::value::string("removeChannel");
-    jv[U("channel")] = json::value::string(ss.str());
+    jv[U("channel")] = json::value::string(unsub);
 
     websocket_outgoing_message msg;
     msg.set_utf8_message(jv.serialize());
     mWsClient->send(msg)
-            .then([&]()
+            .then([=]()
             {
                 DCSS_LOG_INFO(mLogger, "[unsub_kline] send unsub "
-                        << symbol.Base << "_" << symbol.Quote << " tick request success");
+                        << symbol << " tick request success");
 
-                mSubKlineMap[ss.str()] = std::make_pair(symbol, klineType);
-            }).then([&](pplx::task<void> task)
+                mSubKlineMap[unsub] = std::make_pair(symbol, klineType);
+            }).then([=](pplx::task<void> task)
             {
                 try
                 {
@@ -514,7 +519,7 @@ void OKMGApi::ReqUnSubKline(const DCSSSymbolField& symbol, KlineTypeType klineTy
                 catch (const std::exception& e)
                 {
                     DCSS_LOG_ERROR(mLogger, "[unsub_kline] send unsub "
-                            << symbol.Base << "_" << symbol.Quote << " tick request fail!(exception)" << e.what());
+                            << symbol << " tick request fail!(exception)" << e.what());
                 }
             });
 }

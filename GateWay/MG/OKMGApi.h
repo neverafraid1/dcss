@@ -22,7 +22,7 @@ using namespace web;
 class OKMGApi : public IMGApi
 {
 public:
-    explicit OKMGApi(short source);
+    explicit OKMGApi(uint8_t source);
     ~OKMGApi() override ;
 
 public:
@@ -32,13 +32,13 @@ public:
     bool IsConnected() const override ;
 
 public:
-    void ReqSubTicker(const DCSSSymbolField& symbol) override ;
-    void ReqSubDepth(const DCSSSymbolField& symbol, int depth) override ;
-    void ReqSubKline(const DCSSSymbolField& symbol, KlineTypeType klineType) override ;
+    void ReqSubTicker(const std::string& symbol) override ;
+    void ReqSubDepth(const std::string& symbol, int depth) override ;
+    void ReqSubKline(const std::string& symbol, KlineTypeType klineType) override ;
 
-    void ReqUnSubTicker(const DCSSSymbolField& symbol) override ;
-    void ReqUnSubDepth(const DCSSSymbolField& symbol, int depth) override ;
-    void ReqUnSubKline(const DCSSSymbolField& symbol, KlineTypeType klineType) override ;
+    void ReqUnSubTicker(const std::string& symbol) override ;
+    void ReqUnSubDepth(const std::string& symbol, int depth) override ;
+    void ReqUnSubKline(const std::string& symbol, KlineTypeType klineType) override ;
 
     std::string Name() const override {return "OK_MG"; }
 
@@ -48,9 +48,9 @@ private:
 
     void OnWsConnect();
 
-    void OnRtnTick(const json::value& v, const DCSSSymbolField& symbol);
-    void OnRtnKline(const json::value& v, const std::pair<DCSSSymbolField, KlineTypeType>& pair);
-    void OnRtnDepth(const json::value& v, const std::pair<DCSSSymbolField, int>& pair);
+    void OnRtnTick(const json::value& v, const std::string& symbol);
+    void OnRtnKline(const json::value& v, const std::pair<std::string, KlineTypeType>& pair);
+    void OnRtnDepth(const json::value& v, const std::pair<std::string, int>& pair);
 
     void Ping();
 
@@ -59,15 +59,18 @@ private:
     DCSSLogPtr mLogger;
 
     static std::map<KlineTypeType, std::string> klineStringMap;
-    static std::map<std::string, KlineTypeType> stringKlineMap;
 
     std::shared_ptr<websocket_callback_client> mWsClient;
     volatile bool IsWsConnected;
     volatile bool Ponged;
 
-    std::map<std::string, DCSSSymbolField> mSubTickMap; // <request, symbol>
-    std::map<std::string, std::pair<DCSSSymbolField, KlineTypeType> > mSubKlineMap;
-    std::map<std::string, std::pair<DCSSSymbolField, int> > mSubDepthMap;
+    std::map<std::string, std::string> mSubTickMap; // <request, symbol>
+    std::map<std::string, std::pair<std::string, KlineTypeType> > mSubKlineMap;
+    std::map<std::string, std::pair<std::string, int> > mSubDepthMap;
+
+    std::map<std::string, int> mSubTickNum;
+    std::map<std::string, std::map<KlineTypeType, int> > mSubKlineNum;
+    std::map<std::string, std::map<int, int> > mSubDepthNum;
 
     std::unique_ptr<std::thread> mPingThread;
 

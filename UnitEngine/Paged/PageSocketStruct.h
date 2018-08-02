@@ -26,8 +26,12 @@ UNIT_NAMESPACE_START
 #define PAGED_SOCKET_WRITER_REGISTER    13  // register client(writer)
 #define PAGED_SOCKET_CLIENT_EXIT        14
 
-#define PAGED_SOCKET_SUBSCRIBE          20
-#define PAGED_SOCKET_SUBSCRIBE_TBC      21  // to be continued...
+#define PAGED_SOCKET_SUBSCRIBE_TICKER       20
+#define PAGED_SOCKET_SUBSCRIBE_KLINE        21
+#define PAGED_SOCKET_SUBSCRIBE_DEPTH        22
+#define PAGED_SOCKET_UNSUBSCRIBE_TICKER     23
+#define PAGED_SOCKET_UNSUBSCRIBE_KLINE      24
+#define PAGED_SOCKET_UNSUBSCRIBE_DEPTH      25
 
 struct PagedSocketRequest
 {
@@ -38,7 +42,7 @@ struct PagedSocketRequest
     /*process id (only utilized when registering client)*/
     int     Pid;
     /*source id (only take effect when login trade engine)*/
-    short   Source;
+    uint8_t   Source;
 } __attribute__((packed));
 
 struct PagedSocketResponse
@@ -56,7 +60,7 @@ struct PagedSocketRspClient : public PagedSocketResponse
     /*comm file*/
     char    CommFile[NAX_UNIT_FOLDER_LENGTH];
     /*size of comm file*/
-    int     FileSize;
+    size_t     FileSize;
 };
 
 struct PagedSocketRspUnit : public PagedSocketResponse

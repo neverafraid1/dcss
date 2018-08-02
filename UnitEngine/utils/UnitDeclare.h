@@ -19,7 +19,6 @@
 
 #define DECLARE_PTR(x) typedef std::shared_ptr<x> x##Ptr;
 #define PRE_DECLARE_PTR(x) class x; DECLARE_PTR(x)
-typedef std::shared_ptr<std::thread> ThreadPtr;
 
 #define DCSS_FOLDER "/home/wangzhen/dcss/"
 #define DCSS_UNIT_FOLDER DCSS_FOLDER "unit/"
@@ -32,5 +31,7 @@ typedef std::shared_ptr<std::thread> ThreadPtr;
 #define ADDRESS_ADD(x, delta) (void*)((uintptr_t)x + delta)
 
 typedef std::pair<int, int> IntPair;
+
+typedef std::shared_ptr<std::thread> ThreadPtr;
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_UNITDECLARE_H

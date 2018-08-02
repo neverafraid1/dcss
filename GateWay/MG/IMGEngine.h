@@ -25,18 +25,20 @@ public:
 
     void Load(const nlohmann::json& config) override ;
 
-    void Connect() override {};
+    void Connect() override ;
+
+    void Disconnect() override {};
 
     void ReleaseApi() override {};
 
-    bool IsConnected() const override { return true;};
+    bool IsConnected() const override ;
 
 public:
-    void OnRtnDepth(const DCSSDepthHeaderField* header, const std::vector<DCSSDepthField>& depthVec, short source);
+    void OnRtnDepth(const DCSSDepthHeaderField* header, const std::vector<DCSSDepthField>& depthVec, uint8_t source);
 
-    void OnRtnTicker(const DCSSTickerField* ticker, short source);
+    void OnRtnTicker(const DCSSTickerField* ticker, uint8_t source);
 
-    void OnRtnKline(const DCSSKlineHeaderField* header, const std::vector<DCSSKlineField>& klineVec, short source);
+    void OnRtnKline(const DCSSKlineHeaderField* header, const std::vector<DCSSKlineField>& klineVec, uint8_t source);
 
 protected:
     void Listening();
@@ -50,7 +52,7 @@ DECLARE_PTR(IMGEngine);
 class IMGApi
 {
 public:
-    static IMGApiPtr Create(short source);
+    static IMGApiPtr Create(uint8_t source);
 
     short GetSource() const ;
 
@@ -61,22 +63,22 @@ public:
     virtual std::string Name() const = 0;
 
 public:
-    virtual void ReqSubTicker(const DCSSSymbolField& Symbol) = 0;
-    virtual void ReqSubDepth(const DCSSSymbolField& Symbol, int depth) = 0;
-    virtual void ReqSubKline(const DCSSSymbolField& Symbol, KlineTypeType klineType) = 0;
+    virtual void ReqSubTicker(const std::string& Symbol) = 0;
+    virtual void ReqSubDepth(const std::string& Symbol, int depth) = 0;
+    virtual void ReqSubKline(const std::string& Symbol, KlineTypeType klineType) = 0;
 
-    virtual void ReqUnSubTicker(const DCSSSymbolField& Symbol) = 0;
-    virtual void ReqUnSubDepth(const DCSSSymbolField& Symbol, int depth) = 0;
-    virtual void ReqUnSubKline(const DCSSSymbolField& Symbol, KlineTypeType klineType) = 0;
+    virtual void ReqUnSubTicker(const std::string& Symbol) = 0;
+    virtual void ReqUnSubDepth(const std::string& Symbol, int depth) = 0;
+    virtual void ReqUnSubKline(const std::string& Symbol, KlineTypeType klineType) = 0;
 
 protected:
-    IMGApi(short source)
+    explicit IMGApi(uint8_t source)
             : mSourceId(source)
     {}
     virtual ~IMGApi() = default;
 
 protected:
-    short mSourceId;
+    uint8_t mSourceId;
 };
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_MGENGINE_H

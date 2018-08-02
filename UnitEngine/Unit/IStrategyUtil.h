@@ -5,28 +5,27 @@
 #ifndef DIGITALCURRENCYSTRATEGYSYSTEM_ISTRATEGYUTIL_H
 #define DIGITALCURRENCYSTRATEGYSYSTEM_ISTRATEGYUTIL_H
 
-#include <vector>
 #include <string>
-#include "DataStruct.h"
 #include "UnitDeclare.h"
 
 UNIT_NAMESPACE_START
 
 /**
  * interface class
+ * may consider move out engine in future
  */
 class IStrategyUtil
 {
 public:
     virtual bool RegisterStrategy(int& ridStart, int& ridEnd) = 0;
 
-    virtual bool TdConnect(short source) = 0;
+    virtual bool TdConnect(uint8_t source) = 0;
 
-    virtual bool MdSubscribe(const std::vector<DCSSSymbolField>& tickers, short source) = 0;
+    virtual bool MdSubscribeTicker(const std::string& tickers, uint8_t source) = 0;
 
-    virtual bool MdSubscribeKline(const DCSSSymbolField& symbol, KlineTypeType klineType, short source) = 0;
+    virtual bool MdSubscribeKline(const std::string& symbol, char klineType, uint8_t source) = 0;
 
-    virtual bool MdSubscribeDepth(const DCSSSymbolField& symbol, int depth, short source) = 0;
+    virtual bool MdSubscribeDepth(const std::string& symbol, int depth, uint8_t source) = 0;
 
     virtual ~IStrategyUtil() = default;
 };

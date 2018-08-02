@@ -15,10 +15,10 @@ UNIT_NAMESPACE_START
 #define TIME_TO_LAST       -1
 #define TIME_FROM_FIRST     0
 
-const int KB = 1024;
-const int MB = KB * KB;
-const int UNIT_PAGE_SIZE = 64 * MB;
-const int PAGE_MIN_HEADROOM = 2 * MB;
+const size_t KB = 1024;
+const size_t MB = KB * KB;
+const size_t UNIT_PAGE_SIZE = 64 * MB;
+const size_t PAGE_MIN_HEADROOM = 2 * MB;
 
 UNIT_NAMESPACE_END
 

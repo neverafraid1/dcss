@@ -27,8 +27,8 @@ PRE_DECLARE_PTR(Unit);
 class UnitHandler
 {
 public:
-    UnitHandler(PageProviderPtr ptr)
-    : mPageProvider(ptr)
+    explicit UnitHandler(PageProviderPtr ptr)
+    : mPageProvider(std::move(ptr))
     {}
 
     virtual ~UnitHandler();

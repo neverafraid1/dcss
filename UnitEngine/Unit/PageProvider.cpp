@@ -8,6 +8,7 @@
 #include "PageUtil.h"
 #include "Page.h"
 #include "StrategySocketHandler.h"
+#include "Helper.h"
 
 #include <boost/asio.hpp>
 
@@ -121,7 +122,7 @@ PagePtr ClientPageProvider::GetPage(const std::string& dir, const std::string& u
     return Page::Load(dir, uname, pageNum, mReviseAllowed, true);
 }
 
-void ClientPageProvider::ReleasePage(void* buffer, int size, int serviceIdx)
+void ClientPageProvider::ReleasePage(void* buffer, size_t size, int serviceIdx)
 {
     PageUtil::ReleasePageBuffer(buffer, size, true);
 }
@@ -130,7 +131,12 @@ StrategySocketHandler::StrategySocketHandler(const std::string& strategyName)
         : ClientPageProvider(strategyName, true)
 { }
 
-bool StrategySocketHandler::TdConnect(short source)
+StrategySocketHandler::~StrategySocketHandler()
+{
+    UnSubAll();
+}
+
+bool StrategySocketHandler::TdConnect(uint8_t source)
 {
     std::array<char, MAX_SOCKET_MESSAGE_LENGTH> rspArray = {};
     PagedSocketRequest req = {};
@@ -141,51 +147,58 @@ bool StrategySocketHandler::TdConnect(short source)
     return rsp->Type == req.Type && rsp->Success;
 }
 
-bool StrategySocketHandler::MdSubscribe(const std::vector<DCSSSymbolField>& tickers, short source)
+bool StrategySocketHandler::MdSubscribeTicker(const std::string& tickers, uint8_t source)
 {
-    size_t idx = 0;
     SocketArray reqArray = {}, rspArray = {};
-    int pos = 2 + sizeof(size_t);
-
-    size_t size = tickers.size();
-
-    size_t tickerLen = sizeof(DCSSSymbolField);
-
-    while (idx < tickers.size())
-    {
-        if (pos + tickerLen < MAX_SOCKET_MESSAGE_LENGTH - 1)
-        {
-            memcpy(&reqArray[pos], &tickers[idx], tickerLen);
-            pos += tickerLen;
-            ++idx;
-        }
-        else
-        {
-            reqArray[0] = PAGED_SOCKET_SUBSCRIBE_TBC;
-            reqArray[1] = source;
-            memcpy(&reqArray[2], &size, sizeof(size_t));
-            GetSocketRsp(reqArray, rspArray);
-            auto rsp = reinterpret_cast<PagedSocketResponse*>(&rspArray[0]);
-            if (rsp->Type != reqArray[0] || !rsp->Success)
-                return false;
-
-            memset(&reqArray[0], '\0', MAX_SOCKET_MESSAGE_LENGTH);
-            pos = 2 + sizeof(size_t);
-        }
-    }
-    reqArray[0] = PAGED_SOCKET_SUBSCRIBE;
+    reqArray[0] = PAGED_SOCKET_SUBSCRIBE_TICKER;
     reqArray[1] = source;
-    memcpy(&reqArray[2], &size, sizeof(size_t));
+    memcpy(&reqArray[2], tickers.c_str(), tickers.length() + 1);
     GetSocketRsp(reqArray, rspArray);
     auto rsp = reinterpret_cast<PagedSocketResponse*>(&rspArray[0]);
-    return rsp->Type == reqArray[0] && rsp->Success;
+    if (rsp->Type == reqArray[0] && rsp->Success)
+    {
+        mSubedTicker[source].insert(tickers);
+        return true;
+    }
+    else
+        return false;
 }
 
-bool StrategySocketHandler::MdSubscribeKline(const DCSSSymbolField& symbol, KlineTypeType klineType, short source)
-{}
+bool StrategySocketHandler::MdSubscribeKline(const std::string& symbol, char klineType, uint8_t source)
+{
+    SocketArray reqArray = {}, rspArray = {};
+    reqArray[0] = PAGED_SOCKET_SUBSCRIBE_KLINE;
+    reqArray[1] = source;
+    reqArray[2] = klineType;
+    memcpy(&reqArray[3], symbol.c_str(), symbol.length() + 1);
+    GetSocketRsp(reqArray, rspArray);
+    auto rsp = reinterpret_cast<PagedSocketResponse*>(&rspArray[0]);
+    if (rsp->Type == reqArray[0] && rsp->Success)
+    {
+        mSubedKline[source][symbol].insert(klineType);
+        return true;
+    }
+    else
+        return false;
+}
 
-bool StrategySocketHandler::MdSubscribeDepth(const DCSSSymbolField& symbol, int depth, short source)
-{}
+bool StrategySocketHandler::MdSubscribeDepth(const std::string& symbol, int depth, uint8_t source)
+{
+    SocketArray reqArray = {}, rspArray = {};
+    reqArray[0] = PAGED_SOCKET_SUBSCRIBE_DEPTH;
+    reqArray[1] = source;
+    memcpy(&reqArray[2], &depth, sizeof(depth));
+    memcpy(&reqArray[2] + sizeof(int), symbol.c_str(), symbol.length() + 1);
+    GetSocketRsp(reqArray, rspArray);
+    auto rsp = reinterpret_cast<PagedSocketResponse*>(&rspArray[0]);
+    if (rsp->Type == reqArray[0] && rsp->Success)
+    {
+        mSubedDepth[source][symbol].insert(depth);
+        return true;
+    }
+    else
+        return false;
+}
 
 bool StrategySocketHandler::RegisterStrategy(int& ridStart, int& ridEnd)
 {
@@ -197,4 +210,56 @@ bool StrategySocketHandler::RegisterStrategy(int& ridStart, int& ridEnd)
     ridStart = rsp->RidStart;
     ridEnd = rsp->RidEnd;
     return rsp->Type == req.Type && rsp->Success;
+}
+
+
+void StrategySocketHandler::UnSubAll()
+{
+    for (auto& item : mSubedTicker)
+    {
+        for (auto& symbol : item.second)
+        {
+            SocketArray reqArray = {}, rspArray = {};
+            reqArray[0] = PAGED_SOCKET_UNSUBSCRIBE_TICKER;
+            reqArray[1] = item.first;
+            memcpy(&reqArray[2], symbol.c_str(), symbol.length() + 1);
+            GetSocketRsp(reqArray, rspArray);
+        }
+    }
+
+    for (auto& i : mSubedKline)
+    {
+        uint8_t source = i.first;
+        for (auto& j : i.second)
+        {
+            const std::string& symbol = j.first;
+            for (auto& k : j.second)
+            {
+                SocketArray reqArray = {}, rspArray = {};
+                reqArray[0] = PAGED_SOCKET_UNSUBSCRIBE_KLINE;
+                reqArray[1] = source;
+                reqArray[2] = k;
+                memcpy(&reqArray[3], symbol.c_str(), symbol.length() + 1);
+                GetSocketRsp(reqArray, rspArray);
+            }
+        }
+    }
+
+    for (auto& i : mSubedDepth)
+    {
+        uint8_t source = i.first;
+        for (auto& j : i.second)
+        {
+            const std::string& symbol = j.first;
+            for (auto&k : j.second)
+            {
+                SocketArray reqArray = {}, rspArray = {};
+                reqArray[0] = PAGED_SOCKET_UNSUBSCRIBE_DEPTH;
+                reqArray[1] = source;
+                reqArray[2] = k;
+                memcpy(&reqArray[2] + sizeof(int), symbol.c_str(), symbol.length() + 1);
+                GetSocketRsp(reqArray, rspArray);
+            }
+        }
+    }
 }

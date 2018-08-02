@@ -10,7 +10,7 @@
 
 typedef std::pair<std::string, std::string> UnitPair;
 
-inline UnitPair GetMdUnitPair(short source)
+inline UnitPair GetMdUnitPair(uint8_t source)
 {
     switch (source)
     {
@@ -21,7 +21,7 @@ inline UnitPair GetMdUnitPair(short source)
     }
 }
 
-inline UnitPair GetTdUnitPair(short source)
+inline UnitPair GetTdUnitPair(uint8_t source)
 {
     switch (source)
     {
@@ -34,7 +34,7 @@ inline UnitPair GetTdUnitPair(short source)
 
 inline UnitPair GetStrategyTdUnitPair()
 {
-    return {"shared/dcss/unit", "TD"};
+    return {"/shared/dcss/unit", "TD"};
 }
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_UTIL_H

@@ -19,18 +19,34 @@ void IMGEngine::SetReaderThread()
 
 void IMGEngine::Load(const nlohmann::json& config)
 {
-    short source = config.at("source");
+    uint8_t source = config.at("source");
     auto pair = GetMdUnitPair(source);
     mMGApi = IMGApi::Create(source);
     mMGApi->Register(shared_from_this());
-    mMGApi->Connect();
-    while (!mMGApi->IsConnected())
+    Connect();
+    while (!IsConnected())
     {
-        DCSS_LOG_INFO(mLogger, "[load] mg is not connected now (source)" << source);
+        DCSS_LOG_INFO(mLogger, "mg is not connected now (source)" << source);
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     mWriter = UnitWriter::Create(pair.first, pair.second, mMGApi->Name());
     mReader = UnitReader::CreateRevisableReader(mMGApi->Name());
+}
+
+void IMGEngine::Connect()
+{
+    if (mMGApi == nullptr)
+    {
+        DCSS_LOG_ERROR(mLogger, "mg is not created!");
+        return;
+    }
+
+    mMGApi->Connect();
+}
+
+bool IMGEngine::IsConnected() const
+{
+    return mMGApi == nullptr ? false : mMGApi->IsConnected();
 }
 
 void IMGEngine::Listening()
@@ -41,7 +57,7 @@ void IMGEngine::Listening()
         frame = mReader->GetNextFrame();
         if (frame.get() != nullptr)
         {
-            short source = frame->GetSource();
+            uint8_t source = frame->GetSource();
             if (source != mMGApi->GetSource())
             {
                 continue;
@@ -94,19 +110,18 @@ void IMGEngine::Listening()
         }
     }
 
-
     if (SignalReceived >= 0)
     {
-        DCSS_LOG_INFO(mLogger, "[IEngine] signal received: " << SignalReceived);
+        DCSS_LOG_INFO(mLogger, "signal received: " << SignalReceived);
     }
 
     if (!mIsRunning)
     {
-        DCSS_LOG_INFO(mLogger, "[IEngine] forced to stop.");
+        DCSS_LOG_INFO(mLogger, "forced to stop.");
     }
 }
 
-void IMGEngine::OnRtnTicker(const DCSSTickerField* ticker, short source)
+void IMGEngine::OnRtnTicker(const DCSSTickerField* ticker, uint8_t source)
 {
     if (mIsRunning)
     {
@@ -114,7 +129,7 @@ void IMGEngine::OnRtnTicker(const DCSSTickerField* ticker, short source)
     }
 }
 
-void IMGEngine::OnRtnDepth(const DCSSDepthHeaderField* header, const std::vector<DCSSDepthField>& depthVec, short source)
+void IMGEngine::OnRtnDepth(const DCSSDepthHeaderField* header, const std::vector<DCSSDepthField>& depthVec, uint8_t source)
 {
     if (mIsRunning)
     {
@@ -131,7 +146,7 @@ void IMGEngine::OnRtnDepth(const DCSSDepthHeaderField* header, const std::vector
     }
 }
 
-void IMGEngine::OnRtnKline(const DCSSKlineHeaderField* header, const std::vector<DCSSKlineField>& klineVec, short source)
+void IMGEngine::OnRtnKline(const DCSSKlineHeaderField* header, const std::vector<DCSSKlineField>& klineVec, uint8_t source)
 {
     if (mIsRunning)
     {
@@ -147,7 +162,7 @@ void IMGEngine::OnRtnKline(const DCSSKlineHeaderField* header, const std::vector
     }
 }
 
-IMGApiPtr IMGApi::Create(short source)
+IMGApiPtr IMGApi::Create(uint8_t source)
 {
     switch (source)
     {

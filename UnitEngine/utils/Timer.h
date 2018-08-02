@@ -39,7 +39,9 @@ public:
     NanoTimer& operator=(const NanoTimer& source) = delete;
 
 private:
-    NanoTimer() = default;
+    NanoTimer();
+
+    long GetLocalDiff();
 
 private:
     static std::unique_ptr<NanoTimer> ptr;

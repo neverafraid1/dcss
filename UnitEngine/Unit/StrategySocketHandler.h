@@ -9,8 +9,11 @@
 #include "IStrategyUtil.h"
 #include "PageSocketStruct.h"
 #include "Declare.h"
-#include <array>
 #include "UnitDeclare.h"
+
+#include <array>
+#include <unordered_set>
+#include <unordered_map>
 
 UNIT_NAMESPACE_START
 
@@ -20,15 +23,24 @@ public:
     /*constructor with strategy name*/
     explicit StrategySocketHandler(const std::string& strategyName);
 
+    ~StrategySocketHandler() override ;
+
     bool RegisterStrategy(int& ridStart, int& ridEnd) override ;
 
-    bool TdConnect(short source) override ;
+    bool TdConnect(uint8_t source) override ;
 
-    bool MdSubscribe(const std::vector<DCSSSymbolField>& tickers, short source) override ;
+    bool MdSubscribeTicker(const std::string& tickers, uint8_t source) override ;
 
-    bool MdSubscribeKline(const DCSSSymbolField& symbol, KlineTypeType klineType, short source) override ;
+    bool MdSubscribeKline(const std::string& symbol, char klineType, uint8_t source) override ;
 
-    bool MdSubscribeDepth(const DCSSSymbolField& symbol, int depth, short source) override ;
+    bool MdSubscribeDepth(const std::string& symbol, int depth, uint8_t source) override ;
+
+private:
+    void UnSubAll();
+
+    std::unordered_map<short, std::unordered_set<std::string> > mSubedTicker;
+    std::unordered_map<short, std::unordered_map<std::string, std::unordered_set<char> > > mSubedKline;
+    std::unordered_map<short, std::unordered_map<std::string, std::unordered_set<int> > > mSubedDepth;
 };
 
 DECLARE_PTR(StrategySocketHandler);

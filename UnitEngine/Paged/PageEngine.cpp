@@ -9,6 +9,7 @@
 #include "json.hpp"
 #include "SysMessages.h"
 #include "Constants.h"
+#include "DataStruct.h"
 
 #include <mutex>
 #include <csignal>
@@ -60,7 +61,7 @@ PageEngine::PageEngine()
     AddTask(PstBasePtr(new PstPidCheck(this)));
 }
 
-bool PageEngine::Write(const std::string& content, uint8_t msgType, bool isLast, short source)
+bool PageEngine::Write(const std::string& content, short msgType, bool isLast, uint8_t source)
 {
     if (mWriter.get() == nullptr)
         return false;
@@ -154,7 +155,7 @@ void PageEngine::StartTask()
     while (mTaskRunning)
     {
         AcquireMutex();
-        for (auto item : mTasks)
+        for (auto& item : mTasks)
         {
             item.second->Go();
         }
@@ -233,7 +234,7 @@ int PageEngine::RegUnit(const std::string& clientName)
     return (int)idx;
 }
 
-bool PageEngine::RegClient(std::string& commFile, int& fileSize, const std::string& clientName, int pid, bool isWriter)
+bool PageEngine::RegClient(std::string& commFile, size_t& fileSize, const std::string& clientName, int pid, bool isWriter)
 {
     DCSS_LOG_INFO(mLogger, "[RegClient] (name)" << clientName << " (writer?)" << isWriter);
     if (mClientUnits.find(clientName) != mClientUnits.end())
@@ -351,7 +352,7 @@ void PageEngine::ReleasePage(const PageCommMsg& msg)
     --countIt->second;
     if (countIt->second == 0)
     {
-        bool otherSideIsEmpty = false;
+        bool otherSideIsEmpty(false);
         if (msg.IsWriter)
         {
             mFileWriterCounts.erase(countIt);
@@ -431,7 +432,7 @@ IntPair PageEngine::RegStrategy(const std::string& strategyName)
     return std::make_pair(info.RidStart, info.RidEnd);
 }
 
-bool PageEngine::LoginTd(const std::string& clientName, short source)
+bool PageEngine::LoginTd(const std::string& clientName, uint8_t source)
 {
     DCSS_LOG_INFO(mLogger, "[TGLogin] (name)" << clientName << " (source)" << source);
 
@@ -459,17 +460,84 @@ bool PageEngine::LoginTd(const std::string& clientName, short source)
     return true;
 }
 
-bool PageEngine::SubTicker(const std::vector<DCSSSymbolField>& tickers, short source, bool isLast)
+bool PageEngine::SubTicker(const std::string& symbol, uint8_t source)
 {
-    DCSS_LOG_INFO(mLogger, "(subscribe) (source)" << source);
-
     if (mWriter.get() == nullptr)
         return false;
 
-    for (size_t i = 0; i < tickers.size(); ++i)
-    {
-        mWriter->WriteFrame(&tickers[i], sizeof(DCSSSymbolField) + 1, source, MSG_TYPE_SUB_TICKER, -1);
-    }
+    DCSSSubTickerField req;
+    strcpy(req.Symbol, symbol.c_str());
+
+    mWriter->WriteFrame(&req, sizeof(DCSSSubTickerField) + 1, source, MSG_TYPE_SUB_TICKER, -1);
+
+    return true;
+}
+
+bool PageEngine::SubKline(const std::string& symbol, char klineType, uint8_t source)
+{
+    if (mWriter.get() == nullptr)
+        return false;
+
+    DCSSSubKlineField req;
+    strcpy(req.Symbol, symbol.c_str());
+    req.KlineType = klineType;
+
+    mWriter->WriteFrame(&req, sizeof(req) + 1, source, MSG_TYPE_SUB_KLINE, -1);
+
+    return true;
+}
+
+bool PageEngine::SubDepth(const std::string& symbol, int depth, uint8_t source)
+{
+    if (mWriter.get() == nullptr)
+        return false;
+
+    DCSSSubDepthField req;
+    strcpy(req.Symbol, symbol.c_str());
+    req.Depth = depth;
+
+    mWriter->WriteFrame(&req, sizeof(req) + 1, source, MSG_TYPE_SUB_DEPTH, -1);
+
+    return true;
+}
+
+bool PageEngine::UnSubTicker(const std::string& symbol, uint8_t source)
+{
+    if (mWriter.get() == nullptr)
+        return false;
+
+    DCSSSubTickerField req;
+    strcpy(req.Symbol, symbol.c_str());
+
+    mWriter->WriteFrame(&req, sizeof(DCSSSubTickerField) + 1, source, MSG_TYPE_UNSUB_TICKER, -1);
+
+    return true;
+}
+
+bool PageEngine::UnSubKline(const std::string& symbol, char klineType, uint8_t source)
+{
+    if (mWriter.get() == nullptr)
+        return false;
+
+    DCSSSubKlineField req;
+    strcpy(req.Symbol, symbol.c_str());
+    req.KlineType = klineType;
+
+    mWriter->WriteFrame(&req, sizeof(req) + 1, source, MSG_TYPE_UNSUB_KLINE, -1);
+
+    return true;
+}
+
+bool PageEngine::UnSubDepth(const std::string& symbol, int depth, uint8_t source)
+{
+    if (mWriter.get() == nullptr)
+        return false;
+
+    DCSSSubDepthField req;
+    strcpy(req.Symbol, symbol.c_str());
+    req.Depth = depth;
+
+    mWriter->WriteFrame(&req, sizeof(req) + 1, source, MSG_TYPE_UNSUB_DEPTH, -1);
 
     return true;
 }

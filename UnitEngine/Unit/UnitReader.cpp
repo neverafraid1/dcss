@@ -14,7 +14,7 @@ USING_UNIT_NAMESPACE
 const std::string UnitReader::PREFIX = "reader";
 
 UnitReader::UnitReader(PageProviderPtr ptr)
-: UnitHandler(ptr)
+: UnitHandler(std::move(ptr))
 {
     mUnitMap.clear();
 }

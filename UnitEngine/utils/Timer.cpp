@@ -26,10 +26,23 @@ inline std::chrono::steady_clock::time_point GetTimeNow()
             );
 }
 
+NanoTimer::NanoTimer()
+{
+    secDiff = GetLocalDiff();
+}
+
 long NanoTimer::GetNano() const
 {
-    long nano = std::chrono::duration_cast<std::chrono::nanoseconds>(
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(
             GetTimeNow().time_since_epoch()
-            ).count();
-    return nano + secDiff;
+            ).count() + secDiff;
+}
+
+long NanoTimer::GetLocalDiff()
+{
+    long unix_second_num = std::chrono::seconds(std::time(NULL)).count();
+    long tick_second_num = std::chrono::duration_cast<std::chrono::seconds>(
+            GetTimeNow().time_since_epoch()
+    ).count();
+    return (unix_second_num - tick_second_num) * NANOSECONDS_PER_SECOND;
 }

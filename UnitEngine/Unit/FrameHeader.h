@@ -12,8 +12,7 @@
 UNIT_NAMESPACE_START
 
 typedef uint8_t     FH_STATUS_TYPE;
-typedef short       FH_SOURCE_TYPE;
-typedef uint8_t     FH_LASTFLAG_TYPE;
+typedef uint8_t     FH_SOURCE_TYPE;
 typedef long        FH_NANO_TYPE;
 typedef int         FH_LENGTH_TYPE;
 typedef short       FH_MSG_TP_TYPE;

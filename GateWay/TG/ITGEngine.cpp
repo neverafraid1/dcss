@@ -30,7 +30,7 @@ void ITGEngine::Load(const nlohmann::json& config)
     auto iter = config.find("accounts");
     for (auto& account : iter.value())
     {
-        short source = account.at("source");
+        uint8_t source = account.at("source");
         if (mApiMap.count(source) > 0)
         {
             DCSS_LOG_ERROR(mLogger, "try to add duplicae source trade engine (source)" << source);
@@ -46,7 +46,7 @@ void ITGEngine::Load(const nlohmann::json& config)
         }
         else
         {
-            DCSS_LOG_ERROR(mLogger, "[Load] invalid source " << source);
+            DCSS_LOG_ERROR(mLogger, "invalid source " << source);
         }
     }
 
@@ -58,13 +58,43 @@ void ITGEngine::SetReaderThread()
     mReaderThread.reset(new std::thread(std::bind(&ITGEngine::Listening, this)));
 }
 
+void ITGEngine::Connect()
+{
+    DCSS_LOG_INFO(mLogger, "connecting...");
+    for (auto& it : mApiMap)
+    {
+        it.second->Connect();
+    }
+    DCSS_LOG_INFO(mLogger, "finish connecting");
+}
+
+void ITGEngine::Disconnect()
+{
+    DCSS_LOG_INFO(mLogger, "disconnecting...");
+    for (auto& it : mApiMap)
+    {
+        it.second->Disconnect();
+    }
+    DCSS_LOG_INFO(mLogger, "finish disconnecting");
+}
+
+bool ITGEngine::IsConnected() const
+{
+    bool connected = true;
+    for (auto& it : mApiMap)
+    {
+        connected &= it.second->IsConnected();
+    }
+    return connected;
+}
+
 TradeAccount ITGEngine::LoadAccount(int idx, const nlohmann::json& account)
 {
     DCSS_LOG_ERROR(mLogger, "[account] FUNC NOT IMPLEMENTED! (content)" << account);
     throw std::runtime_error("load account not implemented yet");
 }
 
-bool ITGEngine::ReigsterClient(const std::string& name, const nlohmann::json& request)
+bool ITGEngine::RegisterClient(const std::string& name, const nlohmann::json& request)
 {
     std::string folder = request.at("folder");
     int rid_s = request.at("rid_s");
@@ -82,10 +112,17 @@ bool ITGEngine::ReigsterClient(const std::string& name, const nlohmann::json& re
         mClient.RidStart = rid_s;
         mClient.RidEnd = rid_e;
     }
+
+    Connect();
 }
 
 bool ITGEngine::RemoveClient(const std::string& name, const nlohmann::json& request)
 {
+    if (mClient.IsAlive)
+    {
+        mClient.IsAlive = false;
+        Disconnect();
+    }
     //TODO remove writer
 }
 
@@ -98,7 +135,7 @@ void ITGEngine::Listening()
         if (frame.get() != nullptr)
         {
             mCurTime = frame->GetNano();
-            short source = frame->GetSource();
+            uint8_t source = frame->GetSource();
             FH_MSG_TP_TYPE msgType = frame->GetMsgType();
 
             if (msgType < 200)
@@ -107,24 +144,24 @@ void ITGEngine::Listening()
                 {
                     try
                     {
-                        std::string content((char*)frame->GetData());
+                        std::string content((char*) frame->GetData());
                         nlohmann::json j_request = nlohmann::json::parse(content);
                         std::string clientName = j_request.at("name");
-                        if (ReigsterClient(clientName, j_request))
+                        if (RegisterClient(clientName, j_request))
                             DCSS_LOG_INFO(mLogger, "[user] Accecpted: " << clientName);
                         else
-                            DCSS_LOG_INFO(mLogger, "[user] Rejiected: " << clientName);
+                            DCSS_LOG_INFO(mLogger, "[user] Rejected: " << clientName);
                     }
                     catch (...)
                     {
-                        DCSS_LOG_ERROR(mLogger, "error in parsing TRADE_ENGINE_LOGIN: " << (char*)frame->GetData());
+                        DCSS_LOG_ERROR(mLogger, "error in parsing TRADE_ENGINE_LOGIN: " << (char*) frame->GetData());
                     }
                 }
                 else if (msgType == MSG_TYPE_STRATEGY_END)
                 {
                     try
                     {
-                        std::string content((char*)frame->GetData());
+                        std::string content((char*) frame->GetData());
                         nlohmann::json j_request = nlohmann::json::parse(content);
                         std::string clientName = j_request.at("name");
                         if (RemoveClient(clientName, j_request))
@@ -132,54 +169,57 @@ void ITGEngine::Listening()
                     }
                     catch (...)
                     {
-                        DCSS_LOG_ERROR(mLogger, "error in parsing STRATEGY_END: " << (char*)frame->GetData());
+                        DCSS_LOG_ERROR(mLogger, "error in parsing STRATEGY_END: " << (char*) frame->GetData());
                     }
                 }
             }
+            else
+            {
 
-            if (mApiMap.count(source) == 0)
-            {
-                // TODO
-                continue;
-            }
+                if (mApiMap.count(source) == 0)
+                {
+                    // TODO
+                    continue;
+                }
 
-            ITGApiPtr& tgApi = mApiMap.at(source);
+                ITGApiPtr& tgApi = mApiMap.at(source);
 
-            void* data = frame->GetData();
-            int requestId = frame->GetRequestID();
-            switch (msgType)
-            {
-            case MSG_TYPE_REQ_ORDER_INSERT:
-            {
-                auto req = reinterpret_cast<DCSSReqInsertOrderField*>(data);
-                tgApi->ReqInsertOrder(req, requestId);
-                DCSS_LOG_DEBUG(mLogger, "[insert_order] (rid)" << requestId << " (ticker)");
-                break;
-            }
-            case MSG_TYPE_REQ_ORDER_ACTION:
-            {
-                auto req = reinterpret_cast<DCSSReqCancelOrderField*>(data);
-                tgApi->ReqCancelOrder(req, requestId);
-                break;
-            }
-            case MSG_TYPE_REQ_QRY_TICKER:
-            {
-                auto req = reinterpret_cast<DCSSReqQryTickerField*>(data);
-                tgApi->ReqQryTicker(req, requestId);
-                break;
-            }
-            case MSG_TYPE_REQ_QRY_KLINE:
-            {
-                auto req = reinterpret_cast<DCSSReqQryKlineField*>(data);
-                tgApi->ReqQryKline(req, requestId);
-                break;
-            }
-            case MSG_TYPE_REQ_QRY_ACCOUNT:
-            {
-                tgApi->ReqQryUserInfo(requestId);
-                break;
-            }
-            default:break;
+                void* data = frame->GetData();
+                int requestId = frame->GetRequestID();
+                switch (msgType)
+                {
+                case MSG_TYPE_REQ_ORDER_INSERT:
+                {
+                    auto req = reinterpret_cast<DCSSReqInsertOrderField*>(data);
+                    tgApi->ReqInsertOrder(req, requestId);
+                    DCSS_LOG_DEBUG(mLogger, "[insert_order] (rid)" << requestId << " (ticker)");
+                    break;
+                }
+                case MSG_TYPE_REQ_ORDER_ACTION:
+                {
+                    auto req = reinterpret_cast<DCSSReqCancelOrderField*>(data);
+                    tgApi->ReqCancelOrder(req, requestId);
+                    break;
+                }
+                case MSG_TYPE_REQ_QRY_TICKER:
+                {
+                    auto req = reinterpret_cast<DCSSReqQryTickerField*>(data);
+                    tgApi->ReqQryTicker(req, requestId);
+                    break;
+                }
+                case MSG_TYPE_REQ_QRY_KLINE:
+                {
+                    auto req = reinterpret_cast<DCSSReqQryKlineField*>(data);
+                    tgApi->ReqQryKline(req, requestId);
+                    break;
+                }
+                case MSG_TYPE_REQ_QRY_ACCOUNT:
+                {
+                    tgApi->ReqQryUserInfo(requestId);
+                    break;
+                }
+                default:break;
+                }
             }
         }
     }
@@ -195,7 +235,7 @@ void ITGEngine::Listening()
     }
 }
 
-void ITGEngine::OnRspQryTicker(const DCSSTickerField* ticker, short source, int requestId, int errorId, const char* errorMsg)
+void ITGEngine::OnRspQryTicker(const DCSSTickerField* ticker, uint8_t source, int requestId, int errorId, const char* errorMsg)
 {
     if (0 == errorId)
     {
@@ -207,7 +247,7 @@ void ITGEngine::OnRspQryTicker(const DCSSTickerField* ticker, short source, int 
     }
 }
 
-void ITGEngine::OnRspOrderAction(const DCSSRspCancelOrderField* rsp, short source, int requestId, int errorId, const char* errorMsg)
+void ITGEngine::OnRspOrderAction(const DCSSRspCancelOrderField* rsp, uint8_t source, int requestId, int errorId, const char* errorMsg)
 {
     if (0 == errorId)
     {
@@ -219,7 +259,7 @@ void ITGEngine::OnRspOrderAction(const DCSSRspCancelOrderField* rsp, short sourc
     }
 }
 
-void ITGEngine::OnRspOrderInsert(const DCSSRspInsertOrderField* rsp, short source, int requestId, int errorId, const char* errorMsg)
+void ITGEngine::OnRspOrderInsert(const DCSSRspInsertOrderField* rsp, uint8_t source, int requestId, int errorId, const char* errorMsg)
 {
     if (0 == errorId)
     {
@@ -227,28 +267,38 @@ void ITGEngine::OnRspOrderInsert(const DCSSRspInsertOrderField* rsp, short sourc
     }
     else
     {
-        mWriter->WriteErrorFrame(rsp, sizeof(DCSSRspInsertOrderField), source, MSG_TYPE_RSP_ORDER_INSERT, requestId, errorId, errorMsg);
+        mWriter->WriteErrorFrame(rsp, 0, source, MSG_TYPE_RSP_ORDER_INSERT, requestId, errorId, errorMsg);
     }
 }
 
-void ITGEngine::OnRspQryUserInfo(const DCSSUserInfoField* userInfo, short source, int requestId, int errorId, const char* errorMsg)
+void ITGEngine::OnRspQryUserInfo(const DCSSTradingAccountField* userInfo, uint8_t source, int requestId, int errorId, const char* errorMsg)
 {
     if (0 == errorId)
     {
-        mWriter->WriteFrame(userInfo, sizeof(DCSSUserInfoField), source, MSG_TYPE_RSP_QRY_ACCOUNT, requestId);
+        mWriter->WriteFrame(userInfo, sizeof(DCSSTradingAccountField), source, MSG_TYPE_RSP_QRY_ACCOUNT, requestId);
     }
     else
     {
-        mWriter->WriteErrorFrame(userInfo, sizeof(DCSSUserInfoField), source, MSG_TYPE_RSP_QRY_ACCOUNT, requestId, errorId, errorMsg);
+        mWriter->WriteErrorFrame(userInfo, sizeof(DCSSTradingAccountField), source, MSG_TYPE_RSP_QRY_ACCOUNT, requestId, errorId, errorMsg);
     }
 }
 
-void ITGEngine::OnRtnOrder(const DCSSOrderField* order, short source)
+void ITGEngine::OnRtnOrder(const DCSSOrderField* order, uint8_t source)
 {
     mWriter->WriteFrame(order, sizeof(DCSSOrderField), source, MSG_TYPE_RTN_ORDER, 0);
 }
 
-void ITGEngine::OnRspQryOrder(const DCSSRspQryOrderHeaderField* header, short source, const std::vector<DCSSRspQryOrderField>& order,
+void ITGEngine::OnRtnBalance(const DCSSBalanceField* balance, uint8_t source)
+{
+    mWriter->WriteFrame(balance, sizeof(DCSSBalanceField), source, MSG_TYPE_RTN_BALANCE, 0);
+}
+
+void ITGEngine::OnRtnTdStatus(const GateWayStatusType& status, uint8_t source)
+{
+    mWriter->WriteFrame(&status, sizeof(GateWayStatusType), source, MSG_TYPE_RTN_TD_STATUS, 0);
+}
+
+void ITGEngine::OnRspQryOrder(const DCSSRspQryOrderHeaderField* header, uint8_t source, const std::vector<DCSSRspQryOrderField>& order,
         int requestId, int errorId, const char* errorMsg)
 {
     int length = sizeof(DCSSRspQryOrderHeaderField) + order.size() * sizeof(DCSSRspQryOrderField);
@@ -266,7 +316,7 @@ void ITGEngine::OnRspQryOrder(const DCSSRspQryOrderHeaderField* header, short so
         mWriter->WriteErrorFrame(tmp, length, source, MSG_TYPE_RSP_QRY_ORDER, requestId, errorId, errorMsg);
 }
 
-void ITGEngine::OnRspQryKline(const DCSSKlineHeaderField* header, short source, const std::vector<DCSSKlineField>& kline,
+void ITGEngine::OnRspQryKline(const DCSSKlineHeaderField* header, uint8_t source, const std::vector<DCSSKlineField>& kline,
         int requestId, int errorId, const char* errorMsg)
 {
     int length = sizeof(DCSSKlineHeaderField) + kline.size() * sizeof(DCSSKlineField);
@@ -284,7 +334,7 @@ void ITGEngine::OnRspQryKline(const DCSSKlineHeaderField* header, short source, 
         mWriter->WriteErrorFrame(tmp, length, source, MSG_TYPE_RSP_QRY_KLINE, requestId, errorId, errorMsg);
 }
 
-ITGApiPtr ITGApi::CreateTGApi(short source)
+ITGApiPtr ITGApi::CreateTGApi(uint8_t source)
 {
     switch (source)
     {

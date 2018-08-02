@@ -66,7 +66,7 @@ private:
 
 DECLARE_PTR(Frame);
 
-inline Frame::Frame(void* address)
+inline Frame::Frame(void* address) : frame(nullptr)
 {
     SetAddress(address);
 }
@@ -134,7 +134,7 @@ inline FH_LENGTH_TYPE Frame::GetDataLength() const
 
 inline void* Frame::GetData() const
 {
-    return ADDRESS_ADD(frame, GetHeaderLength());
+    return GetDataLength() > 0 ? ADDRESS_ADD(frame, GetHeaderLength()) : nullptr;
 }
 
 
@@ -196,7 +196,7 @@ inline void Frame::SetErrorData(FH_ERRORID_TYPE errorid, const char* errormsg, c
         if (errormsg != nullptr)
             memcpy(ADDRESS_ADD(frame, BASIC_FRAME_HEADER_LENGTH), errormsg, MAX_ERROR_MSG_LENGTH);
         if (data != nullptr)
-            memcpy(ADDRESS_ADD(frame, ERROR_FRAME_HEADER_LENGTH), data, dataLength);
+            memcpy(ADDRESS_ADD(frame, ERROR_FRAME_HEADER_LENGTH), data, (size_t)dataLength);
         SetFrameLength(ERROR_FRAME_HEADER_LENGTH + dataLength);
     }
 }
@@ -204,7 +204,7 @@ inline void Frame::SetErrorData(FH_ERRORID_TYPE errorid, const char* errormsg, c
 inline void Frame::SetData(const void* data, int dataLength)
 {
     frame->ErrorID = 0;
-    memcpy(ADDRESS_ADD(frame, BASIC_FRAME_HEADER_LENGTH), data, dataLength);
+    memcpy(ADDRESS_ADD(frame, BASIC_FRAME_HEADER_LENGTH), data, (size_t)dataLength);
     SetFrameLength(BASIC_FRAME_HEADER_LENGTH + dataLength);
 }
 

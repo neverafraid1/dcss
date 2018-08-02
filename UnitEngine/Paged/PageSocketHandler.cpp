@@ -28,7 +28,7 @@ PageSocketHandler* PageSocketHandler::GetInstance()
     // have problem when multi thread called
     if (mPtr.get() == nullptr)
     {
-        mPtr = std::shared_ptr<PageSocketHandler>(new PageSocketHandler());
+        mPtr.reset(new PageSocketHandler());
     }
 
     return mPtr.get();
@@ -60,11 +60,11 @@ void PageSocketHandler::Run(IPageSocketUtil* util)
 
 void PageSocketHandler::Stop()
 {
-    if (gIo.get() != nullptr)
+    if (gIo != nullptr)
         gIo->stop();
-    if (gSocket.get() != nullptr)
+    if (gSocket != nullptr)
         gSocket->close();
-    if (gAcceptor.get() != nullptr)
+    if (gAcceptor != nullptr)
         gAcceptor->close();
 
     mIoRunning = false;
@@ -82,6 +82,8 @@ void PageSocketHandler::HandleAccept()
 
 void PageSocketHandler::ProcessMsg()
 {
+    memset(&gSendData[0], 0, gSendData.size());
+
     auto req = reinterpret_cast<PagedSocketRequest*>(&gRecvData[0]);
     auto reqType = req->Type;
 
@@ -117,7 +119,7 @@ void PageSocketHandler::ProcessMsg()
     case PAGED_SOCKET_WRITER_REGISTER:
     {
         std::string commFile;
-        int fileSize;
+        size_t fileSize;
         bool ret = mUtil->RegClient(commFile, fileSize, req->Name, req->Pid, reqType == PAGED_SOCKET_WRITER_REGISTER);
         PagedSocketRspClient rsp = {};
         rsp.Type = reqType;
@@ -136,30 +138,63 @@ void PageSocketHandler::ProcessMsg()
         memcpy(&gSendData[0], &rsp, sizeof(rsp));
         break;
     }
-    case PAGED_SOCKET_SUBSCRIBE:
-    case PAGED_SOCKET_SUBSCRIBE_TBC:
+    case PAGED_SOCKET_SUBSCRIBE_TICKER:
     {
-        short source = gRecvData[1];
-        auto size = reinterpret_cast<size_t*>(&gRecvData[2]);
-        std::vector<DCSSSymbolField> symbol;
-        int pos = 2 + sizeof(size_t);
-        size_t num = 0;
-        DCSSSymbolField* p = nullptr;
-        while (pos < MAX_SOCKET_MESSAGE_LENGTH - 1 && num++ < *size)
-        {
-            p = reinterpret_cast<DCSSSymbolField*>(&gRecvData[pos]);
-            if (p != nullptr)
-            {
-                symbol.emplace_back(*p);
-                pos += sizeof(DCSSSymbolField);
-            }
-            else
-                break;
-        }
-        bool ret = mUtil->SubTicker(symbol, source, reqType == PAGED_SOCKET_SUBSCRIBE);
+        uint8_t source = gRecvData[1];
+        bool ret = mUtil->SubTicker(&gRecvData[2], source);
         PagedSocketResponse rsp = {};
         rsp.Type = reqType;
         rsp.Success = ret;
+        memcpy(&gSendData[0], &rsp, sizeof(rsp));
+        break;
+    }
+    case PAGED_SOCKET_UNSUBSCRIBE_TICKER:
+    {
+        uint8_t source = gRecvData[1];
+        bool ret = mUtil->UnSubTicker(&gRecvData[2], source);
+        PagedSocketResponse rsp = {};
+        rsp.Type = reqType;
+        rsp.Success = ret;
+        memcpy(&gSendData[0], &rsp, sizeof(rsp));
+        break;
+    }
+    case PAGED_SOCKET_SUBSCRIBE_KLINE:
+    {
+        uint8_t source = gRecvData[1];
+        KlineTypeType type = gRecvData[2];
+        PagedSocketResponse rsp = {};
+        rsp.Type = reqType;
+        rsp.Success = mUtil->SubKline(&gRecvData[3], type, source);
+        memcpy(&gSendData[0], &rsp, sizeof(rsp));
+        break;
+    }
+    case PAGED_SOCKET_UNSUBSCRIBE_KLINE:
+    {
+        uint8_t source = gRecvData[1];
+        KlineTypeType type = gRecvData[2];
+        PagedSocketResponse rsp = {};
+        rsp.Type = reqType;
+        rsp.Success = mUtil->UnSubKline(&gRecvData[3], type, source);
+        memcpy(&gSendData[0], &rsp, sizeof(rsp));
+        break;
+    }
+    case PAGED_SOCKET_SUBSCRIBE_DEPTH:
+    {
+        uint8_t source = gRecvData[1];
+        auto depth = reinterpret_cast<int*>(&gRecvData[2]);
+        PagedSocketResponse rsp = {};
+        rsp.Type = reqType;
+        rsp.Success = mUtil->SubDepth((&gRecvData[2] + sizeof(int)), *depth, source);
+        memcpy(&gSendData[0], &rsp, sizeof(rsp));
+        break;
+    }
+    case PAGED_SOCKET_UNSUBSCRIBE_DEPTH:
+    {
+        uint8_t source = gRecvData[1];
+        auto depth = reinterpret_cast<int*>(&gRecvData[2]);
+        PagedSocketResponse rsp = {};
+        rsp.Type = reqType;
+        rsp.Success = mUtil->UnSubDepth(&gRecvData[2] + sizeof(int), *depth, source);
         memcpy(&gSendData[0], &rsp, sizeof(rsp));
         break;
     }

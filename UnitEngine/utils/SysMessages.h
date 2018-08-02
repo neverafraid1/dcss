@@ -15,6 +15,35 @@ const short MSG_TYPE_TRADE_ENGINE_ACK = 13;
 const short MSG_TYPE_PAGED_START = 20;
 const short MSG_TYPE_PAGED_END = 21;
 
+//const short MSG_TYPE_REQ_QRY_POS        = 0x0101;
+//const short MSG_TYPE_RSP_QRY_POS        = 0x0102;
+const short MSG_TYPE_REQ_ORDER_INSERT   = 0x0103;
+const short MSG_TYPE_RSP_ORDER_INSERT   = 0X0104;
+const short MSG_TYPE_RTN_ORDER          = 0x0105;
+const short MSG_TYPE_RTN_TRADE          = 0x0106;
+const short MSG_TYPE_REQ_ORDER_ACTION   = 0x0107;
+const short MSG_TYPE_RSP_ORDER_ACTION   = 0x0108;
+const short MSG_TYPE_REQ_QRY_ACCOUNT    = 0x0109;
+const short MSG_TYPE_RSP_QRY_ACCOUNT    = 0x010a;
+const short MSG_TYPE_REQ_QRY_TICKER     = 0x010b;
+const short MSG_TYPE_RSP_QRY_TICKER     = 0x010c;
+const short MSG_TYPE_RSP_QRY_ORDER      = 0x010d;
+const short MSG_TYPE_REQ_QRY_KLINE      = 0x010e;
+const short MSG_TYPE_RSP_QRY_KLINE      = 0x010f;
+const short MSG_TYPE_RTN_BALANCE        = 0x0110;
+const short MSG_TYPE_RTN_TD_STATUS      = 0x0111;
+
+/*market data*/
+const short MSG_TYPE_SUB_TICKER         = 0x0201;
+const short MSG_TYPE_SUB_KLINE          = 0x0202;
+const short MSG_TYPE_SUB_DEPTH          = 0x0203;
+const short MSG_TYPE_UNSUB_TICKER       = 0x0204;
+const short MSG_TYPE_UNSUB_KLINE        = 0x0205;
+const short MSG_TYPE_UNSUB_DEPTH        = 0x0206;
+const short MSG_TYPE_RTN_TICKER         = 0x0207;
+const short MSG_TYPE_RTN_KLINE          = 0x0208;
+const short MSG_TYPE_RTN_DEPTH          = 0x0209;
+
 /*30-39 for control*/
 const short MSG_TYPE_TRADE_ENGINE_OPEN = 30;
 const short MSG_TYPE_TRADE_ENGINE_CLOSE = 31;

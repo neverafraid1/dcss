@@ -46,7 +46,7 @@ public:
 
     PagePtr GetPage(const std::string& dir, const std::string& uname, int serviceIdx, short pageNum) override ;
 
-    void ReleasePage(void* buffer, int size, int serviceIdx) override ;
+    void ReleasePage(void* buffer, size_t size, int serviceIdx) override ;
 
 protected:
     /*register to service as a client*/

@@ -10,6 +10,7 @@
 #include "DCSSLog.h"
 #include "json.hpp"
 #include "UnitDeclare.h"
+#include "SysMessages.h"
 
 USING_UNIT_NAMESPACE
 
@@ -29,6 +30,8 @@ public:
 
     /** connect to front */
     virtual void Connect() = 0;
+    /** disconnect to front */
+    virtual void Disconnect() = 0;
     /** release api */
     virtual void ReleaseApi() = 0;
     /** return true if engine is connected to front */
@@ -62,10 +65,10 @@ protected:
         SignalReceived = signum;
     }
 
-    inline void WriteEngineStatus(const std::string& status)
+    inline void WriteEngineStatus(const std::string& status, uint8_t source)
     {
-//        if (mWriter.get() != nullptr)
-//            mWriter->WriteFrame(status.c_str(), status.length(), )
+        if (mWriter.get() != nullptr)
+            mWriter->WriteFrame(status.c_str(), status.length(), source, MSG_TYPE_ENGINE_STATUS, getpid());
     }
 protected:
     /*map: <clientname, writer>*/

@@ -33,7 +33,7 @@ void StrategyUtil::Init()
     mCurRid = 0;
 }
 
-bool StrategyUtil::TdConnect(short source)
+bool StrategyUtil::TdConnect(uint8_t source)
 {
     if (mHandler.get() != nullptr)
         return mHandler->TdConnect(source);
@@ -46,10 +46,26 @@ IntPair StrategyUtil::GetRidRange() const
     return std::make_pair(mRidStart, mRidEnd);
 }
 
-bool StrategyUtil::MdSubscribe(const std::vector<DCSSSymbolField>& tickers, short source)
+bool StrategyUtil::MdSubscribeTicker(const std::string& tickers, uint8_t source)
 {
     if (mHandler.get() != nullptr)
-        return mHandler->MdSubscribe(tickers, source);
+        return mHandler->MdSubscribeTicker(tickers, source);
+    else
+        return false;
+}
+
+bool StrategyUtil::MdSubscribeKline(const std::string& symbol, char klineType, uint8_t source)
+{
+    if (mHandler.get() != nullptr)
+        return mHandler->MdSubscribeKline(symbol, klineType, source);
+    else
+        return false;
+}
+
+bool StrategyUtil::MdSubscribeDepth(const std::string& symbol, int depth, uint8_t source)
+{
+    if (mHandler.get() != nullptr)
+        return mHandler->MdSubscribeDepth(symbol, depth, source);
     else
         return false;
 }

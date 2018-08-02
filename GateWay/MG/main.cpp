@@ -3,15 +3,17 @@
 //
 
 #include <thread>
+#include <fstream>
 #include "IMGEngine.h"
 
-std::string jj = "{\"name\":\"ok_mg\",\"source\":1}";
-
-int main()
+int main(int argc, char* argv[])
 {
-    std::shared_ptr<IMGEngine> p(new IMGEngine());
+    std::ifstream in(argv[1]);
+    std::ostringstream oss;
+    oss << in.rdbuf();
 
-    p->Initialize(jj);
+    std::shared_ptr<IMGEngine> p(new IMGEngine());
+    p->Initialize(oss.str());
     p->Start();
     p->WaitForStop();
 }

@@ -7,6 +7,7 @@
 
 #include "UnitDeclare.h"
 #include "StrategyUtil.h"
+#include "DataStruct.h"
 
 USING_UNIT_NAMESPACE
 
@@ -22,12 +23,15 @@ public:
     explicit DCSSStrategyUtil(const std::string& strategyName);
     ~DCSSStrategyUtil() override = default;
 
-    int InsertLimitOrder(short source, const DCSSSymbolField& symbol, double price, double volume, TradeTypeType tradeType);
+    int InsertOrder(uint8_t source, const std::string& symbol, double price, double volume, TradeTypeType tradeType);
 
-    int InsertMarketOrder(short source, const DCSSSymbolField& symbol, double volume, TradeTypeType tradeType);
+    int CancelOrder(uint8_t source, const std::string& symbol, long orderId);
 
-    int CancelOrder(short source, const DCSSSymbolField& symbol, long orderId);
+    int ReqQryAccount(uint8_t source);
 
+    int ReqQryTicker(uint8_t source, const DCSSReqQryTickerField& req);
+
+    int ReqQryKline(uint8_t source, const DCSSReqQryKlineField& req);
 
     /*get nano time*/
     long GetNano();
@@ -44,7 +48,9 @@ public:
 
 private:
     long mMdNano;
+
     long mCurNano;
+
     std::string mStrategyName;
 };
 

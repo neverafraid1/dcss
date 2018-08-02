@@ -68,7 +68,7 @@ protected:
     /*the unit will write in*/
     UnitPtr mUnit;
     /*private constructor, only can get object through create*/
-    UnitWriter(PageProviderPtr ptr) : UnitHandler(ptr) {}
+    explicit UnitWriter(PageProviderPtr ptr) : UnitHandler(std::move(ptr)) {}
 
 };
 
@@ -80,7 +80,7 @@ public:
 
     static UnitWriterPtr Create(const std::string& dir, const std::string& uname, const std::string& writerName);
 protected:
-    UnitSafeWriter(PageProviderPtr ptr) : UnitWriter(ptr) {}
+    explicit UnitSafeWriter(PageProviderPtr ptr) : UnitWriter(std::move(ptr)) {}
 };
 
 UNIT_NAMESPACE_END

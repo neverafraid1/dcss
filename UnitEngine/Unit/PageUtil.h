@@ -27,7 +27,7 @@ public:
      * @param quickMode true: no locking; false: mlock the memory for performance
      * @return the address of memory
      */
-    static void* LoadPageBuffer(const std::string& path, int size, bool isWriting, bool quickMode);
+    static void* LoadPageBuffer(const std::string& path, size_t size, bool isWriting, bool quickMode);
 
     /**
      * release page bufferm, buffer and size need to be specified
@@ -35,7 +35,7 @@ public:
      * @param size
      * @param quickMode true: no locking; false: munlock the memory
      */
-    static void ReleasePageBuffer(void* buffer, int size, bool quickMode);
+    static void ReleasePageBuffer(void* buffer, size_t size, bool quickMode);
 
     static bool FileExists(const std::string& fileName);
 

@@ -54,7 +54,7 @@ private:
 
     bool mIsWriting;
 
-    Unit() : mExpired(false) {}
+    Unit() : mExpired(false), mServiceIdx(-1), mIsWriting(false) {}
 };
 
 DECLARE_PTR(Unit);

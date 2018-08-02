@@ -34,16 +34,17 @@ struct AccountUnitOK
 class OKTGApi: public ITGApi
 {
 public:
-    OKTGApi(short source);
-    virtual ~OKTGApi();
+    explicit OKTGApi(uint8_t source);
+    virtual ~OKTGApi() override ;
 
 public:
     void LoadAccount(const nlohmann::json& config) override ;
     void Connect() override ;
+    void Disconnect() override;
     void Login() override ;
     void Logout() override {};
     bool IsConnected() const override;
-    bool IsLogged() override;
+    bool IsLogged() const override;
     void Register(ITGEnginePtr spi) override;
 
 public:
@@ -56,13 +57,11 @@ public:
     void ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID) override ;
 
 private:
-    void OnRestConnected();
     void OnWsConnected();
     void OnWsClose(websocket_close_status close_status, const utility::string_t& reason, const std::error_code& error);
     void WsConnectFail(const std::string& reason);
 
-    void OnRspError(std::string reason, int requestID);
-    void OnRspQryTicker(http_response& response, int requestID, const DCSSSymbolField& symbol);
+    void OnRspQryTicker(http_response& response, int requestID, const char21& symbol);
     void OnRspQryKline(http_response& response, const DCSSReqQryKlineField* req, int requestID);
     void OnRspQryUserInfo(http_response& response, int requestID);
     void OnRspInsertOrder(http_response& response, int requestID);
@@ -70,6 +69,8 @@ private:
     void OnRspQryOrder(http_response& response, const DCSSReqQryOrderField* req, int requestID);
 
 private:
+
+    void ResetRestClient();
 
     void OnWSMessage(const websocket_incoming_message& msg);
 
@@ -80,9 +81,10 @@ private:
     void OnRtnBalance(const json::object& j);
     void OnUserLogin(const json::object& j);
 
+    void Ping();
+
 private:
     static std::map<KlineTypeType, std::string> klineStringMap;
-    static std::map<std::string, KlineTypeType> stringKlineMap;
     static std::map<TradeTypeType, std::string> tradeTypeStringMap;
     static std::map<std::string, TradeTypeType> stringTradeTypeMap;
 
@@ -95,10 +97,13 @@ private:
     volatile bool IsRestConnected;
     volatile bool IsWsConnected;
     volatile bool IsLoggined;
+    volatile bool IsPonged;
 
     ITGEnginePtr mSpi;
 
     DCSSLogPtr mLogger;
+
+    std::unique_ptr<std::thread> mPingThread;
 
 };
 

@@ -45,41 +45,46 @@ public:
 
     void SetReaderThread() override ;
 
-    void Connect() override {};
+    void Connect() override;
+
+    void Disconnect() override;
     /** release api */
     void ReleaseApi() override {};
     /** return true if engine is connected to front */
-    bool IsConnected() const  override { return true;};
+    bool IsConnected() const  override;
 
     virtual TradeAccount LoadAccount(int idx, const nlohmann::json& account);
 
 protected:
     /*add strategy, return true if added successfully*/
-    bool ReigsterClient(const std::string& name, const nlohmann::json& request);
+    bool RegisterClient(const std::string& name, const nlohmann::json& request);
     /*remove strategy*/
     bool RemoveClient(const std::string& name, const nlohmann::json& request);
 
-
 public:
-    void OnRtnOrder(const DCSSOrderField* order, short source);
+    void OnRtnOrder(const DCSSOrderField* order, uint8_t source);
 
-    void OnRspQryTicker(const DCSSTickerField* ticker, short source, int requestId,
+    void OnRspQryTicker(const DCSSTickerField* ticker, uint8_t source, int requestId,
             int errorId = 0, const char* errorMsg = nullptr);
 
-    void OnRspQryKline(const DCSSKlineHeaderField* header, short source, const std::vector<DCSSKlineField>& kline,
+    void OnRspQryKline(const DCSSKlineHeaderField* header, uint8_t source, const std::vector<DCSSKlineField>& kline,
             int requestId, int errorId = 0, const char* errorMsg = nullptr);
 
-    void OnRspQryUserInfo(const DCSSUserInfoField* userInfo, short source, int requestId,
+    void OnRspQryUserInfo(const DCSSTradingAccountField* userInfo, uint8_t source, int requestId,
             int errorId = 0, const char* errorMsg = nullptr);
 
-    void OnRspOrderInsert(const DCSSRspInsertOrderField* rsp, short source, int requestId,
+    void OnRspOrderInsert(const DCSSRspInsertOrderField* rsp, uint8_t source, int requestId,
             int errorId = 0, const char* errorMsg = nullptr);
 
-    void OnRspOrderAction(const DCSSRspCancelOrderField* rsp, short source, int requestId,
+    void OnRspOrderAction(const DCSSRspCancelOrderField* rsp, uint8_t source, int requestId,
             int errorId = 0, const char* errorMsg = nullptr);
 
-    void OnRspQryOrder(const DCSSRspQryOrderHeaderField* header, short source, const std::vector<DCSSRspQryOrderField>& order,
+    void OnRspQryOrder(const DCSSRspQryOrderHeaderField* header, uint8_t source, const std::vector<DCSSRspQryOrderField>& order,
             int requestId, int errorId = 0, const char* errorMsg = nullptr);
+
+    void OnRtnBalance(const DCSSBalanceField* balance, uint8_t source);
+
+    void OnRtnTdStatus(const GateWayStatusType& status, uint8_t source);
 
 protected:
     void Listening();
@@ -106,14 +111,15 @@ class ITGApi
 {
 public:
     /*only interface to create a api*/
-    static ITGApiPtr CreateTGApi(short source);
+    static ITGApiPtr CreateTGApi(uint8_t source);
 
     virtual void LoadAccount(const nlohmann::json& config) = 0;
     virtual void Connect() = 0;
+    virtual void Disconnect() = 0;
     virtual void Login() = 0;
     virtual void Logout() = 0;
     virtual bool IsConnected() const = 0;
-    virtual bool IsLogged() = 0;
+    virtual bool IsLogged() const = 0;
 
     virtual void Register(ITGEnginePtr spi) = 0;
 
@@ -126,13 +132,13 @@ public:
     virtual void ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID) = 0;
 
 protected:
-    ITGApi(short source)
+    explicit ITGApi(uint8_t source)
     : mSourceId(source)
     {}
     virtual ~ITGApi() = default;
 
 protected:
-    short mSourceId;
+    uint8_t mSourceId;
 };
 
 #endif //DEMO_TGENGINE_H

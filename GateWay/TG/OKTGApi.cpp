@@ -26,22 +26,6 @@ std::map<KlineTypeType, std::string> OKTGApi::klineStringMap = {
         {KLINE_1WEEK, "1week"}
 };
 
-std::map<std::string, KlineTypeType> OKTGApi::stringKlineMap = {
-        {"1min", KLINE_1MIN},
-        {"3min", KLINE_3MIN},
-        {"5min", KLINE_5MIN},
-        {"15min", KLINE_15MIN},
-        {"30min", KLINE_30MIN},
-        {"1hour", KLINE_1HOUR},
-        {"2hour", KLINE_2HOUR},
-        {"4hour", KLINE_4HOUR},
-        {"6hour", KLINE_6HOUR},
-        {"12hour", KLINE_12HOUR},
-        {"1day", KLINE_1DAY},
-        {"3day", KLINE_3DAY},
-        {"1week", KLINE_1WEEK}
-};
-
 std::map<TradeTypeType, std::string> OKTGApi::tradeTypeStringMap = {
         {BUY, "buy"},
         {SELL, "sell"},
@@ -56,22 +40,10 @@ std::map<std::string, TradeTypeType> OKTGApi::stringTradeTypeMap = {
         {"sell_market", SELL_MARKET}
 };
 
-OKTGApi::OKTGApi(short source)
-        :ITGApi(source), IsRestConnected(false), IsWsConnected(false)//, mSourceId(EXCHANGE_OKCOIN)
+OKTGApi::OKTGApi(uint8_t source)
+        :ITGApi(source), IsRestConnected(false), IsWsConnected(false), IsPonged(true)
 {
-    web_proxy proxy("http://192.168.1.164:1080");
-    websocket_client_config config;
-    config.set_proxy(proxy);
 
-    http_client_config config1;
-    config1.set_timeout(seconds(5));
-    config1.set_proxy(proxy);
-
-    mWsClient.reset(new websocket_callback_client(config));
-    mRestClient.reset(new http_client(U(OK_REST_ROOT_URL), config1));
-
-    mWsClient->set_message_handler(std::bind(&OKTGApi::OnWSMessage, this, std::placeholders::_1));
-    mWsClient->set_close_handler(std::bind(&OKTGApi::OnWsClose, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
 OKTGApi::~OKTGApi()
@@ -79,6 +51,8 @@ OKTGApi::~OKTGApi()
     mWsClient->close();
     mWsClient.reset();
     mRestClient.reset();
+    mPingThread->join();
+    mPingThread.reset();
 }
 
 void OKTGApi::OnWsClose(web::websockets::client::websocket_close_status close_status,
@@ -88,33 +62,58 @@ void OKTGApi::OnWsClose(web::websockets::client::websocket_close_status close_st
     << "(reason)" << reason << "(error)" << error.message());
 
     IsWsConnected = false;
+
+    mPingThread->join();
+    mPingThread.reset();
+
+    mSpi->OnRtnTdStatus(TD_STATUS_DISCONNECTED, mSourceId);
+}
+
+void OKTGApi::ResetRestClient()
+{
+    web_proxy proxy("http://192.168.1.164:1080");
+    http_client_config http_config;
+    http_config.set_proxy(proxy);
+
+    mRestClient.reset(new http_client(U(OK_REST_ROOT_URL), http_config));
 }
 
 void OKTGApi::OnWSMessage(const web::websockets::client::websocket_incoming_message& msg)
 {
+    std::string s = msg.extract_string().get();
+    std::cout << s << std::endl;
     try
     {
-        json::value jvalue = json::value::parse(msg.extract_string().get());
-        const json::array& jarray = jvalue.as_array();
-        for (auto i : jarray)
+        json::value jvalue = json::value::parse(s);
+        if (jvalue.is_object())
         {
-            const json::object& jobj = i.as_object();
-            std::string channel = jobj.at(U("channel")).as_string();
-            const json::object& data = jobj.at(U("data")).as_object();
-            if (channel.find("order") != std::string::npos)
+            std::string event = jvalue.as_object().at(U("event")).as_string();
+            if (event == "pong")
+                IsPonged = true;
+        }
+        else if (jvalue.is_array())
+        {
+            const json::array& jarray = jvalue.as_array();
+            for (auto& i : jarray)
             {
-                OnRtnOrder(data);
-                break;
-            }
-            if (channel.find("balance") != std::string::npos)
-            {
-                OnRtnBalance(data);
-                break;
-            }
-            if (channel.find("login") != std::string::npos)
-            {
-                OnUserLogin(data);
-                break;
+                const json::object& jobj = i.as_object();
+                std::string channel = jobj.at(U("channel")).as_string();
+                const json::object& data = jobj.at(U("data")).as_object();
+                if (channel.find("order") != std::string::npos)
+                {
+                    OnRtnOrder(data);
+                    break;
+                }
+                if (channel.find("balance") != std::string::npos)
+                {
+                    OnRtnBalance(data);
+                    break;
+                }
+                if (channel.find("login") != std::string::npos)
+                {
+                    OnUserLogin(data);
+                    break;
+                }
             }
         }
     }
@@ -129,9 +128,7 @@ void OKTGApi::OnRtnOrder(const json::object& jorder)
 {
     DCSSOrderField order;
 
-    if (!ConvStringSymbol(jorder.at(U("symbol")).as_string(), order.Symbol))
-        return;;
-
+    strcpy(order.Symbol, jorder.at(U("symbol")).as_string().c_str());
     SplitLongTime(std::stol(jorder.at(U("createdDate")).as_string()), order.CreateDate, order.CreateTime,
             order.Millisec);
     order.OrderID = jorder.at(U("orderId")).as_number().to_int64();
@@ -147,7 +144,7 @@ void OKTGApi::OnRtnOrder(const json::object& jorder)
     order.AveragePrice = std::stod(jorder.at(U("averagePrice")).as_string());
     if (jorder.find(U("unTrade"))!=jorder.end())
         order.UnTrade = std::stod(jorder.at(U("unTrade")).as_string());
-    order.OrderStatus = (OrderStatusType) (jorder.at(U("Status")).as_integer());
+    order.OrderStatus = (OrderStatusType) (jorder.at(U("status")).as_integer());
 
 
     mSpi->OnRtnOrder(&order, mSourceId);
@@ -155,6 +152,15 @@ void OKTGApi::OnRtnOrder(const json::object& jorder)
 
 void OKTGApi::OnRtnBalance(const web::json::object& j)
 {
+    DCSSBalanceField balance;
+    const json::object& info = j.at(U("info")).as_object();
+    const json::object& free = info.at(U("free")).as_object();
+    const json::object& freezed = info.at(U("freezed")).as_object();
+    memcpy(balance.Currency, free.begin()->first.c_str(), free.begin()->first.length());
+    balance.Free = free.begin()->second.as_double();
+    balance.Freezed = freezed.begin()->second.as_double();
+
+    mSpi->OnRtnBalance(&balance, mSourceId);
 }
 
 void OKTGApi::OnUserLogin(const web::json::object& j)
@@ -162,14 +168,12 @@ void OKTGApi::OnUserLogin(const web::json::object& j)
     IsLoggined = j.at(U("result")).as_bool();
     if (IsLoggined)
     {
-        DCSS_LOG_INFO(mLogger, "[ok_tg][login]" << "\t(" << mApiKey << ")"
-        << " login success");
+        DCSS_LOG_INFO(mLogger, "(api key)" << mApiKey << " login success");
+        mSpi->OnRtnTdStatus(TD_STATUS_LOGINED, mSourceId);
     }
     else
     {
-        DCSS_LOG_INFO(mLogger, "[ok_tg][login]" << "\t(" << mApiKey << ")"
-        << " login fail!");
-        DCSS_LOG_INFO(mLogger, "[ok_tg][login]" << "(error_msg)" <<
+        DCSS_LOG_INFO(mLogger, "(api key)" << mApiKey << " login fail!" << "(error_msg)" <<
         j.at(U("error_msg")).as_string());
     }
 }
@@ -182,12 +186,25 @@ void OKTGApi::LoadAccount(const nlohmann::json& config)
 
 void OKTGApi::Connect()
 {
+    web_proxy proxy("http://192.168.1.164:1080");
+//    http_client_config http_config;
+//    http_config.set_proxy(proxy);
+//
+//    mRestClient.reset(new http_client(U(OK_REST_ROOT_URL), http_config));
+
+    websocket_client_config ws_config;
+    ws_config.set_proxy(proxy);
+
+    mWsClient.reset(new websocket_callback_client(ws_config));
+    mWsClient->set_message_handler(std::bind(&OKTGApi::OnWSMessage, this, std::placeholders::_1));
+    mWsClient->set_close_handler(std::bind(&OKTGApi::OnWsClose, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+
     mWsClient->connect(U(OK_WS_ADDRESS))
             .then([this]()
             {
                 OnWsConnected();
             })
-            .then([&](pplx::task<void> task)
+            .then([=](pplx::task<void> task)
             {
                 try
                 {
@@ -196,32 +213,62 @@ void OKTGApi::Connect()
                 catch (const std::exception& e)
                 {
                     DCSS_LOG_ERROR(mLogger,
-                            "[ok_tg][connect]\t(" << mApiKey << ")" << "ws send connect failed!(exception)"
+                            "(api key)" << mApiKey << "ws send connect failed!(exception)"
                                                   << e.what());
                 }
             });
 }
 
+void OKTGApi::Disconnect()
+{
+    mWsClient->close(websocket_close_status::normal, "disconnect by client");
+}
+
 void OKTGApi::OnWsConnected()
 {
-    DCSS_LOG_INFO(mLogger, "[ok_tg][connect]\t(" << mApiKey << ")" << " ws connect success!");
+    DCSS_LOG_INFO(mLogger, "(api key)" << mApiKey << " ws connect success!");
     IsWsConnected = true;
+
+    mSpi->OnRtnTdStatus(TD_STATUS_CONNECTED, mSourceId);
+
+    mPingThread.reset(new std::thread(&OKTGApi::Ping, this));
+
+    Login();
+}
+
+void OKTGApi::Ping()
+{
+    /* every loop is 500ms, otherwise join will block too long*/
+    int i = 0;
+    while (true)
+    {
+        if (!IsPonged && i > 60)
+        {
+            DCSS_LOG_ERROR(mLogger, "[Ping] don't recv pong in the last 30 seconds");
+            IsWsConnected = false;
+        }
+        else
+        {
+            IsPonged = false;
+            json::value jv;
+            jv[U("event")] = json::value::string("ping");
+            websocket_outgoing_message msg;
+            msg.set_utf8_message(jv.serialize());
+            if (IsConnected() && i++ >= 60)
+            {
+                i = 0;
+                mWsClient->send(msg);
+                DCSS_LOG_DEBUG(mLogger, "[Ping] send ping to remote");
+            }
+            else
+                break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
 }
 
 void OKTGApi::Login()
 {
-    int i = 0;
-    while (!IsWsConnected)
-    {
-        if (i++ >= 10)
-        {
-            DCSS_LOG_ERROR(mLogger, "[ok_tg][login]\t" << "(" << mApiKey << ")"
-            << "connect to " << OK_WS_ADDRESS << " timeout!");
-            return;
-        }
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-
     uri_builder builder;
     builder.append_query(U("api_key"), U(mApiKey));
     builder.append_query(U("secret_key"), U(mSecretKey));
@@ -237,10 +284,10 @@ void OKTGApi::Login()
     websocket_outgoing_message msg;
     msg.set_utf8_message(jv.serialize());
 
-    mWsClient->send(msg).then([&]()
+    mWsClient->send(msg).then([this]()
     {
-        DCSS_LOG_INFO(mLogger, "[ok_tg][login]\t" << "(" << mApiKey << ")" << " send request success!");
-    }).then([&](pplx::task<void> task)
+        DCSS_LOG_INFO(mLogger, "(api key)" << mApiKey << " send request success!");
+    }).then([=](pplx::task<void> task)
     {
         try
         {
@@ -248,7 +295,7 @@ void OKTGApi::Login()
         }
         catch (const std::exception& e)
         {
-            DCSS_LOG_ERROR(mLogger, "[ok_tg][login]\t" << "(" << mApiKey << ")"
+            DCSS_LOG_ERROR(mLogger, "(api key)" << mApiKey
                                                    << " send request failed!(exception)" << e.what() );
         }
     });
@@ -257,11 +304,14 @@ void OKTGApi::Login()
 
 void OKTGApi::Register(ITGEnginePtr spi)
 {
+    if (spi.get() == nullptr)
+        return;
+
     mSpi = spi;
     mLogger = mSpi->GetLogger();
 }
 
-bool OKTGApi::IsLogged()
+bool OKTGApi::IsLogged() const
 {
     return IsLoggined;
 }
@@ -274,13 +324,13 @@ bool OKTGApi::IsConnected() const
 void OKTGApi::ReqQryTicker(const DCSSReqQryTickerField* req, int requestID)
 {
     uri_builder builder(U(OK_REST_TICK_URL));
-    builder.append_query(U(OK_SYMBOL_STRING), U(ConvStructSymbol(req->Symbol)));
+    builder.append_query(U(OK_SYMBOL_STRING), U(std::string(req->Symbol)));
     mRestClient->request(methods::GET, builder.to_string())
-            .then([&](http_response response)
+            .then([=](http_response response)
             {
               OnRspQryTicker(response, requestID, req->Symbol);
             })
-            .then([&](pplx::task<void> task)
+            .then([=](pplx::task<void> task)
             {
               try
               {
@@ -294,7 +344,6 @@ void OKTGApi::ReqQryTicker(const DCSSReqQryTickerField* req, int requestID)
             });
 }
 
-
 void OKTGApi::ReqQryKline(const DCSSReqQryKlineField* req, int requestID)
 {
     if (klineStringMap.find(req->KlineType)==klineStringMap.end())
@@ -303,8 +352,11 @@ void OKTGApi::ReqQryKline(const DCSSReqQryKlineField* req, int requestID)
                                                   << " unknown kline type "<< req->KlineType);
         return;
     }
+
+    ResetRestClient();
+
     uri_builder builder(U("kline.do"));
-    builder.append_query(U("symbol"), U(ConvStructSymbol(req->Symbol)));
+    builder.append_query(U("symbol"), U(std::string(req->Symbol)));
     builder.append_query(U("type"), U(klineStringMap.at(req->KlineType)));
     if (req->Size!=0)
         builder.append_query(U("size"), req->Size);
@@ -312,11 +364,11 @@ void OKTGApi::ReqQryKline(const DCSSReqQryKlineField* req, int requestID)
         builder.append_query(U("since"), req->Since);
 
     mRestClient->request(methods::GET, builder.to_string())
-            .then([&](http_response response)
+            .then([=](http_response response)
             {
                 OnRspQryKline(response, req, requestID);
             })
-            .then([&](pplx::task<void> task)
+            .then([=](pplx::task<void> task)
             {
                 try
                 {
@@ -332,16 +384,18 @@ void OKTGApi::ReqQryKline(const DCSSReqQryKlineField* req, int requestID)
 
 void OKTGApi::ReqQryUserInfo(int requestID)
 {
+    ResetRestClient();
+
     uri_builder builder(U("userinfo.do"));
     AddApiKey(builder);
     AddSecKeyAndSign(builder);
 
     mRestClient->request(methods::POST, builder.to_string())
-            .then([&](http_response response)
+            .then([=](http_response response)
             {
                 OnRspQryUserInfo(response, requestID);
             })
-            .then([&](pplx::task<void> task)
+            .then([=](pplx::task<void> task)
             {
                 try
                 {
@@ -349,7 +403,7 @@ void OKTGApi::ReqQryUserInfo(int requestID)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(mLogger, "[ok_tg][qryuserinfo]\t" << "(" << mApiKey << ")"
+                    DCSS_LOG_ERROR(mLogger, "[ok_tg][qryuserinfo] " << "(" << mApiKey << ")"
                                                               << " send request failed!(exception)" << e.what());
                 }
 
@@ -362,15 +416,15 @@ void OKTGApi::ReqQryOrder(const DCSSReqQryOrderField* req, int requestID)
 
     AddApiKey(builder);
     builder.append_query(U("order_id"), req->OrderID);
-    builder.append_query(U("symbol"), U(ConvStructSymbol(req->Symbol)));
+    builder.append_query(U("symbol"), U(std::string(req->Symbol)));
     AddSecKeyAndSign(builder);
 
     mRestClient->request(methods::POST, builder.to_string())
-            .then([&](http_response response)
+            .then([=](http_response response)
             {
                 OnRspQryOrder(response, req, requestID);
 
-            }).then([&](pplx::task<void> task)
+            }).then([=](pplx::task<void> task)
             {
                 try
                 {
@@ -386,18 +440,25 @@ void OKTGApi::ReqQryOrder(const DCSSReqQryOrderField* req, int requestID)
 
 void OKTGApi::ReqInsertOrder(const DCSSReqInsertOrderField* req, int requestID)
 {
-    uri_builder builder(U("trade.do"));
+    ResetRestClient();
 
-    builder.append_query(U("amount"), req->Amount);
+    uri_builder builder(U("trade.do"));
+    if (req->TradeType != BUY_MARKET)
+    {
+        builder.append_query(U("amount"), req->Amount);
+    }
     AddApiKey(builder);
-    if (req->TradeType == BUY || req->TradeType == SELL)
+    if (req->TradeType != SELL_MARKET)
+    {
         builder.append_query(U("price"), req->Price);
-    builder.append_query(U("symbol"), U(ConvStructSymbol(req->Symbol)));
+    }
+
+    builder.append_query(U("symbol"), U(std::string(req->Symbol)));
     builder.append_query(U("type"), U(tradeTypeStringMap.at(req->TradeType)));
     AddSecKeyAndSign(builder);
 
     mRestClient->request(methods::POST, builder.to_string())
-            .then([&](http_response response) mutable
+            .then([=](http_response response) mutable
             {
                 OnRspInsertOrder(response, requestID);
             }).then([=](pplx::task<void> task) mutable
@@ -421,7 +482,7 @@ void OKTGApi::ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID)
     uri_builder builder(U("cancel_order.do"));
 
     AddApiKey(builder);
-    builder.append_query(U("symbol"), U(ConvStructSymbol(req->Symbol)));
+    builder.append_query(U("symbol"), U(std::string(req->Symbol)));
 
     std::stringstream ssorderid;
 
@@ -439,10 +500,10 @@ void OKTGApi::ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID)
     AddSecKeyAndSign(builder);
 
     mRestClient->request(methods::POST, builder.to_string())
-            .then([&](http_response response)
+            .then([=](http_response response)
             {
                 OnRspCancelOrder(response, requestID);
-            }).then([&](pplx::task<void> task)
+            }).then([=](pplx::task<void> task)
             {
                 try
                 {
@@ -457,7 +518,7 @@ void OKTGApi::ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID)
             });
 }
 
-void OKTGApi::OnRspQryTicker(http_response& response, int requestID, const DCSSSymbolField& symbol)
+void OKTGApi::OnRspQryTicker(http_response& response, int requestID, const char21& symbol)
 {
     const json::value& jv = response.extract_json().get();
     const json::object& jobj = jv.as_object();
@@ -468,7 +529,7 @@ void OKTGApi::OnRspQryTicker(http_response& response, int requestID, const DCSSS
         {
             DCSSTickerField ticker;
             SplitTime(std::stol(jobj.at(U("date")).as_string()), ticker.Date, ticker.Time);
-            memcpy(&ticker.Symbol, &symbol, sizeof(symbol));
+            strcpy(ticker.Symbol, symbol);
             const json::object& tickobj = jobj.at(U("ticker")).as_object();
             ticker.BuyPrice = std::stod(tickobj.at(U("buy")).as_string());
             ticker.SellPrice = std::stod(tickobj.at(U("sell")).as_string());
@@ -478,20 +539,16 @@ void OKTGApi::OnRspQryTicker(http_response& response, int requestID, const DCSSS
             ticker.Volume = std::stod(tickobj.at(U("vol")).as_string());
 
             mSpi->OnRspQryTicker(&ticker, mSourceId, requestID);
-
-            // writer
         }
         catch (const std::exception& e)
         {
-            DCSS_LOG_ERROR(mLogger, "[ok_tg][qryticker]\t" << "(" << mApiKey << ")"
-                                                      << " parse rsp failed!(exception)" << e.what());
+            DCSS_LOG_ERROR(mLogger, "(api key)" << mApiKey << " parse rsp failed!(exception)" << e.what());
         }
     }
     else
     {
         mSpi->OnRspQryTicker(nullptr, mSourceId, requestID, jobj.at(U("error_code")).as_integer(), nullptr);
-        DCSS_LOG_INFO(mLogger, "[ok_tg][qryticker]\t" << "(" << mApiKey << ")"
-                                                    << " qry failed !(error_id)" << jobj.at(U("error_code")).as_integer());
+        DCSS_LOG_INFO(mLogger, "(api key)" << mApiKey << " qry failed !(error_id)" << jobj.at(U("error_code")).as_integer());
     }
 
 }
@@ -507,7 +564,7 @@ void OKTGApi::OnRspQryKline(http_response& response, const DCSSReqQryKlineField*
             const json::array& jarr = jv.as_array();
 
             DCSSKlineHeaderField header;
-            memcpy(&header.Symbol, &req->Symbol, sizeof(req->Symbol));
+            strcpy(header.Symbol, req->Symbol);
             header.KlineType = req->KlineType;
             header.Size = jarr.size();
 
@@ -525,16 +582,14 @@ void OKTGApi::OnRspQryKline(http_response& response, const DCSSReqQryKlineField*
                     kline.Lowest = std::stod(klineArr.at(3).as_string());
                     kline.ClosePrice = std::stod(klineArr.at(4).as_string());
                     kline.Volume = std::stod(klineArr.at(5).as_string());
-                    klineVec.push_back(kline);
                 }
             }
 
-            mSpi->OnRspQryKline(&header, mSourceId, klineVec, true, requestID);
+            mSpi->OnRspQryKline(&header, mSourceId, klineVec, requestID);
         }
         catch (const std::exception& e)
         {
-            DCSS_LOG_ERROR(mLogger, "[ok_tg][qrykline]\t" << "(" << mApiKey << ")"
-                                                       << " parse rsp failed!(exception)" << e.what());
+            DCSS_LOG_ERROR(mLogger, "(api key)" << mApiKey << " parse rsp failed!(exception)" << e.what());
         }
     }
     else if (jv.is_object())
@@ -544,8 +599,7 @@ void OKTGApi::OnRspQryKline(http_response& response, const DCSSReqQryKlineField*
         {
             mSpi->OnRspQryKline(nullptr, mSourceId, std::vector<DCSSKlineField>(), requestID, jobj.at(U("error_code")).as_integer(),
                     nullptr);
-            DCSS_LOG_INFO(mLogger, "[ok_tg][qrykline]\t" << "(" << mApiKey << ")"
-                                                      << " qry failed !(error_id)" << jobj.at(U("error_code")).as_integer());
+            DCSS_LOG_INFO(mLogger, "(api key)" << mApiKey << " qry failed !(error_id)" << jobj.at(U("error_code")).as_integer());
         }
     }
 }
@@ -562,7 +616,7 @@ void OKTGApi::OnRspQryUserInfo(http_response& response, int requestID)
             bool result = jobj.at(U("result")).as_bool();
             if (result)
             {
-                DCSSUserInfoField rsp;
+                DCSSTradingAccountField rsp;
                 const json::object& info = jobj.at(U("info")).as_object();
                 const json::object& fund = info.at(U("funds")).as_object();
                 const json::object& free = fund.at(U("free")).as_object();
@@ -574,20 +628,32 @@ void OKTGApi::OnRspQryUserInfo(http_response& response, int requestID)
                     double balance = std::stod(i.second.as_string());
                     if (!IsEqual(balance, 0.0))
                     {
-                        memcpy(rsp.Free[index].Currency, i.first.c_str(), i.first.length());
-                        rsp.Free[index].Balance = balance;
+                        memcpy(rsp.Balance[index].Currency, i.first.c_str(), i.first.length());
+                        rsp.Balance[index].Free = balance;
                         ++index;
                     }
                 }
-                index = 0;
                 for (const auto& i : freezed)
                 {
                     double balance = std::stod(i.second.as_string());
                     if (!IsEqual(balance, 0.0))
                     {
-                        memcpy(rsp.Freezed[index].Currency, i.first.c_str(), i.first.length());
-                        rsp.Freezed[index].Balance = balance;
-                        ++index;
+                        const std::string& currency = i.first;
+                        bool found = false;
+                        for (index = 0; index < MAX_CURRENCY_NUM && strlen(rsp.Balance[index].Currency) != 0; ++index)
+                        {
+                            if (std::string(rsp.Balance[index].Currency) == currency)
+                            {
+                                rsp.Balance[index].Freezed = balance;
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found)
+                        {
+                            memcpy(rsp.Balance[index].Currency, currency.c_str(), currency.length());
+                            rsp.Balance[index].Freezed = balance;
+                        }
                     }
                 }
 
@@ -596,14 +662,14 @@ void OKTGApi::OnRspQryUserInfo(http_response& response, int requestID)
             else
             {
                 // TODO
-                DCSS_LOG_INFO(mLogger, "[ok_tg][qryuserinfo]\t" << "(" << mApiKey << ")"
+                DCSS_LOG_INFO(mLogger, "[ok_tg][qryuserinfo] " << "(" << mApiKey << ")"
                 << " result is false !");
             }
 
         }
         catch (const std::exception& e)
         {
-            DCSS_LOG_ERROR(mLogger, "[ok_tg][qryuserinfo]\t" << "(" << mApiKey << ")"
+            DCSS_LOG_ERROR(mLogger, "[ok_tg][qryuserinfo] " << "(" << mApiKey << ")"
                                                          << " parse rsp failed!(exception)" << e.what());
         }
 
@@ -611,7 +677,7 @@ void OKTGApi::OnRspQryUserInfo(http_response& response, int requestID)
     else
     {
         mSpi->OnRspQryUserInfo(nullptr, mSourceId, requestID, jobj.at(U("error_code")).as_integer(), nullptr);
-        DCSS_LOG_INFO(mLogger, "[ok_tg][qryuserinfo]\t" << "(" << mApiKey << ")"
+        DCSS_LOG_INFO(mLogger, "[ok_tg][qryuserinfo] " << "(" << mApiKey << ")"
                 << " qry failed !(error_id)" << jobj.at(U("error_code")).as_integer());
     }
 }

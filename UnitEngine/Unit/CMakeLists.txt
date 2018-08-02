@@ -13,7 +13,7 @@ LINK_DIRECTORIES(/usr/local/lib/boost)
 
 ADD_COMPILE_OPTIONS(-fPIC)
 
-SET(LIB_UTIL_INCLUDE_FILES ../utils/Timer.h ../utils/Declare.h ../utils/constants.h ../utils/json.hpp)
+SET(LIB_UTIL_INCLUDE_FILES ../utils/Timer.h ../utils/constants.h ../utils/json.hpp)
 SET(LIB_UTIL_SOURCE_FILES ../utils/Timer.cpp)
 
 SET(LIB_INCLUDE_FILES ${LIB_UTIL_INCLUDE_FILES} Frame.hpp FrameHeader.h

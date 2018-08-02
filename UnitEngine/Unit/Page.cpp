@@ -42,7 +42,7 @@ PagePtr Page::Load(const std::string& dir, const std::string& uname, short pageN
     {
         std::stringstream ss;
         ss << "page version mismatch: (program)" << __FRAME_VERSION__ << " (page)" << header->FrameVersion;
-        throw std::runtime_error(ss.str().c_str());
+        throw std::runtime_error(ss.str());
     }
 
     PagePtr pPage(new Page(buffer));

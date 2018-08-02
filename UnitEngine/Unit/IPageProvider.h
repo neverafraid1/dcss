@@ -16,7 +16,7 @@ class IPageProvider
 public:
     virtual PagePtr GetPage(const std::string& dir, const std::string& uname, int serviceIdx, short pageNum) = 0;
     /*release page after using*/
-    virtual void ReleasePage(void* buffer, int size, int serviceIdx) = 0;
+    virtual void ReleasePage(void* buffer, size_t size, int serviceIdx) = 0;
     /*return true if this page is using for writing*/
     virtual bool IsWriter() const = 0;
 

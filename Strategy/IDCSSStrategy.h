@@ -5,6 +5,8 @@
 #ifndef DIGITALCURRENCYSTRATEGYSYSTEM_ISTRATEGY_H
 #define DIGITALCURRENCYSTRATEGYSYSTEM_ISTRATEGY_H
 
+#include <unordered_set>
+
 #include "IDCSSDataProcessor.h"
 #include "DCSSDataWrapper.h"
 #include "DCSSLog.h"
@@ -12,22 +14,34 @@
 class IDCSSStrategy : public IDCSSDataProcessor
 {
 public:
-    void OnRtnTicker(const DCSSTickerField& ticker, short source, long recvTime) override ;
+    explicit IDCSSStrategy(const std::string& name);
 
-    void OnRtnKline(const DCSSKlineHeaderField& header,
-    const std::vector<DCSSKlineField>& kline,
-    short source,
-    long recvTime) override ;
+    virtual ~IDCSSStrategy();
 
-    void OnRtnDepth(const DCSSDepthHeaderField& header,
-    const std::vector<DCSSDepthField>& ask,
-    const std::vector<DCSSDepthField>& bid,
-    short source,
-    long recvTime) override {}
+public:
+    void OnRtnTicker(const DCSSTickerField* ticker, uint8_t source, long recvTime) override ;
 
-    void OnRtnOrder(const DCSSOrderField& order, int requestID, short source, long recvTime) override ;
+    void OnRtnKline(const DCSSKlineHeaderField* header,
+            const std::vector<const DCSSKlineField*>& kline,
+            uint8_t source,
+            long recvTime) override;
 
-    void OnRspOrderInsert(const DCSSRspInsertOrderField& rsp, int requestID, short source, long recvTime) override ;
+    void OnRtnDepth(const DCSSDepthHeaderField* header,
+            const std::vector<const DCSSDepthField*>& ask,
+            const std::vector<const DCSSDepthField*>& bid,
+            uint8_t source,
+            long recvTime) override;
+
+    void OnRtnOrder(const DCSSOrderField* order, uint8_t source, long recvTime) override ;
+
+    void OnRspOrderInsert(const DCSSRspInsertOrderField* rsp, int requestID, int errorId, const char* errorMsg, uint8_t source, long recvTime) override ;
+
+    void OnRspQryTicker(const DCSSTickerField* rsp, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) override ;
+
+    void OnRspQryKline(const DCSSKlineHeaderField* header, const std::vector<const DCSSKlineField* >& kline,
+            int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) override ;
+
+    void OnRspQryOrder(const DCSSOrderField* rsp, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) override ;
 
     void Debug(const char* msg) override;
 
@@ -35,18 +49,30 @@ public:
 
     std::string GetName() const override { return mName; };
 
+    void OnRspQryTradingAccount(const DCSSTradingAccountField* account, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) final ;
+
+    void OnRtnBalance(const DCSSBalanceField* balance, uint8_t source, long recvTime) final ;
+
 public:
-    int InsertLimitOrder(short source, const DCSSSymbolField& symbol, double price, double volume, TradeTypeType tradeType);
+    void Init(const std::vector<uint8_t>& tgSources, const std::vector<uint8_t>& mgSources);
 
-    int InsertMarketOrder(short source, const DCSSSymbolField& symbol, double volume, TradeTypeType tradeType);
+    int InsertOrder(uint8_t source, const std::string& symbol, double price, double volume, TradeTypeType tradeType);
 
-    int CancelOrder(short source, const DCSSSymbolField& symbol, long orderId);
+    int CancelOrder(uint8_t source, const std::string& symbol, long orderId);
 
-//    int ReqQryTicker(short source, const DCSSSymbolField& symbol);
+    int QryTradingAccount(uint8_t source);
+
+    int QryTicker(uint8_t source, const std::string& symbol);
+
+    int QryKline(uint8_t source, const std::string& symbol, KlineTypeType klineType, int size = 0, long since = 0);
+
+    void SubscribeTicker(uint8_t source, const std::string& symbol);
+
+    void SubscribeKline(uint8_t source, const std::string& symbol, KlineTypeType klineType);
+
+    void SubscribeDepth(uint8_t source, const std::string& symbol, int depth);
+
 public:
-    virtual ~IDCSSStrategy();
-
-    explicit IDCSSStrategy(const std::string& name);
     /*start data thread*/
     virtual void Start();
     /*run strategy in front end*/
@@ -59,9 +85,12 @@ public:
     void Block();
 
 protected:
-    bool IsTdReady(short source) const;
+    bool IsTdReady(uint8_t source) const;
 
-    bool IsTdConnected(short source) const;
+    bool IsTdConnected(uint8_t source) const;
+
+private:
+    void CheckOrder(uint8_t source, const std::string& symbol, double price, double volume, TradeTypeType tradeType);
 
 protected:
     /*logger*/
@@ -74,6 +103,23 @@ protected:
     DCSSDataWrapperPtr mData;
     /*strategy utils*/
     DCSSStrategyUtilPtr mUtil;
+
+private:
+
+    struct Balance
+    {
+        double Free;
+        double Freezed;
+
+        Balance() : Free(0.0), Freezed(0.0) {}
+    };
+
+    /*map<source, map<currency, {free, frozen}> >*/
+    std::unordered_map<uint8_t, std::unordered_map<std::string, Balance> > mBalance;
+
+    std::unordered_set<uint8_t> mSourceSet;
+
+    std::unordered_map<int, bool> mReqReady;
 };
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_ISTRATEGY_H

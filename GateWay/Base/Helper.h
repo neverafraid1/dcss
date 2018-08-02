@@ -11,25 +11,16 @@
 #include <iomanip>
 #include <cstring>
 #include <cmath>
-#include "DataStruct.h"
 
-/*convert btc_ltc to struct*/
-bool ConvStringSymbol(const std::string& str, DCSSSymbolField& symbol)
+/*btc_ltc --> <btc, ltc>*/
+inline std::pair<std::string, std::string> SplitStrSymbol(const std::string& symbol)
 {
-    auto idx = str.find('_');
+    auto idx = symbol.find('_');
     if (idx == std::string::npos)
-        return false;
-    memcpy(symbol.Base, str.c_str(), idx);
-    memcpy(symbol.Quote, str.c_str() + idx + 1, str.length() - idx - 1);
-    return true;
-}
-/*convert struct to btc_ltc*/
-std::string ConvStructSymbol(const DCSSSymbolField& symbol)
-{
-    std::stringstream ss;
-    ss << symbol.Base << "_" << symbol.Quote;
-    return std::move(ss.str());
-}
+        return std::move(std::make_pair("", ""));
+
+    return std::move(std::make_pair(symbol.substr(0, idx), symbol.substr(idx + 1, symbol.length() - idx - 1)));
+};
 
 inline void SplitLongTime(const long& t, char* date, char* time, int& milliSec)
 {
@@ -67,9 +58,7 @@ inline bool IsEqual(const double& d1, const double& d2, double fEpsilon = 0.0000
 {
     double fDelta = std::fabs( d1 - d2 );
 
-    if( fDelta > fEpsilon ) return false;
-    else if( fDelta < fEpsilon ) return true;
-    else return true;
+    return !(fDelta > fEpsilon);
 }
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_HELPER_H

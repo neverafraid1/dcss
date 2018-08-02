@@ -6,49 +6,46 @@
 #define DIGITALCURRENCYSTRATEGYSYSTEM_DATAWRAPPER_H
 
 #include <unordered_map>
+#include <unordered_set>
 #include "Declare.h"
 #include "UnitReader.h"
 #include "IDCSSDataProcessor.h"
 #include "DCSSStrategyUtil.h"
 #include "Timer.h"
 
-/** unknown, as default value */
-#define CONNECT_TD_STATUS_UNKNOWN   0
-/** td connect just added */
-#define CONNECT_TD_STATUS_ADDED     1
-/** td connect requested */
-#define CONNECT_TD_STATUS_REQUESTED 2
-/** got td ack msg, with valid pos */
-#define CONNECT_TD_STATUS_ACK_POS   3
-/** got td ack msg, no valid pos */
-#define CONNECT_TD_STATUS_ACK_NONE  4
-/** got td ack msg, set back */
-#define CONNECT_TD_STATUS_SET_BACK  5
-
-
 class DCSSDataWrapper
 {
-protected:
-    /*setup reader and request td connect*/
+public:
+    /*setup reader*/
     void PreRun();
+    /*request td connect, default timeout is 10s*/
+    void Connect(long time = 5 * NANOSECONDS_PER_SECOND);
 
 public:
     DCSSDataWrapper(IDCSSDataProcessor* processor, DCSSStrategyUtil* util);
 
-    void AddRegisterTd(short source);
+    void AddRegisterTd(uint8_t source);
 
-    void AddMarketData(short source);
+    void AddMarketData(uint8_t source);
+
+    void AddTicker(const std::string& symbol, uint8_t source);
+
+    void AddKline(const std::string& symbol, KlineTypeType klineType, uint8_t source);
+
+    void AddDepth(const std::string& symbol, int depth, uint8_t source);
 
     /*looping*/
     void Run();
     /*Stop*/
     void Stop();
     /*get td status*/
-    uint8_t GetTdStatus(short source);
+    uint8_t GetTdStatus(uint8_t source);
+
+    bool IsAllLogined();
 
 protected:
 
-    void ProcessTdAck(const std::string& content, short source, long recvTime);
+    void ProcessTdAck(const std::string& content, uint8_t source, long recvTime);
 
     volatile bool mForceStop;
 
@@ -58,12 +55,17 @@ protected:
     DCSSStrategyUtil*       mUtil;
     UnitReaderPtr           mReader;
 
-    std::map<short, uint8_t>    mTdStatus;
+    std::map<uint8_t, uint8_t>    mTdStatus;
     std::unordered_map<std::string, double> mLastPriceMap;
 
     int mRidStart;
     int mRidEnd;
     long mCurTime;
+
+private:
+    std::unordered_map<uint8_t, std::unordered_set<std::string> > mSubedTicker;
+    std::unordered_map<uint8_t, std::unordered_map<std::string, std::unordered_set<KlineTypeType> > > mSubedKline;
+    std::unordered_map<uint8_t, std::unordered_map<std::string, std::unordered_set<int> > > mSubedDepth;
 };
 
 DECLARE_PTR(DCSSDataWrapper);

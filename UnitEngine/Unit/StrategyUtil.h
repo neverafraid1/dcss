@@ -19,13 +19,13 @@ class StrategyUtil : public IStrategyUtil
 {
 public:
     /*override IStrategyUtil's func*/
-    bool TdConnect(short source) override ;
+    bool TdConnect(uint8_t source) override ;
 
-    bool MdSubscribe(const std::vector<DCSSSymbolField>& tickers, short source) override ;
+    bool MdSubscribeTicker(const std::string& tickers, uint8_t source) override ;
 
-    bool MdSubscribeKline(const DCSSSymbolField& symbol, KlineTypeType klineType, short source) override {};
+    bool MdSubscribeKline(const std::string& symbol, char klineType, uint8_t source) override;
 
-    bool MdSubscribeDepth(const DCSSSymbolField& symbol, int depth, short source) override {};
+    bool MdSubscribeDepth(const std::string& symbol, int depth, uint8_t source) override;
 
     bool RegisterStrategy(int& ridStart, int& ridEnd) override ;
 

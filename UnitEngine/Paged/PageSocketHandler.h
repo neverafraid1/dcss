@@ -9,7 +9,6 @@
 #include "Declare.h"
 #include "DCSSLog.h"
 #include "PageSocketStruct.h"
-#include "DataStruct.h"
 
 UNIT_NAMESPACE_START
 
@@ -23,14 +22,24 @@ public:
 
     virtual IntPair RegStrategy(const std::string& strategyName) = 0;
     /**/
-    virtual bool RegClient(std::string& commFile, int& fileSize, const std::string& clientName, int pid, bool isWriter) = 0;
+    virtual bool RegClient(std::string& commFile, size_t& fileSize, const std::string& clientName, int pid, bool isWriter) = 0;
 
     /** exit client */
     virtual void ExitClient(const std::string& clientName) = 0;
     /*login trade engine*/
-    virtual bool LoginTd(const std::string& clientName, short source) = 0;
+    virtual bool LoginTd(const std::string& clientName, uint8_t source) = 0;
 
-    virtual bool SubTicker(const std::vector<DCSSSymbolField>& tickers, short source, bool isLast) = 0;
+    virtual bool SubTicker(const std::string& tickers, uint8_t source) = 0;
+
+    virtual bool SubKline(const std::string& symbol, char klineType, uint8_t source) = 0;
+
+    virtual bool SubDepth(const std::string& symbol, int depth, uint8_t source) = 0;
+
+    virtual bool UnSubTicker(const std::string& tickers, uint8_t source) = 0;
+
+    virtual bool UnSubKline(const std::string& symbol, char klineType, uint8_t source) = 0;
+
+    virtual bool UnSubDepth(const std::string& symbol, int depth, uint8_t source) = 0;
 
     virtual void AcquireMutex() const = 0;
 

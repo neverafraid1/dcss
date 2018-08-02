@@ -69,7 +69,7 @@ std::vector<short> PageUtil::GetPageNums(const std::string& dir, const std::stri
     return std::move(res);
 }
 
-void* PageUtil::LoadPageBuffer(const std::string& path, int size, bool isWriting,
+void* PageUtil::LoadPageBuffer(const std::string& path, size_t size, bool isWriting,
         bool quickMode)
 {
     int fd = open(path.c_str(), (isWriting) ? (O_RDWR | O_CREAT) : O_RDONLY,
@@ -98,7 +98,7 @@ void* PageUtil::LoadPageBuffer(const std::string& path, int size, bool isWriting
         }
     }
 
-    void* buffer = mmap(0, size, (isWriting) ? (PROT_READ | PROT_WRITE) : PROT_READ, MAP_SHARED, fd, 0);
+    void* buffer = mmap(nullptr, size, (isWriting) ? (PROT_READ | PROT_WRITE) : PROT_READ, MAP_SHARED, fd, 0);
 
     if (buffer == MAP_FAILED)
     {
@@ -119,7 +119,7 @@ void* PageUtil::LoadPageBuffer(const std::string& path, int size, bool isWriting
     return buffer;
 }
 
-void PageUtil::ReleasePageBuffer(void* buffer, int size, bool quickMode)
+void PageUtil::ReleasePageBuffer(void* buffer, size_t size, bool quickMode)
 {
     if (!quickMode && munlock(buffer, size) != 0)
     {
@@ -141,7 +141,7 @@ bool PageUtil::FileExists(const std::string& fileName)
 
 PageHeader PageUtil::GetPageHeader(const std::string& dir, const std::string& uname, short pageNum)
 {
-    PageHeader header;
+    PageHeader header = {};
     std::string path = GenPageFullPath(dir, uname, pageNum);
     FILE* fp = fopen(path.c_str(), "rb");
     if (fp == nullptr)
@@ -151,5 +151,5 @@ PageHeader PageUtil::GetPageHeader(const std::string& dir, const std::string& un
     if (length != sizeof(PageHeader))
         perror("cannot get page header in PageUtil::GetPageHeader");
     fclose(fp);
-    return std::move(header);
+    return header;
 }
