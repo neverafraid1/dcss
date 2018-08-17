@@ -43,8 +43,6 @@ struct PageClientInfo
     int     RidStart;
     /*end req if of this strategy (only for strategy)*/
     int     RidEnd;
-    /*all sources of trade engine that registered (only for strategy)*/
-    std::vector<short> TradeEngineVec;
 };
 
 
@@ -80,7 +78,7 @@ public:
     IntPair RegStrategy(const std::string& strategyName) override ;
     bool RegClient(std::string& commFile, size_t& fileSize, const std::string& clientName, int pid, bool isWriter) override ;
     void ExitClient(const std::string& clientName) override ;
-    bool LoginTd(const std::string& clientName, uint8_t source) override ;
+    bool LoginTd(const std::string& clientName, std::string config) override ;
     bool SubTicker(const std::string& symbol, uint8_t source) override ;
     bool SubKline(const std::string& symbol, char klineType, uint8_t source) override ;
     bool SubDepth(const std::string& symbol, int depth, uint8_t source) override ;

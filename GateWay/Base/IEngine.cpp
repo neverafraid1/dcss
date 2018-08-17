@@ -17,21 +17,14 @@ IEngine::~IEngine()
     Stop();
 }
 
-void IEngine::Initialize(const std::string& jsonStr)
-{
-    Init();
-
-    nlohmann::json config = nlohmann::json::parse(jsonStr);
-
-    mLogger = DCSSLog::GetLogger(config.at("name"));
-
-    for (nlohmann::json::const_iterator iter = config.begin(); iter != config.end(); ++iter)
-    {
-        DCSS_LOG_INFO(mLogger, "IEngine::Init " << iter.key() << "->" << iter.value().dump());
-    }
-
-    Load(config);
-}
+//void IEngine::Initialize()
+//{
+//    Init();
+//
+//    mLogger = DCSSLog::GetLogger(Name());
+//
+//    Load();
+//}
 
 bool IEngine::Start()
 {
@@ -39,10 +32,6 @@ bool IEngine::Start()
     if (true)
     {
         mIsRunning = true;
-        if (mReader.get() == nullptr)
-        {
-            throw std::runtime_error("reader is not inited! please call init() before start()");
-        }
 
         std::signal(SIGTERM, IEngine::SignalHandler);
         std::signal(SIGINT, IEngine::SignalHandler);
@@ -78,4 +67,9 @@ void IEngine::WaitForStop()
         mReaderThread->join();
         mReaderThread.reset();
     }
+}
+
+void IEngine::SetProxy(const std::string& proxy)
+{
+    mProxy = proxy;
 }

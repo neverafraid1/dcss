@@ -27,7 +27,7 @@ public:
     /** exit client */
     virtual void ExitClient(const std::string& clientName) = 0;
     /*login trade engine*/
-    virtual bool LoginTd(const std::string& clientName, uint8_t source) = 0;
+    virtual bool LoginTd(const std::string& clientName, std::string config) = 0;
 
     virtual bool SubTicker(const std::string& tickers, uint8_t source) = 0;
 

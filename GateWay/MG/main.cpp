@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
     oss << in.rdbuf();
 
     std::shared_ptr<IMGEngine> p(new IMGEngine());
-    p->Initialize(oss.str());
+    p->Load(oss.str());
     p->Start();
     p->WaitForStop();
 }

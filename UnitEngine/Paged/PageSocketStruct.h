@@ -12,7 +12,9 @@ UNIT_NAMESPACE_START
 #define PAGED_SOCKET_FILE DCSS_SOCKET_FOLDER "paged.sock"
 
 /*max length of a socket mBuffer*/
-#define MAX_SOCKET_MESSAGE_LENGTH   500
+#define MAX_SOCKET_MESSAGE_LENGTH   1000
+
+#define MAX_SOCKET_CONFIG_LENGTH    800
 /*max length of error msg*/
 #define MAX_SOCKET_ERROR_LENGTH     100
 
@@ -42,7 +44,7 @@ struct PagedSocketRequest
     /*process id (only utilized when registering client)*/
     int     Pid;
     /*source id (only take effect when login trade engine)*/
-    uint8_t   Source;
+    char    Config[MAX_SOCKET_CONFIG_LENGTH];
 } __attribute__((packed));
 
 struct PagedSocketResponse

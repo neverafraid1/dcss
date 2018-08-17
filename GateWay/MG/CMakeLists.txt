@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 add_compile_options(-g)
 
-SET(MG_SOURCE_FILES IMGEngine.h IMGEngine.cpp OKMGApi.h ../MD5/MD5.h ../MD5/MD5.cpp main.cpp OKMGApi.cpp ../Base/IEngine.h ../Base/IEngine.cpp)
+SET(MG_SOURCE_FILES IMGEngine.h IMGEngine.cpp OKEX/OKMGApi.h ../MD5/MD5.h ../MD5/MD5.cpp main.cpp OKEX/OKMGApi.cpp ../Base/IEngine.h ../Base/IEngine.cpp Binance/BinaMGApi.h Binance/BinaMGApi.cpp ../Base/GWHelper.hpp)
 
 INCLUDE_DIRECTORIES(../MD5 ../../include ../Base)
 LINK_DIRECTORIES(/usr/local/lib/unit)

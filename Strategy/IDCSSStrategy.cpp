@@ -7,6 +7,7 @@
 #include <iostream>
 #include "IDCSSStrategy.h"
 #include "Helper.h"
+#include <fstream>
 
 void RegisterSignalCallback()
 {
@@ -26,6 +27,10 @@ IDCSSStrategy::IDCSSStrategy(const std::string& name) : mName(name)
     RegisterSignalCallback();
 }
 
+void IDCSSStrategy::SetConfigPath(const std::string& path)
+{
+    mConfigPath = path;
+}
 
 void IDCSSStrategy::Init(const std::vector<uint8_t>& tgSources, const std::vector<uint8_t>& mgSources)
 {
@@ -46,11 +51,20 @@ void IDCSSStrategy::Start()
     mDataThread.reset(new std::thread(&DCSSDataWrapper::Run, mData.get()));
     DCSS_LOG_INFO(mLogger, "data thread start");
 
-    mData->Connect();
+    std::ifstream in(mConfigPath);
+    std::ostringstream oss;
+    oss << in.rdbuf();
+    in.close();
+
+    mData->Connect(oss.str());
     if (mData->IsAllLogined())
         DCSS_LOG_INFO(mLogger, "td logined");
     else
+    {
         DCSS_LOG_ERROR(mLogger, "td login timeout");
+        mData->Stop();
+        return;
+    }
 
     for (const auto& item : mSourceSet)
     {

@@ -1,3 +1,0 @@
-/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/TG/build/CMakeFiles/rebuild_cache.dir
-/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/TG/build/CMakeFiles/edit_cache.dir
-/home/wangzhen/CLionProjects/DigitalCurrencyStrategySystem/src/TG/build/CMakeFiles/dcsstd.dir

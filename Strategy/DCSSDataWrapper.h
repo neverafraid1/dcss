@@ -19,7 +19,7 @@ public:
     /*setup reader*/
     void PreRun();
     /*request td connect, default timeout is 10s*/
-    void Connect(long time = 5 * NANOSECONDS_PER_SECOND);
+    void Connect(const std::string& config, long time = 5 * NANOSECONDS_PER_SECOND);
 
 public:
     DCSSDataWrapper(IDCSSDataProcessor* processor, DCSSStrategyUtil* util);

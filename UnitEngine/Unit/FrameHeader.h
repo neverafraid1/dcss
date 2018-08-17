@@ -6,6 +6,7 @@
 #define DIGITALCURRENCYSTRATEGYSYSTEM_FRAMEHEADER_H
 
 #include <cstdint>
+#include <cstring>
 #include "constants.h"
 #define __FRAME_VERSION__ 1
 
@@ -14,7 +15,7 @@ UNIT_NAMESPACE_START
 typedef uint8_t     FH_STATUS_TYPE;
 typedef uint8_t     FH_SOURCE_TYPE;
 typedef long        FH_NANO_TYPE;
-typedef int         FH_LENGTH_TYPE;
+typedef size_t      FH_LENGTH_TYPE;
 typedef short       FH_MSG_TP_TYPE;
 typedef int         FH_REQID_TYPE;
 typedef int         FH_ERRORID_TYPE;
@@ -24,9 +25,9 @@ typedef int         FH_ERRORID_TYPE;
 //////////////////////////////////////
 /// (uint8_t) UnitFrameStatus
 //////////////////////////////////////
-#define UNIT_FRAME_STATUS_RAW       0
-#define UNIT_FRAME_STATUS_WRITTEN   1
-#define UNIT_FRAME_STATUS_PAGE_END  2
+#define UNIT_FRAME_STATUS_RAW       1
+#define UNIT_FRAME_STATUS_WRITTEN   2
+#define UNIT_FRAME_STATUS_PAGE_END  3
 
 struct FrameHeader
 {
@@ -47,6 +48,11 @@ struct FrameHeader
     /*error id
      * ==0 if there's no error*/
     FH_ERRORID_TYPE ErrorID;
+
+    FrameHeader()
+    {
+        memset(this, 0, sizeof(FrameHeader));
+    }
 } __attribute__((packed));
 
 /*length of mCurrFrame header*/

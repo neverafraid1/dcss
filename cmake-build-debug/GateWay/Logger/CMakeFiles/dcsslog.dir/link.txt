@@ -1,2 +1,0 @@
-/usr/bin/ar qc libdcsslog.a  CMakeFiles/dcsslog.dir/DCSSLog.cpp.o CMakeFiles/dcsslog.dir/__/Base/IEngine.cpp.o CMakeFiles/dcsslog.dir/__/__/Strategy/IDataProcessor.cpp.o CMakeFiles/dcsslog.dir/__/__/Strategy/IStrategy.cpp.o
-/usr/bin/ranlib libdcsslog.a

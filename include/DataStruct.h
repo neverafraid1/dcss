@@ -58,7 +58,7 @@ struct DCSSKlineHeaderField
     // 币对
     char21 Symbol;
     // K线时间周期
-    KlineTypeType KlineType;
+    KlineType Type;
     // K线条数
     size_t Size;
 
@@ -86,6 +86,10 @@ struct DCSSKlineField
     double ClosePrice;
     // 成交量
     double Volume;
+    // K线开始时间
+    long StartTime;
+    // K线结束时间
+    long CloseTime;
 
     DCSSKlineField()
     {
@@ -178,7 +182,7 @@ struct DCSSReqQryKlineField
     // 币对如ltc_btc
     char21 Symbol;
     // K线时间周期类型
-    KlineTypeType KlineType;
+    KlineType Type;
     // 指定获取数据的条数 非必填(默认全部获取)
     int Size;
     // 时间戳 非必填(默认全部获取)
@@ -194,8 +198,10 @@ struct DCSSReqInsertOrderField
 {
     // 币对如ltc_btc
     char21 Symbol;
+    // 方向
+    OrderDirection Direction;
     // 买卖类型
-    TradeTypeType TradeType;
+    OrderType Type;
     // 下单价格 市价单不传price
     double Price;
     // 交易数量
@@ -270,39 +276,6 @@ struct DCSSRspQryOrderHeaderField
     }
 };
 
-struct DCSSRspQryOrderField
-{
-    // 币对如ltc_btc
-    char21 Symbol;
-    // 委托数量
-    double Amount;
-    // 委托日期
-    char10 CreateDate;
-    // 委托时间
-    char10 CreateTime;
-    // 毫秒
-    int MilliSec;
-    // 平均成交价
-    double AvgPrice;
-    // 成交数量
-    double DealAmount;
-    // 订单ID
-    long OrderID;
-    // 订单ID(不建议使用)
-    long OrdersID;
-    // 委托价格
-    double Price;
-    // 报单状态
-    OrderStatusType OrderStatus;
-    // 交易类型
-    TradeTypeType TradeType;
-
-    DCSSRspQryOrderField()
-    {
-        memset(this, 0, sizeof(DCSSRspQryOrderField));
-    }
-};
-
 struct DCSSOrderField
 {
     // 币对如ltc_btc
@@ -315,26 +288,20 @@ struct DCSSOrderField
     int Millisec;
     // 订单id
     long OrderID;
-    // 交易类型
-    TradeTypeType TradeType;
-    // 单笔成交数量
-    double SigTradeAmout;
-    // 单笔成交价格
-    double SigTradePrice;
-    // 委托数量（市价卖代表要卖总数量；限价单代表委托数量）
-    double TradeAmount;
-    // 委托价格（市价买单代表购买总金额； 限价单代表委托价格）
-    double TradeUnitPrice;
+    // 买卖方向
+    OrderDirection Direction;
+    // 报单类型
+    OrderType Type;
+    // 初始报单数量
+    double OriginQuantity;
     // 已完成成交量
-    double CompletedTradeAmount;
-    // 成交金额
-    double TradePrice;
-    // 平均成交价
-    double AveragePrice;
-    // 当按市场价买币时表示剩余金额，其他情况表示此笔交易剩余买/卖币的数量
-    double UnTrade;
-    // 报单状态
-    OrderStatusType OrderStatus;
+    double ExecuteQuantity;
+
+    double Price;
+    // 更新时间
+    long UpdateTime;
+
+    OrderStatus Status;
 
     DCSSOrderField()
     {
@@ -368,7 +335,7 @@ struct DCSSSubKlineField
 {
     char21 Symbol;
 
-    KlineTypeType KlineType;
+    KlineType Type;
 
     DCSSSubKlineField()
     {

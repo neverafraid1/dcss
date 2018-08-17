@@ -5,20 +5,19 @@
 #include <thread>
 #include "util.h"
 #include "IMGEngine.h"
-#include "OKMGApi.h"
+#include "OKEX/OKMGApi.h"
 #include "Timer.h"
-
-void IMGEngine::Init()
-{
-}
+#include "SysMessages.h"
 
 void IMGEngine::SetReaderThread()
 {
     mReaderThread.reset(new std::thread(std::bind(&IMGEngine::Listening, this)));
 }
 
-void IMGEngine::Load(const nlohmann::json& config)
+void IMGEngine::Load(const std::string& str)
 {
+    mLogger = DCSSLog::GetLogger(Name());
+    nlohmann::json config = nlohmann::json::parse(str);
     uint8_t source = config.at("source");
     auto pair = GetMdUnitPair(source);
     mMGApi = IMGApi::Create(source);
@@ -171,6 +170,12 @@ IMGApiPtr IMGApi::Create(uint8_t source)
     default:
         return IMGApiPtr();
     }
+}
+
+void IMGApi::Register(IMGEnginePtr spi)
+{
+    mSpi = std::move(spi);
+    mLogger = mSpi->GetLogger();
 }
 
 short IMGApi::GetSource() const

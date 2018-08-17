@@ -19,7 +19,7 @@ class StrategyUtil : public IStrategyUtil
 {
 public:
     /*override IStrategyUtil's func*/
-    bool TdConnect(uint8_t source) override ;
+    bool TdConnect(const std::string& config) override ;
 
     bool MdSubscribeTicker(const std::string& tickers, uint8_t source) override ;
 

@@ -54,6 +54,8 @@ public:
     void OnRtnBalance(const DCSSBalanceField* balance, uint8_t source, long recvTime) final ;
 
 public:
+    void SetConfigPath(const std::string& path);
+
     void Init(const std::vector<uint8_t>& tgSources, const std::vector<uint8_t>& mgSources);
 
     int InsertOrder(uint8_t source, const std::string& symbol, double price, double volume, TradeTypeType tradeType);
@@ -120,6 +122,8 @@ private:
     std::unordered_set<uint8_t> mSourceSet;
 
     std::unordered_map<int, bool> mReqReady;
+
+    std::string mConfigPath;
 };
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_ISTRATEGY_H

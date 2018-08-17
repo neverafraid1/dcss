@@ -59,7 +59,7 @@ void ClientPageProvider::RegisterClient()
     PagedSocketRequest req = {};
     req.Type = mIsWriter ? PAGED_SOCKET_WRITER_REGISTER : PAGED_SOCKET_READER_REGISTER;
     req.Pid = getpid();
-    SocketArray rspArray;
+    SocketArray rspArray = {};
     GetSocketRspOnReq(req, rspArray, mClientName);
 
     auto rsp = reinterpret_cast<PagedSocketRspClient*>(&rspArray[0]);
@@ -136,12 +136,14 @@ StrategySocketHandler::~StrategySocketHandler()
     UnSubAll();
 }
 
-bool StrategySocketHandler::TdConnect(uint8_t source)
+bool StrategySocketHandler::TdConnect(const std::string& config)
 {
     std::array<char, MAX_SOCKET_MESSAGE_LENGTH> rspArray = {};
     PagedSocketRequest req = {};
     req.Type = PAGED_SOCKET_TD_LOGIN;
-    req.Source = source;
+    bzero(req.Config, MAX_SOCKET_CONFIG_LENGTH);
+    strcpy(req.Config, config.c_str());
+//    req.Source = source;
     GetSocketRspOnReq(req, rspArray, mClientName);
     auto rsp = reinterpret_cast<PagedSocketResponse*>(&rspArray[0]);
     return rsp->Type == req.Type && rsp->Success;

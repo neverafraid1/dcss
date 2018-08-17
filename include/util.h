@@ -21,6 +21,17 @@ inline UnitPair GetMdUnitPair(uint8_t source)
     }
 }
 
+std::string GetMdString(uint8_t source)
+{
+    switch (source)
+    {
+    case EXCHANGE_OKCOIN:
+        return "okex";
+    default:
+        return "";
+    }
+}
+
 inline UnitPair GetTdUnitPair(uint8_t source)
 {
     switch (source)

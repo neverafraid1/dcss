@@ -11,6 +11,10 @@
 
 USING_UNIT_NAMESPACE
 
+UnitHandler::UnitHandler(UnitEngine::PageProviderPtr ptr)
+        : mPageProvider(std::move(ptr))
+{ }
+
 UnitHandler::~UnitHandler()
 {
     mPageProvider->ExitClient();

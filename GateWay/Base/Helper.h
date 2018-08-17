@@ -12,6 +12,15 @@
 #include <cstring>
 #include <cmath>
 
+struct EnumClassHash
+{
+    template <typename T>
+    std::size_t operator()(T t) const
+    {
+        return static_cast<std::size_t>(t);
+    }
+};
+
 /*btc_ltc --> <btc, ltc>*/
 inline std::pair<std::string, std::string> SplitStrSymbol(const std::string& symbol)
 {

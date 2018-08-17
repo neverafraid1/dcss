@@ -27,9 +27,7 @@ PRE_DECLARE_PTR(Unit);
 class UnitHandler
 {
 public:
-    explicit UnitHandler(PageProviderPtr ptr)
-    : mPageProvider(std::move(ptr))
-    {}
+    explicit UnitHandler(PageProviderPtr ptr);
 
     virtual ~UnitHandler();
     /*return the unit's index in the vector*/

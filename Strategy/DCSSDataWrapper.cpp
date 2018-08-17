@@ -29,14 +29,13 @@ void DCSSDataWrapper::PreRun()
     mReader = UnitReader::CreateReaderWithSys(mFolders, mNames, GetNanoTime(), mProcessor->GetName());
 }
 
-void DCSSDataWrapper::Connect(long time)
+void DCSSDataWrapper::Connect(const std::string& config, long time)
 {
     for (auto& it : mTdStatus)
     {
-        mUtil->TdConnect(it.first);
         it.second = TD_STATUS_REQUESTED;
     }
-
+    mUtil->TdConnect(config);
     long startTime = GetNanoTime();
     while (!IsAllLogined() && GetNanoTime() - startTime < time);
 }
@@ -247,7 +246,6 @@ void DCSSDataWrapper::Run()
         char msg[100];
         sprintf(msg, "%s%d", "[DataWrapper] signal received: ", mProcessor->mSingalReceived);
         mProcessor->Debug(msg);
-
     }
 
     if (mForceStop)

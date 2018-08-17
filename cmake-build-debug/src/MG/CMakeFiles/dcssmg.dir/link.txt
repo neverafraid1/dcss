@@ -1,1 +1,0 @@
-/usr/bin/c++  -g   CMakeFiles/dcssmg.dir/main.cpp.o CMakeFiles/dcssmg.dir/MGEngine.cpp.o CMakeFiles/dcssmg.dir/__/MD5/MD5.cpp.o CMakeFiles/dcssmg.dir/OKMGEngine.cpp.o  -o dcssmg  -L/opt/kungfu/toolchain/boost-1.62.0/lib  -L/usr/local/lib -Wl,-rpath,/opt/kungfu/toolchain/boost-1.62.0/lib:/usr/local/lib -lcpprest ../Logger/libdcsslog.a -lboost_system -lssl -lcrypto -llog4cplus 

@@ -32,3 +32,11 @@
 *.app
 
 *.dir
+
+*.cmake
+
+/cmake-build-debug/
+
+/.idea/
+
+**/build/

@@ -75,10 +75,12 @@ protected:
 class UnitSafeWriter : public UnitWriter
 {
 public:
+    static UnitWriterPtr Create(const std::string& dir, const std::string& uname, const std::string& writerName);
+
+public:
     long WriteFrameFull(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType,
             FH_REQID_TYPE requestId, FH_NANO_TYPE extraNano, FH_ERRORID_TYPE errorId, const char* errorMsg) override ;
 
-    static UnitWriterPtr Create(const std::string& dir, const std::string& uname, const std::string& writerName);
 protected:
     explicit UnitSafeWriter(PageProviderPtr ptr) : UnitWriter(std::move(ptr)) {}
 };

@@ -40,7 +40,7 @@ long NanoTimer::GetNano() const
 
 long NanoTimer::GetLocalDiff()
 {
-    long unix_second_num = std::chrono::seconds(std::time(NULL)).count();
+    long unix_second_num = std::chrono::seconds(std::time(nullptr)).count();
     long tick_second_num = std::chrono::duration_cast<std::chrono::seconds>(
             GetTimeNow().time_since_epoch()
     ).count();

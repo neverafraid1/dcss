@@ -95,7 +95,9 @@ Strategy strategy("cpp_test");
 
 int main(int argc, char* argv[])
 {
-    strategy.Init({EXCHANGE_OKCOIN}, {EXCHANGE_OKCOIN});
+    strategy.SetConfigPath(argv[1]);
+
+    strategy.Init({EXCHANGE_OKCOIN}, {});
 
     strategy.Start();
 

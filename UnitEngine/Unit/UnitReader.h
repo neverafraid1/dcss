@@ -49,7 +49,6 @@ public:
     FramePtr GetNextFrame();
     /*keep the last time's GetNextFrame's source*/
     std::string GetFrameName() const;
-
     /*override UnitHandler's AddUnit*/
     size_t AddUnit(const std::string& dir, const std::string& uname) override ;
     /*all units jump to start time*/

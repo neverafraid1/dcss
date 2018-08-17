@@ -33,10 +33,10 @@ void StrategyUtil::Init()
     mCurRid = 0;
 }
 
-bool StrategyUtil::TdConnect(uint8_t source)
+bool StrategyUtil::TdConnect(const std::string& config)
 {
     if (mHandler.get() != nullptr)
-        return mHandler->TdConnect(source);
+        return mHandler->TdConnect(config);
     else
         return false;
 }

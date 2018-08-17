@@ -27,7 +27,7 @@ public:
 
     bool RegisterStrategy(int& ridStart, int& ridEnd) override ;
 
-    bool TdConnect(uint8_t source) override ;
+    bool TdConnect(const std::string& config) override ;
 
     bool MdSubscribeTicker(const std::string& tickers, uint8_t source) override ;
 

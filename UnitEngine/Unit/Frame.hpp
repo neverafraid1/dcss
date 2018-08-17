@@ -46,6 +46,7 @@ public:
     void SetData(const void* data, int dataLength);
     void SetStatusWritten();
     void SetStatusPageClosed();
+    void SetClient(const std::string& client);
 
     /*move the mCurrFrame forward by length*/
     FH_LENGTH_TYPE Next();
@@ -136,8 +137,6 @@ inline void* Frame::GetData() const
 {
     return GetDataLength() > 0 ? ADDRESS_ADD(frame, GetHeaderLength()) : nullptr;
 }
-
-
 
 inline void Frame::SetAddress(void* address)
 {

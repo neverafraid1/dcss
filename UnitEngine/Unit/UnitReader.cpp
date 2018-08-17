@@ -21,7 +21,7 @@ UnitReader::UnitReader(PageProviderPtr ptr)
 
 std::string UnitReader::GetFrameName() const
 {
-    return mCurUnit.get() ==nullptr ? "" : mCurUnit->GetUnitName();
+    return mCurUnit.get() == nullptr ? "" : mCurUnit->GetUnitName();
 }
 
 size_t UnitReader::AddUnit(const std::string& dir, const std::string& uname)

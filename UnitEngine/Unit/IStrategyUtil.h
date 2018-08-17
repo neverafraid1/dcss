@@ -19,7 +19,7 @@ class IStrategyUtil
 public:
     virtual bool RegisterStrategy(int& ridStart, int& ridEnd) = 0;
 
-    virtual bool TdConnect(uint8_t source) = 0;
+    virtual bool TdConnect(const std::string& config) = 0;
 
     virtual bool MdSubscribeTicker(const std::string& tickers, uint8_t source) = 0;
 

@@ -432,9 +432,9 @@ IntPair PageEngine::RegStrategy(const std::string& strategyName)
     return std::make_pair(info.RidStart, info.RidEnd);
 }
 
-bool PageEngine::LoginTd(const std::string& clientName, uint8_t source)
+bool PageEngine::LoginTd(const std::string& clientName, std::string config)
 {
-    DCSS_LOG_INFO(mLogger, "[TGLogin] (name)" << clientName << " (source)" << source);
+    DCSS_LOG_INFO(mLogger, "[TGLogin] (name)" << clientName << " (config)" << config);
 
     auto it = mClientUnits.find(clientName);
     if (it == mClientUnits.end())
@@ -455,8 +455,8 @@ bool PageEngine::LoginTd(const std::string& clientName, uint8_t source)
     request["rid_s"] = info.RidStart;
     request["rid_e"] = info.RidEnd;
     request["pid"] = info.Pid;
-    Write(request.dump(), MSG_TYPE_TRADE_ENGINE_LOGIN, true, source);
-    info.TradeEngineVec.push_back(source);
+    request["config"] = config;
+    Write(request.dump(), MSG_TYPE_TRADE_ENGINE_LOGIN, true, -1);
     return true;
 }
 

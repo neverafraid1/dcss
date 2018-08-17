@@ -50,7 +50,7 @@ UnitWriterPtr UnitWriter::Create(const std::string& dir, const std::string& unam
 
 UnitWriterPtr UnitWriter::Create(const std::string& dir, const std::string& uname, PageProviderPtr ptr)
 {
-    UnitWriterPtr uwp = UnitWriterPtr(new UnitWriter(ptr));
+    UnitWriterPtr uwp = UnitWriterPtr(new UnitWriter(std::move(ptr)));
     uwp->Init(dir, uname);
     return uwp;
 }

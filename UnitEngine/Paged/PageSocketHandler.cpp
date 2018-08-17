@@ -200,7 +200,7 @@ void PageSocketHandler::ProcessMsg()
     }
     case PAGED_SOCKET_TD_LOGIN:
     {
-        bool ret = mUtil->LoginTd(req->Name, req->Source);
+        bool ret = mUtil->LoginTd(req->Name, req->Config);
         PagedSocketResponse rsp = {};
         rsp.Type = reqType;
         rsp.Success = ret;
