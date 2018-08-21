@@ -32,11 +32,11 @@ public:
     std::string Name() override {return "MG";}
 
 public:
-    void OnRtnDepth(const DCSSDepthHeaderField* header, const std::vector<DCSSDepthField>& depthVec, uint8_t source);
+    void OnRtnDepth(const DCSSDepthField* depth, uint8_t source);
 
     void OnRtnTicker(const DCSSTickerField* ticker, uint8_t source);
 
-    void OnRtnKline(const DCSSKlineHeaderField* header, const std::vector<DCSSKlineField>& klineVec, uint8_t source);
+    void OnRtnKline(const DCSSKlineField* kline, uint8_t source);
 
 protected:
     void Listening();

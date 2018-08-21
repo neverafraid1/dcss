@@ -63,23 +63,23 @@ protected:
 public:
     void OnRtnOrder(const DCSSOrderField* order, uint8_t source);
 
-    void OnRspQryTicker(const DCSSTickerField* ticker, uint8_t source, int requestId,
+    void OnRspQryTicker(const DCSSTickerField* ticker, uint8_t source, bool isLast, int requestId,
             int errorId = 0, const char* errorMsg = nullptr);
 
-    void OnRspQryKline(const DCSSKlineHeaderField* header, uint8_t source, const std::vector<DCSSKlineField>& kline,
-            int requestId, int errorId = 0, const char* errorMsg = nullptr);
+    void OnRspQryKline(const DCSSKlineField* kline, uint8_t source, bool isLast, int requestId,
+    		int errorId = 0, const char* errorMsg = nullptr);
 
-    void OnRspQryUserInfo(const DCSSTradingAccountField* userInfo, uint8_t source, int requestId,
+    void OnRspQryUserInfo(const DCSSTradingAccountField* userInfo, uint8_t source, bool isLast, int requestId,
             int errorId = 0, const char* errorMsg = nullptr);
 
-    void OnRspOrderInsert(const DCSSRspInsertOrderField* rsp, uint8_t source, int requestId,
+    void OnRspOrderInsert(const DCSSRspInsertOrderField* rsp, uint8_t source, bool isLast, int requestId,
             int errorId = 0, const char* errorMsg = nullptr);
 
-    void OnRspOrderAction(const DCSSRspCancelOrderField* rsp, uint8_t source, int requestId,
+    void OnRspOrderAction(const DCSSRspCancelOrderField* rsp, uint8_t source, bool isLast, int requestId,
             int errorId = 0, const char* errorMsg = nullptr);
 
-    void OnRspQryOrder(const DCSSRspQryOrderHeaderField* header, uint8_t source, const std::vector<DCSSOrderField>& order,
-            int requestId, int errorId = 0, const char* errorMsg = nullptr);
+    void OnRspQryOrder(const DCSSOrderField* order, uint8_t source, bool isLast, int requestId,
+    		int errorId = 0, const char* errorMsg = nullptr);
 
     void OnRtnBalance(const DCSSBalanceField* balance, uint8_t source);
 

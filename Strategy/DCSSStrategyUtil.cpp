@@ -38,21 +38,18 @@ std::string DCSSStrategyUtil::GetName() const
 }
 
 int DCSSStrategyUtil::InsertOrder(uint8_t source, const std::string& symbol, double price, double volume,
-        TradeTypeType tradeType)
+		OrderDirection direction, OrderType type)
 {
-    if (tradeType != BUY && tradeType != SELL)
-    {
-        return -1;
-    }
     int rid = GetRid();
 
     DCSSReqInsertOrderField req = {};
     strcpy(req.Symbol, symbol.c_str());
     req.Price = price;
     req.Amount = volume;
-    req.TradeType = tradeType;
+    req.Direction = direction;
+    req.Type = type;
 
-    WriteFrameExtra(&req, sizeof(DCSSReqInsertOrderField), source, MSG_TYPE_REQ_ORDER_INSERT, rid, mMdNano);
+    WriteFrameExtra(&req, sizeof(DCSSReqInsertOrderField), source, MSG_TYPE_REQ_ORDER_INSERT, true, rid, mMdNano);
     return rid;
 }
 
@@ -63,7 +60,7 @@ int DCSSStrategyUtil::CancelOrder(uint8_t source, const std::string& symbol, lon
     DCSSReqCancelOrderField req = {};
     strcpy(req.Symbol, symbol.c_str());
     req.OrderID[0] = orderId;
-    WriteFrame(&req, sizeof(DCSSReqCancelOrderField), source, MSG_TYPE_REQ_ORDER_ACTION, rid);
+    WriteFrame(&req, sizeof(DCSSReqCancelOrderField), source, MSG_TYPE_REQ_ORDER_ACTION, true, rid);
 
     return rid;
 }
@@ -73,7 +70,7 @@ int DCSSStrategyUtil::ReqQryAccount(uint8_t source)
     int rid = GetRid();
 
     char tmp;
-    WriteFrame(&tmp, sizeof(char), source, MSG_TYPE_REQ_QRY_ACCOUNT, rid);
+    WriteFrame(&tmp, sizeof(char), source, MSG_TYPE_REQ_QRY_ACCOUNT, true, rid);
 
     return rid;
 }
@@ -82,7 +79,7 @@ int DCSSStrategyUtil::ReqQryTicker(uint8_t source, const DCSSReqQryTickerField& 
 {
     int rid = GetRid();
 
-    WriteFrame(&req, sizeof(DCSSReqQryTickerField), source, MSG_TYPE_REQ_QRY_TICKER, rid);
+    WriteFrame(&req, sizeof(DCSSReqQryTickerField), source, MSG_TYPE_REQ_QRY_TICKER, true, rid);
 
     return rid;
 }
@@ -91,7 +88,7 @@ int DCSSStrategyUtil::ReqQryKline(uint8_t source, const DCSSReqQryKlineField& re
 {
     int rid = GetRid();
 
-    WriteFrame(&req, sizeof(DCSSReqQryKlineField), source, MSG_TYPE_REQ_QRY_KLINE, rid);
+    WriteFrame(&req, sizeof(DCSSReqQryKlineField), source, MSG_TYPE_REQ_QRY_KLINE, true, rid);
 
     return rid;
 }

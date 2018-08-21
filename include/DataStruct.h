@@ -25,14 +25,10 @@ typedef long long3[3];
 
 struct DCSSTickerField
 {
-    // 日期 YYYYMMDD
-    char10 Date;
-    // 时间 hh:mm:ss
-    char10 Time;
-    // 毫秒
-    int MilliSec;
     // 币对   btc_ltc
     char21 Symbol;
+	// 更新时间
+	long UpdateTime;
     // 买一价
     double BuyPrice;
     // 卖一价
@@ -52,30 +48,14 @@ struct DCSSTickerField
     }
 };
 
-
-struct DCSSKlineHeaderField
+struct DCSSKlineField
 {
     // 币对
     char21 Symbol;
     // K线时间周期
     KlineType Type;
-    // K线条数
-    size_t Size;
-
-    DCSSKlineHeaderField()
-    {
-        memset(this, 0, sizeof(DCSSKlineHeaderField));
-    }
-};
-
-struct DCSSKlineField
-{
-    // 日期 YYYYMMDD
-    char10 Date;
-    // 时间 hh:mm:ss
-    char10 Time;
-    // 毫秒
-    int Millisec;
+    // 时间 timestamp * 1000 + millisec
+    long UpdateTime;
     // 开盘价
     double OpenPrice;
     // 最高价
@@ -99,41 +79,30 @@ struct DCSSKlineField
 
 struct RspUserLogin
 {
+	// 登陆成功
     bool Success;
 };
 
-struct BalanceField
+struct DCSSSignalDepthField
 {
-
+	// 价格
+	double Price;
+	// 报单量
+	double Volume;
 };
 
-struct DCSSDepthHeaderField
-{
-    char21 Symbol;
-    // 日期 YYYYMMDD
-    char10 Date;
-    // 时间 hh:mm:ss
-    char10 Time;
-    // 毫秒
-    int Millisec;
-    // 深度
-    int Depth;
-
-    size_t AskNum;
-
-    size_t BidNum;
-
-    DCSSDepthHeaderField()
-    {
-        memset(this, 0, sizeof(DCSSDepthHeaderField));
-    }
-};
+#define MAX_DEPTH_NUM 100
 
 struct DCSSDepthField
 {
-    double Price;
-
-    double Volume;
+	// 币对
+	char21 Symbol;
+	// 更新时间
+	long UpdateTime;
+	// 卖方深度
+	DCSSSignalDepthField AskDepth[MAX_DEPTH_NUM];
+	// 买方深度
+	DCSSSignalDepthField BidDepth[MAX_DEPTH_NUM];
 
     DCSSDepthField()
     {
@@ -141,23 +110,21 @@ struct DCSSDepthField
     }
 };
 
-
 struct DCSSBalanceField
 {
+	// 币种
     char5 Currency;
-
+    // 可用量
     double Free;
-
+    // 冻结量
     double Freezed;
-
-    DCSSBalanceField()
-    {
-        memset(this, 0, sizeof(DCSSBalanceField));
-    }
 };
+
+#define MAX_CURRENCY_NUM 500
 
 struct DCSSTradingAccountField
 {
+	// 资金信息
     DCSSBalanceField Balance[MAX_CURRENCY_NUM];
 
     DCSSTradingAccountField()
@@ -169,6 +136,7 @@ struct DCSSTradingAccountField
 
 struct DCSSReqQryTickerField
 {
+	// 币对如ltc_btc
     char21 Symbol;
 
     DCSSReqQryTickerField()
@@ -264,28 +232,12 @@ struct DCSSReqQryOrderField
     }
 };
 
-struct DCSSRspQryOrderHeaderField
-{
-    char21 Symbol;
-
-    size_t Size;
-
-    DCSSRspQryOrderHeaderField()
-    {
-        memset(this, 0, sizeof(DCSSRspQryOrderHeaderField));
-    }
-};
-
 struct DCSSOrderField
 {
     // 币对如ltc_btc
     char21 Symbol;
-    // 委托日期
-    char10 CreateDate;
-    // 委托时间
-    char10 CreateTime;
-    // 毫秒
-    int Millisec;
+    // 插入时间
+    long InsertTime;
     // 订单id
     long OrderID;
     // 买卖方向
@@ -296,11 +248,11 @@ struct DCSSOrderField
     double OriginQuantity;
     // 已完成成交量
     double ExecuteQuantity;
-
+    // 报单价格
     double Price;
     // 更新时间
     long UpdateTime;
-
+    // 报单状态
     OrderStatus Status;
 
     DCSSOrderField()
@@ -311,6 +263,7 @@ struct DCSSOrderField
 
 struct DCSSSubTickerField
 {
+	// 币对如ltc_btc
     char21 Symbol;
 
     DCSSSubTickerField()
@@ -321,8 +274,9 @@ struct DCSSSubTickerField
 
 struct DCSSSubDepthField
 {
+	// 币对如ltc_btc
     char21 Symbol;
-
+    // 深度
     int Depth;
 
     DCSSSubDepthField()
@@ -333,8 +287,9 @@ struct DCSSSubDepthField
 
 struct DCSSSubKlineField
 {
+	// 币对如ltc_btc
     char21 Symbol;
-
+    // K线类型
     KlineType Type;
 
     DCSSSubKlineField()

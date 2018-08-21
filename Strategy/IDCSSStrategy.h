@@ -5,9 +5,6 @@
 #ifndef DIGITALCURRENCYSTRATEGYSYSTEM_ISTRATEGY_H
 #define DIGITALCURRENCYSTRATEGYSYSTEM_ISTRATEGY_H
 
-#include <unordered_set>
-
-#include "IDCSSDataProcessor.h"
 #include "DCSSDataWrapper.h"
 #include "DCSSLog.h"
 
@@ -16,19 +13,16 @@ class IDCSSStrategy : public IDCSSDataProcessor
 public:
     explicit IDCSSStrategy(const std::string& name);
 
-    virtual ~IDCSSStrategy();
+    virtual ~IDCSSStrategy() override ;
 
 public:
     void OnRtnTicker(const DCSSTickerField* ticker, uint8_t source, long recvTime) override ;
 
-    void OnRtnKline(const DCSSKlineHeaderField* header,
-            const std::vector<const DCSSKlineField*>& kline,
+    void OnRtnKline(const DCSSKlineField* kline,
             uint8_t source,
             long recvTime) override;
 
-    void OnRtnDepth(const DCSSDepthHeaderField* header,
-            const std::vector<const DCSSDepthField*>& ask,
-            const std::vector<const DCSSDepthField*>& bid,
+    void OnRtnDepth(const DCSSDepthField* depth,
             uint8_t source,
             long recvTime) override;
 
@@ -38,8 +32,7 @@ public:
 
     void OnRspQryTicker(const DCSSTickerField* rsp, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) override ;
 
-    void OnRspQryKline(const DCSSKlineHeaderField* header, const std::vector<const DCSSKlineField* >& kline,
-            int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) override ;
+    void OnRspQryKline(const DCSSKlineField* kline, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) override ;
 
     void OnRspQryOrder(const DCSSOrderField* rsp, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) override ;
 
@@ -58,7 +51,7 @@ public:
 
     void Init(const std::vector<uint8_t>& tgSources, const std::vector<uint8_t>& mgSources);
 
-    int InsertOrder(uint8_t source, const std::string& symbol, double price, double volume, TradeTypeType tradeType);
+    int InsertOrder(uint8_t source, const std::string& symbol, double price, double volume, OrderDirection direction, OrderType type);
 
     int CancelOrder(uint8_t source, const std::string& symbol, long orderId);
 
@@ -66,11 +59,11 @@ public:
 
     int QryTicker(uint8_t source, const std::string& symbol);
 
-    int QryKline(uint8_t source, const std::string& symbol, KlineTypeType klineType, int size = 0, long since = 0);
+    int QryKline(uint8_t source, const std::string& symbol, KlineType klineType, int size = 0, long since = 0);
 
     void SubscribeTicker(uint8_t source, const std::string& symbol);
 
-    void SubscribeKline(uint8_t source, const std::string& symbol, KlineTypeType klineType);
+    void SubscribeKline(uint8_t source, const std::string& symbol, KlineType klineType);
 
     void SubscribeDepth(uint8_t source, const std::string& symbol, int depth);
 
@@ -92,7 +85,16 @@ protected:
     bool IsTdConnected(uint8_t source) const;
 
 private:
-    void CheckOrder(uint8_t source, const std::string& symbol, double price, double volume, TradeTypeType tradeType);
+    void CheckOrder(uint8_t source, const std::string& symbol, double price, double volume, OrderDirection direction, OrderType type);
+
+    inline std::pair<std::string, std::string> SplitStrSymbol(const std::string& symbol)
+    {
+        auto idx = symbol.find('_');
+        if (idx == std::string::npos)
+            return std::move(std::make_pair("", ""));
+
+        return std::move(std::make_pair(symbol.substr(0, idx), symbol.substr(idx + 1, symbol.length() - idx - 1)));
+    };
 
 protected:
     /*logger*/

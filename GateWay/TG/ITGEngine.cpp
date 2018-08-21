@@ -10,7 +10,7 @@
 #include "SysMessages.h"
 
 ITGEngine::ITGEngine()
-: mDefaultAccountIndex(-1), mName("TG")
+: mDefaultAccountIndex(-1), mName("TG"), mCurTime(0)
 {
     mReader = UnitReader::CreateRevisableReader(mName);
     mLogger = DCSSLog::GetLogger(mName);
@@ -27,6 +27,7 @@ bool ITGEngine::RegisterClient(const std::string& name, const std::string& reque
     if (mSpiMap.count(name) > 0)
     {
         DCSS_LOG_ERROR(mLogger, "client already exists... (client)" << name);
+        return false;
     }
     else
     {
@@ -52,7 +53,9 @@ bool ITGEngine::RemoveClient(const std::string& name)
         auto ptr = mSpiMap.at(name);
         mSpiMap.erase(name);
         ptr->ForceStop();
+        return true;
     }
+    return false;
 }
 
 void ITGEngine::Listening()

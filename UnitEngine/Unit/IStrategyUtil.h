@@ -23,7 +23,7 @@ public:
 
     virtual bool MdSubscribeTicker(const std::string& tickers, uint8_t source) = 0;
 
-    virtual bool MdSubscribeKline(const std::string& symbol, char klineType, uint8_t source) = 0;
+    virtual bool MdSubscribeKline(const std::string& symbol, int klineType, uint8_t source) = 0;
 
     virtual bool MdSubscribeDepth(const std::string& symbol, int depth, uint8_t source) = 0;
 

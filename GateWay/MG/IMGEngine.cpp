@@ -6,6 +6,7 @@
 #include "util.h"
 #include "IMGEngine.h"
 #include "OKEX/OKMGApi.h"
+#include "Binance/BinaMGApi.h"
 #include "Timer.h"
 #include "SysMessages.h"
 
@@ -83,7 +84,7 @@ void IMGEngine::Listening()
             case MSG_TYPE_SUB_KLINE:
             {
                 auto req = static_cast<DCSSSubKlineField*>(data);
-                mMGApi->ReqSubKline(req->Symbol, req->KlineType);
+                mMGApi->ReqSubKline(req->Symbol, req->Type);
                 break;
             }
             case MSG_TYPE_UNSUB_TICKER:
@@ -101,7 +102,7 @@ void IMGEngine::Listening()
             case MSG_TYPE_UNSUB_KLINE:
             {
                 auto req = static_cast<DCSSSubKlineField*>(data);
-                mMGApi->ReqUnSubKline(req->Symbol, req->KlineType);
+                mMGApi->ReqUnSubKline(req->Symbol, req->Type);
                 break;
             }
             default:break;
@@ -124,40 +125,23 @@ void IMGEngine::OnRtnTicker(const DCSSTickerField* ticker, uint8_t source)
 {
     if (mIsRunning)
     {
-        mWriter->WriteFrame(ticker, sizeof(DCSSTickerField), source, MSG_TYPE_RTN_TICKER, -1);
+        mWriter->WriteFrame(ticker, sizeof(DCSSTickerField), source, MSG_TYPE_RTN_TICKER, true, -1);
     }
 }
 
-void IMGEngine::OnRtnDepth(const DCSSDepthHeaderField* header, const std::vector<DCSSDepthField>& depthVec, uint8_t source)
+void IMGEngine::OnRtnDepth(const DCSSDepthField* depth, uint8_t source)
 {
     if (mIsRunning)
     {
-        size_t length = sizeof(DCSSDepthHeaderField) + depthVec.size() * sizeof(DCSSDepthField);
-        char tmp[length];
-        bzero(tmp, length);
-        memcpy(tmp, header, sizeof(DCSSDepthHeaderField));
-        for (int i = 0; i < depthVec.size(); ++i)
-        {
-            memcpy(tmp + sizeof(DCSSDepthHeaderField) + i * sizeof(DCSSDepthField), &(depthVec[i]), sizeof(DCSSDepthField));
-        }
-
-        mWriter->WriteFrame(tmp, (int)length, source, MSG_TYPE_RTN_DEPTH, -1);
+        mWriter->WriteFrame(depth, sizeof(DCSSDepthField), source, MSG_TYPE_RTN_DEPTH, true, -1);
     }
 }
 
-void IMGEngine::OnRtnKline(const DCSSKlineHeaderField* header, const std::vector<DCSSKlineField>& klineVec, uint8_t source)
+void IMGEngine::OnRtnKline(const DCSSKlineField* kline, uint8_t source)
 {
     if (mIsRunning)
     {
-        size_t length = sizeof(DCSSKlineHeaderField) + klineVec.size() * sizeof(DCSSKlineField);
-        char tmp[length];
-        bzero(tmp, length);
-        memcpy(tmp, header, sizeof(DCSSKlineHeaderField));
-        for (int i = 0; i < klineVec.size(); ++i)
-        {
-            memcpy(tmp + sizeof(DCSSKlineHeaderField) + i * sizeof(DCSSKlineField), &(klineVec[i]), sizeof(DCSSKlineField));
-        }
-        mWriter->WriteFrame(tmp, (int)length, source, MSG_TYPE_RTN_KLINE, -1);
+        mWriter->WriteFrame(kline, sizeof(DCSSKlineField), source, MSG_TYPE_RTN_KLINE, true, -1);
     }
 }
 
@@ -167,6 +151,8 @@ IMGApiPtr IMGApi::Create(uint8_t source)
     {
     case EXCHANGE_OKCOIN:
         return IMGApiPtr(new OKMGApi(source));
+    case EXCHANGE_BINANCE:
+    	return IMGApiPtr(new BinaMGApi(source));
     default:
         return IMGApiPtr();
     }

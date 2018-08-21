@@ -2,12 +2,10 @@
 // Created by wangzhen on 18-6-15.
 //
 
-#include "Helper.h"
 #include "OKMGApi.h"
 #include "Timer.h"
 
-
-std::unordered_map<KlineType, std::string> OKMGApi::klineStringMap = {
+std::unordered_map<KlineType, std::string, EnumClassHash> OKMGApi::klineStringMap = {
         {KlineType::Min1,   "1min"},
         {KlineType::Min3,   "3min"},
         {KlineType::Min5,   "5min"},
@@ -149,7 +147,7 @@ void OKMGApi::OnRtnTick(const json::value& v, const std::string& symbol)
     DCSSTickerField ticker;
 
     strcpy(ticker.Symbol, symbol.c_str());
-    SplitLongTime(j.at(U("timestamp")).as_number().to_int64(), ticker.Date, ticker.Time, ticker.MilliSec);
+    ticker.UpdateTime = j.at(U("timestamp")).as_number().to_int64();
     ticker.BuyPrice = std::stod(j.at(U("buy")).as_string());
     ticker.SellPrice = std::stod(j.at(U("sell")).as_string());
     ticker.Highest = std::stod(j.at(U("high")).as_string());
@@ -163,28 +161,23 @@ void OKMGApi::OnRtnTick(const json::value& v, const std::string& symbol)
 void OKMGApi::OnRtnKline(const web::json::value& v, const std::pair<std::string, KlineType>& pair)
 {
     const json::array& arr = v.as_array();
-    size_t size = arr.size();
 
-    DCSSKlineHeaderField header;
-    strcpy(header.Symbol, pair.first.c_str());
-    header.Type = pair.second;
-    header.Size = size;
+    DCSSKlineField kline;
+    strcpy(kline.Symbol, pair.first.c_str());
+    kline.Type = pair.second;
 
-    std::vector<DCSSKlineField> klineVec(size);
-
-    for (size_t i = 0; i < size; ++i)
+    for (size_t i = 0; i < arr.size(); ++i)
     {
-        DCSSKlineField& kline = klineVec[i];
         const json::array& klineArr = arr.at(i).as_array();
-        SplitLongTime(std::stol(klineArr.at(0).as_string()), kline.Date, kline.Time, kline.Millisec);
+        kline.UpdateTime = std::stol(klineArr.at(0).as_string());
         kline.OpenPrice = std::stod(klineArr.at(1).as_string());
         kline.Highest = std::stod(klineArr.at(2).as_string());
         kline.Lowest = std::stod(klineArr.at(3).as_string());
         kline.ClosePrice = std::stod(klineArr.at(4).as_string());
         kline.Volume = std::stod(klineArr.at(5).as_string());
-    }
 
-    mSpi->OnRtnKline(&header, klineVec, mSourceId);
+        mSpi->OnRtnKline(&kline, mSourceId);
+    }
 }
 
 void OKMGApi::OnRtnDepth(const web::json::value& v, const std::pair<std::string, int>& pair)
@@ -192,31 +185,24 @@ void OKMGApi::OnRtnDepth(const web::json::value& v, const std::pair<std::string,
     const json::array& ask = v.as_object().at(U("asks")).as_array();
     const json::array& bid = v.as_object().at(U("bids")).as_array();
 
-    DCSSDepthHeaderField header;
-    strcpy(header.Symbol, pair.first.c_str());
-    SplitLongTime(v.at(U("timestamp")).as_number().to_int64(), header.Date, header.Time, header.Millisec);
-    header.AskNum = ask.size();
-    header.BidNum = bid.size();
-    header.Depth = pair.second;
+    DCSSDepthField depth;
+	strcpy(depth.Symbol, pair.first.c_str());
+	depth.UpdateTime = v.at(U("timestamp")).as_number().to_int64();
 
-    size_t length = header.AskNum + header.BidNum;
-
-    std::vector<DCSSDepthField> depthVec(length);
-
-    for (size_t i = 0; i < header.AskNum; ++i)
+    for (size_t i = 0; i < ask.size() && i < MAX_DEPTH_NUM; ++i)
     {
         const json::array& arr = ask.at(i).as_array();
-        depthVec[i].Price = std::stod(arr.at(0).as_string());
-        depthVec[i].Volume = std::stod(arr.at(1).as_string());
+        depth.AskDepth[i].Price = std::stod(arr.at(0).as_string());
+        depth.AskDepth[i].Volume = std::stod(arr.at(1).as_string());
     }
-    for (size_t i = 0; i < header.BidNum; ++i)
+    for (size_t i = 0; i < bid.size() && i < MAX_DEPTH_NUM; ++i)
     {
         const json::array& arr = bid.at(i).as_array();
-        depthVec[i + header.AskNum].Price = std::stod(arr.at(0).as_string());
-        depthVec[i + header.AskNum].Volume = std::stod(arr.at(1).as_string());
+        depth.BidDepth[i].Price = std::stod(arr.at(0).as_string());
+        depth.BidDepth[i].Volume = std::stod(arr.at(1).as_string());
     }
 
-    mSpi->OnRtnDepth(&header, depthVec, mSourceId);
+    mSpi->OnRtnDepth(&depth, mSourceId);
 }
 
 bool OKMGApi::IsConnected() const

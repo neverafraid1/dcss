@@ -40,3 +40,21 @@
 /.idea/
 
 **/build/
+CMakeCache.txt*
+**/CMakeFiles/
+Makefile
+
+dcss.*
+
+.cproject
+.project
+
+CMakeLists.txt.*
+
+dcsstg
+dcssmg
+engine
+*so*
+
+.settings
+nbproject

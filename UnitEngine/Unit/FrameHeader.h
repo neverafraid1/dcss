@@ -12,13 +12,14 @@
 
 UNIT_NAMESPACE_START
 
-typedef uint8_t     FH_STATUS_TYPE;
-typedef uint8_t     FH_SOURCE_TYPE;
-typedef long        FH_NANO_TYPE;
-typedef size_t      FH_LENGTH_TYPE;
-typedef short       FH_MSG_TP_TYPE;
-typedef int         FH_REQID_TYPE;
-typedef int         FH_ERRORID_TYPE;
+typedef uint8_t		FH_STATUS_TYPE;
+typedef uint8_t		FH_SOURCE_TYPE;
+typedef long		FH_NANO_TYPE;
+typedef size_t		FH_LENGTH_TYPE;
+typedef short		FH_MSG_TP_TYPE;
+typedef int		FH_REQID_TYPE;
+typedef int		FH_ERRORID_TYPE;
+typedef bool		FH_LASTFG_TYPE;
 
 #define MAX_ERROR_MSG_LENGTH 100
 
@@ -41,6 +42,8 @@ struct FrameHeader
     FH_LENGTH_TYPE  Length;
     /*msg type of the data in this mCurrFrame*/
     FH_MSG_TP_TYPE  MsgType;
+    /*last flag*/
+    FH_LASTFG_TYPE	LastFlag;
     /*reqid*/
     FH_REQID_TYPE   ReqId;
     /*extra nano time for usage*/

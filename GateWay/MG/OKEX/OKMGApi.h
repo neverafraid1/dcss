@@ -6,6 +6,7 @@
 #define DIGITALCURRENCYSTRATEGYSYSTEM_OKMGENGINE_H
 
 #include "../IMGEngine.h"
+#include "Helper.h"
 
 #include <cpprest/ws_client.h>
 #include <cpprest/details/web_utilities.h>
@@ -52,9 +53,9 @@ private:
 
 private:
 
-    static std::unordered_map<KlineType, std::string> klineStringMap;
+    static std::unordered_map<KlineType, std::string, EnumClassHash> klineStringMap;
 
-    std::shared_ptr<websocket_callback_client> mWsClient;
+    std::unique_ptr<websocket_callback_client> mWsClient;
     volatile bool IsWsConnected;
     volatile bool Ponged;
 

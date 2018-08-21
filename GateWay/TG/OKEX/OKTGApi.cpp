@@ -133,8 +133,7 @@ void OKTGApi::OnRtnOrder(const json::object& jorder)
     DCSSOrderField order;
 
     strcpy(order.Symbol, jorder.at(U("symbol")).as_string().c_str());
-    SplitLongTime(std::stol(jorder.at(U("createdDate")).as_string()), order.CreateDate, order.CreateTime,
-            order.Millisec);
+    order.InsertTime = std::stol(jorder.at(U("createdDate")).as_string());
     order.OrderID = jorder.at(U("orderId")).as_number().to_int64();
     std::string tradeType = jorder.at("tradeType").as_string();
     if (tradeType.find("market") != std::string::npos)
@@ -529,310 +528,305 @@ void OKTGApi::ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID)
 
 void OKTGApi::OnRspQryTicker(http_response& response, int requestID, const char21& symbol)
 {
-    const json::value& jv = response.extract_json().get();
-    const json::object& jobj = jv.as_object();
-    if (jobj.find(U(OK_REST_ERROR_CODE))==jobj.end())
-    {
-        // success
-        try
-        {
-            DCSSTickerField ticker;
-            SplitTime(std::stol(jobj.at(U("date")).as_string()), ticker.Date, ticker.Time);
-            strcpy(ticker.Symbol, symbol);
-            const json::object& tickobj = jobj.at(U("ticker")).as_object();
-            ticker.BuyPrice = std::stod(tickobj.at(U("buy")).as_string());
-            ticker.SellPrice = std::stod(tickobj.at(U("sell")).as_string());
-            ticker.Highest = std::stod(tickobj.at(U("high")).as_string());
-            ticker.Lowest = std::stod(tickobj.at(U("low")).as_string());
-            ticker.LastPrice = std::stod(tickobj.at(U("last")).as_string());
-            ticker.Volume = std::stod(tickobj.at(U("vol")).as_string());
+	try
+	{
+		const json::value& jv = response.extract_json().get();
+		const json::object& jobj = jv.as_object();
+		DCSSTickerField ticker;
+		strcpy(ticker.Symbol, symbol);
+		if (jobj.find(U(OK_REST_ERROR_CODE)) == jobj.end())
+		{
+			ticker.UpdateTime = std::stol(jobj.at(U("date")).as_string());
+			const json::object& tickobj = jobj.at(U("ticker")).as_object();
+			ticker.BuyPrice = std::stod(tickobj.at(U("buy")).as_string());
+			ticker.SellPrice = std::stod(tickobj.at(U("sell")).as_string());
+			ticker.Highest = std::stod(tickobj.at(U("high")).as_string());
+			ticker.Lowest = std::stod(tickobj.at(U("low")).as_string());
+			ticker.LastPrice = std::stod(tickobj.at(U("last")).as_string());
+			ticker.Volume = std::stod(tickobj.at(U("vol")).as_string());
 
-            mSpi->OnRspQryTicker(&ticker, mSourceId, requestID);
-        }
-        catch (const std::exception& e)
-        {
-            DCSS_LOG_ERROR(mLogger, "(api key)" << mApiKey << " parse rsp failed!(exception)" << e.what());
-        }
-    }
-    else
-    {
-        mSpi->OnRspQryTicker(nullptr, mSourceId, requestID, jobj.at(U("error_code")).as_integer(), nullptr);
-        DCSS_LOG_INFO(mLogger, "(api key)" << mApiKey << " qry failed !(error_id)" << jobj.at(U("error_code")).as_integer());
-    }
-
+			mSpi->OnRspQryTicker(&ticker, mSourceId, true, requestID);
+		}
+		else
+		{
+			mSpi->OnRspQryTicker(&ticker, mSourceId, true, requestID,
+					jobj.at(U("error_code")).as_integer(), nullptr);
+		}
+	} catch (const std::exception& e)
+	{
+		DCSS_LOG_ERROR(mLogger,
+				"(api key)" << mApiKey << " parse rsp failed!(exception)" << e.what());
+	}
 }
 
 void OKTGApi::OnRspQryKline(http_response& response, const DCSSReqQryKlineField* req, int requestID)
 {
-    const json::value jv = response.extract_json().get();
+	try
+	{
+		const json::value jv = response.extract_json().get();
+		DCSSKlineField kline;
+		strcpy(kline.Symbol, req->Symbol);
+		kline.Type = req->Type;
+		if (jv.is_array())
+		{
+			const json::array& jarr = jv.as_array();
 
-    if (jv.is_array())
-    {
-        try
-        {
-            const json::array& jarr = jv.as_array();
+			size_t idx = 0;
+			for (const auto& i : jarr)
+			{
+				++idx;
+				if (i.is_array())
+				{
+					const json::array& klineArr = i.as_array();
+					kline.UpdateTime = klineArr.at(0).as_number().to_int64();
+					kline.OpenPrice = std::stod(klineArr.at(1).as_string());
+					kline.Highest = std::stod(klineArr.at(2).as_string());
+					kline.Lowest = std::stod(klineArr.at(3).as_string());
+					kline.ClosePrice = std::stod(klineArr.at(4).as_string());
+					kline.Volume = std::stod(klineArr.at(5).as_string());
 
-            DCSSKlineHeaderField header;
-            strcpy(header.Symbol, req->Symbol);
-            header.Type = req->Type;
-            header.Size = jarr.size();
-
-            std::vector<DCSSKlineField> klineVec(header.Size);
-            int idx = 0;
-            for (const auto& i : jarr)
-            {
-                if (i.is_array())
-                {
-                    DCSSKlineField& kline = klineVec[idx++];
-                    const json::array& klineArr = i.as_array();
-                    SplitLongTime(klineArr.at(0).as_number().to_int64(), kline.Date, kline.Time, kline.Millisec);
-                    kline.OpenPrice = std::stod(klineArr.at(1).as_string());
-                    kline.Highest = std::stod(klineArr.at(2).as_string());
-                    kline.Lowest = std::stod(klineArr.at(3).as_string());
-                    kline.ClosePrice = std::stod(klineArr.at(4).as_string());
-                    kline.Volume = std::stod(klineArr.at(5).as_string());
-                }
-            }
-
-            mSpi->OnRspQryKline(&header, mSourceId, klineVec, requestID);
-        }
-        catch (const std::exception& e)
-        {
-            DCSS_LOG_ERROR(mLogger, "(api key)" << mApiKey << " parse rsp failed!(exception)" << e.what());
-        }
-    }
-    else if (jv.is_object())
-    {
-        const json::object& jobj = jv.as_object();
-        if (jobj.find(U(OK_REST_ERROR_CODE))!=jobj.end())
-        {
-            mSpi->OnRspQryKline(nullptr, mSourceId, std::vector<DCSSKlineField>(), requestID, jobj.at(U("error_code")).as_integer(),
-                    nullptr);
-            DCSS_LOG_INFO(mLogger, "(api key)" << mApiKey << " qry failed !(error_id)" << jobj.at(U("error_code")).as_integer());
-        }
-    }
+					mSpi->OnRspQryKline(&kline, mSourceId, idx == jarr.size(), requestID);
+				}
+			}
+		}
+		else if (jv.is_object())
+		{
+			const json::object& jobj = jv.as_object();
+			if (jobj.find(U(OK_REST_ERROR_CODE)) != jobj.end())
+			{
+				mSpi->OnRspQryKline(&kline, mSourceId,
+						true, requestID,
+						jobj.at(U("error_code")).as_integer(), nullptr);
+			}
+		}
+	} catch (const std::exception& e)
+	{
+		DCSS_LOG_ERROR(mLogger,
+				"(api key)" << mApiKey << " parse rsp failed!(exception)" << e.what());
+	}
 }
 
 void OKTGApi::OnRspQryUserInfo(http_response& response, int requestID)
 {
-    const json::value& jv = response.extract_json().get();
-    const json::object& jobj = jv.as_object();
+	try
+	{
+		const json::value jv = response.extract_json().get();
+		const json::object& jobj = jv.as_object();
+		DCSSTradingAccountField rsp;
 
-    if (jobj.find(U("error_code")) == jobj.end())
-    {
-        try
-        {
-            bool result = jobj.at(U("result")).as_bool();
-            if (result)
-            {
-                DCSSTradingAccountField rsp;
-                const json::object& info = jobj.at(U("info")).as_object();
-                const json::object& fund = info.at(U("funds")).as_object();
-                const json::object& free = fund.at(U("free")).as_object();
-                const json::object& freezed = fund.at(U("freezed")).as_object();
+		if (jobj.find(U("error_code")) == jobj.end())
+		{
+			bool result = jobj.at(U("result")).as_bool();
+			if (result)
+			{
+				const json::object& info = jobj.at(U("info")).as_object();
+				const json::object& fund = info.at(U("funds")).as_object();
+				const json::object& free = fund.at(U("free")).as_object();
+				const json::object& freezed = fund.at(U("freezed")).as_object();
 
-                int index = 0;
-                for (const auto& i : free)
-                {
-                    double balance = std::stod(i.second.as_string());
-                    if (!IsEqual(balance, 0.0))
-                    {
-                        memcpy(rsp.Balance[index].Currency, i.first.c_str(), i.first.length());
-                        rsp.Balance[index].Free = balance;
-                        ++index;
-                    }
-                }
-                for (const auto& i : freezed)
-                {
-                    double balance = std::stod(i.second.as_string());
-                    if (!IsEqual(balance, 0.0))
-                    {
-                        const std::string& currency = i.first;
-                        bool found = false;
-                        for (index = 0; index < MAX_CURRENCY_NUM && strlen(rsp.Balance[index].Currency) != 0; ++index)
-                        {
-                            if (std::string(rsp.Balance[index].Currency) == currency)
-                            {
-                                rsp.Balance[index].Freezed = balance;
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found)
-                        {
-                            memcpy(rsp.Balance[index].Currency, currency.c_str(), currency.length());
-                            rsp.Balance[index].Freezed = balance;
-                        }
-                    }
-                }
+				int index = 0;
+				for (const auto& i : free)
+				{
+					double balance = std::stod(i.second.as_string());
+					if (!IsEqual(balance, 0.0))
+					{
+						memcpy(rsp.Balance[index].Currency, i.first.c_str(),
+								i.first.length());
+						rsp.Balance[index].Free = balance;
+						++index;
+					}
+				}
+				for (const auto& i : freezed)
+				{
+					double balance = std::stod(i.second.as_string());
+					if (!IsEqual(balance, 0.0))
+					{
+						const std::string& currency = i.first;
+						bool found = false;
+						for (index = 0;
+								index < MAX_CURRENCY_NUM
+										&& strlen(rsp.Balance[index].Currency)
+												!= 0; ++index)
+						{
+							if (std::string(rsp.Balance[index].Currency)
+									== currency)
+							{
+								rsp.Balance[index].Freezed = balance;
+								found = true;
+								break;
+							}
+						}
+						if (!found)
+						{
+							memcpy(rsp.Balance[index].Currency,
+									currency.c_str(), currency.length());
+							rsp.Balance[index].Freezed = balance;
+						}
+					}
+				}
 
-                mSpi->OnRspQryUserInfo(&rsp, mSourceId, requestID);
-            }
-            else
-            {
-                // TODO
-                DCSS_LOG_INFO(mLogger, "[ok_tg][qryuserinfo] " << "(" << mApiKey << ")"
-                << " result is false !");
-            }
+				mSpi->OnRspQryUserInfo(&rsp, mSourceId, true, requestID);
 
-        }
-        catch (const std::exception& e)
-        {
-            DCSS_LOG_ERROR(mLogger, "[ok_tg][qryuserinfo] " << "(" << mApiKey << ")"
-                                                         << " parse rsp failed!(exception)" << e.what());
-        }
-
-    }
-    else
-    {
-        mSpi->OnRspQryUserInfo(nullptr, mSourceId, requestID, jobj.at(U("error_code")).as_integer(), nullptr);
-        DCSS_LOG_INFO(mLogger, "[ok_tg][qryuserinfo] " << "(" << mApiKey << ")"
-                << " qry failed !(error_id)" << jobj.at(U("error_code")).as_integer());
-    }
+			}
+			else
+			{
+				// TODO
+				DCSS_LOG_INFO(mLogger,
+						"[ok_tg][qryuserinfo] " << "(" << mApiKey << ")" << " result is false !");
+			}
+		}
+		else
+		{
+			mSpi->OnRspQryUserInfo(&rsp, mSourceId, requestID, true,
+					jobj.at(U("error_code")).as_integer(), nullptr);
+		}
+	}
+	catch (const std::exception& e)
+	{
+		DCSS_LOG_ERROR(mLogger,
+				"[ok_tg][qryuserinfo] " << "(" << mApiKey << ")" << " parse rsp failed!(exception)" << e.what());
+	}
 }
 
 void OKTGApi::OnRspInsertOrder(web::http::http_response& response, int requestID)
 {
-    DCSSRspInsertOrderField rsp;
+	try
+	{
+		DCSSRspInsertOrderField rsp;
 
-    const json::value& jv = response.extract_json().get();
-    const json::object& jobj = jv.as_object();
+		const json::value& jv = response.extract_json().get();
+		const json::object& jobj = jv.as_object();
 
-    if (jobj.find(U("error_code")) == jobj.end())
-    {
-        try
-        {
-            rsp.Result = jobj.at(U("result")).as_bool();
-            rsp.OrderID = jobj.at(U("order_id")).as_number().to_int64();
+		if (jobj.find(U("error_code")) == jobj.end())
+		{
+			rsp.Result = jobj.at(U("result")).as_bool();
+			rsp.OrderID = jobj.at(U("order_id")).as_number().to_int64();
 
-            mSpi->OnRspOrderInsert(&rsp, mSourceId, requestID);
-        }
-        catch (const std::exception& e)
-        {
-            DCSS_LOG_ERROR(mLogger, "[ok_tg][insertorder]\t" << "(" << mApiKey << ")"
-                                                       << " parse rsp failed!(exception)" << e.what());
-        }
-    }
-    else
-    {
-        mSpi->OnRspOrderInsert(nullptr, mSourceId, requestID, jobj.at(U("error_code")).as_integer());
-        DCSS_LOG_INFO(mLogger, "[ok_tg][insertorder]\t" << "(" << mApiKey << ")"
-        << " receive error rsp (error_code)" << jobj.at(U("error_code")).as_integer());
-    }
+			mSpi->OnRspOrderInsert(&rsp, mSourceId, true, requestID);
+		}
+		else
+		{
+			mSpi->OnRspOrderInsert(&rsp, mSourceId, requestID,
+					jobj.at(U("error_code")).as_integer());
+		}
+	}
+	catch (const std::exception& e)
+	{
+		DCSS_LOG_ERROR(mLogger,
+				"[ok_tg][insertorder]\t" << "(" << mApiKey << ")" << " parse rsp failed!(exception)" << e.what());
+	}
 }
 
 void OKTGApi::OnRspCancelOrder(web::http::http_response& response, int requestID)
 {
-    const json::value& jv = response.extract_json().get();
-    const json::object& jobj = jv.as_object();
+	try
+	{
+		const json::value& jv = response.extract_json().get();
+		const json::object& jobj = jv.as_object();
+		DCSSRspCancelOrderField rsp;
 
-    if (jobj.find(U("error_code")) == jobj.end())
-    {
-        try
-        {
-            DCSSRspCancelOrderField rsp;
-            if (jobj.find(U("result"))!=jobj.end())
-            {
-                bool result = jobj.at(U("result")).as_bool();
-                if (result)
-                    rsp.SuccessID[0] = jobj.at(U("order_id")).as_number().to_int64();
-                else
-                    rsp.ErrorID[0] = jobj.at(U("order_id")).as_number().to_int64();
-            }
-            else
-            {
-                if (jobj.find(U("success"))!=jobj.end())
-                {
-                    std::stringstream ss(jobj.at(U("success")).as_string());
-                    std::string tmp;
-                    int i = 0;
-                    while (getline(ss, tmp, ','))
-                    {
-                        rsp.SuccessID[i++] = std::stol(tmp);
-                    }
-                }
-                if (jobj.find(U("error"))!=jobj.end())
-                {
-                    std::stringstream ss(jobj.at(U("error")).as_string());
-                    std::string tmp;
-                    int i = 0;
-                    while (getline(ss, tmp, ','))
-                    {
-                        rsp.ErrorID[i++] = std::stol(tmp);
-                    }
-                }
-            }
-            mSpi->OnRspOrderAction(&rsp, mSourceId, requestID);
-        }
-        catch (const std::exception& e)
-        {
-            DCSS_LOG_ERROR(mLogger, "[ok_tg][cancelorder]\t" << "(" << mApiKey << ")"
-                                                       << " parse rsp failed!(exception)" << e.what());
-        }
-    }
-    else
-    {
-        mSpi->OnRspOrderAction(nullptr, mSourceId, requestID, jobj.at(U("error_code")).as_integer(), nullptr);
-    }
+		if (jobj.find(U("error_code")) == jobj.end())
+		{
+			if (jobj.find(U("result")) != jobj.end())
+			{
+				bool result = jobj.at(U("result")).as_bool();
+				if (result) rsp.SuccessID[0] =
+						jobj.at(U("order_id")).as_number().to_int64();
+				else
+					rsp.ErrorID[0] =
+							jobj.at(U("order_id")).as_number().to_int64();
+			}
+			else
+			{
+				if (jobj.find(U("success")) != jobj.end())
+				{
+					std::stringstream ss(jobj.at(U("success")).as_string());
+					std::string tmp;
+					int i = 0;
+					while (getline(ss, tmp, ','))
+					{
+						rsp.SuccessID[i++] = std::stol(tmp);
+					}
+				}
+				if (jobj.find(U("error")) != jobj.end())
+				{
+					std::stringstream ss(jobj.at(U("error")).as_string());
+					std::string tmp;
+					int i = 0;
+					while (getline(ss, tmp, ','))
+					{
+						rsp.ErrorID[i++] = std::stol(tmp);
+					}
+				}
+			}
+			mSpi->OnRspOrderAction(&rsp, mSourceId, true, requestID);
+		}
+		else
+		{
+			mSpi->OnRspOrderAction(&rsp, mSourceId, true, requestID,
+					jobj.at(U("error_code")).as_integer(), nullptr);
+		}
+	}
+	catch (const std::exception& e)
+	{
+		DCSS_LOG_ERROR(mLogger,
+				"[ok_tg][cancelorder]\t" << "(" << mApiKey << ")" << " parse rsp failed!(exception)" << e.what());
+	}
 }
 
 void OKTGApi::OnRspQryOrder(web::http::http_response& response, const DCSSReqQryOrderField* req, int requestID)
 {
-    const json::value& jv = response.extract_json().get();
-    const json::object& jobj = jv.as_object();
+	try
+	{
+		const json::value& jv = response.extract_json().get();
+		const json::object& jobj = jv.as_object();
+		DCSSOrderField order;
+		strcpy(order.Symbol, req->Symbol);
+		if (jobj.find(U("error_code")) == jobj.end())
+		{
+			if (jobj.at(U("result")).as_bool())
+			{
+				const json::array& orderArray = jobj.at(U("orders")).as_array();
 
-    if (jobj.find(U("error_code")) == jobj.end())
-    {
-        try
-        {
-            if (jobj.at(U("result")).as_bool())
-            {
-                const json::array& orderArray = jobj.at(U("orders")).as_array();
+				int idx = 0;
+				for (const auto& i : orderArray)
+				{
+					const json::object& orderObj = i.as_object();
+					order.OriginQuantity = orderObj.at(U("amount")).as_double();
+					order.InsertTime = orderObj.at(U("create_date")).as_number().to_int64();
+					order.Price = orderObj.at(U("avg_price")).as_double();
+					order.ExecuteQuantity =
+							orderObj.at(U("deal_amount")).as_double();
+					order.OrderID =
+							orderObj.at(U("order_id")).as_number().to_int64();
+					order.Price = orderObj.at(U("price")).as_double();
+					order.Status = intOrderStatusMap.at(
+							orderObj.at(U("status")).as_integer());
+					std::string type = orderObj.at(U("type")).as_string();
+					if (type.find("buy") != std::string::npos) order.Direction =
+							OrderDirection::Buy;
+					else
+						order.Direction = OrderDirection::Sell;
 
-                DCSSRspQryOrderHeaderField header;
-                memcpy(&header.Symbol, &req->Symbol, sizeof(header.Symbol));
-                header.Size = orderArray.size();
+					if (type.find("market") != std::string::npos) order.Type =
+							OrderType::Market;
+					else
+						order.Type = OrderType::Limit;
 
-                std::vector<DCSSOrderField> vec(header.Size);
-                int idx = 0;
-                for (const auto& i : orderArray)
-                {
-                    DCSSOrderField& order = vec[idx++];
-
-                    const json::object& orderObj = i.as_object();
-                    order.OriginQuantity = orderObj.at(U("amount")).as_double();
-                    SplitLongTime(orderObj.at(U("create_date")).as_number().to_int64(), order.CreateDate,
-                            order.CreateTime, order.Millisec);
-                    order.Price = orderObj.at(U("avg_price")).as_double();
-                    order.ExecuteQuantity = orderObj.at(U("deal_amount")).as_double();
-                    order.OrderID = orderObj.at(U("order_id")).as_number().to_int64();
-                    order.Price = orderObj.at(U("price")).as_double();
-                    order.Status = intOrderStatusMap.at(orderObj.at(U("status")).as_integer());
-                    std::string type = orderObj.at(U("type")).as_string();
-                    if (type.find("buy") != std::string::npos)
-                        order.Direction = OrderDirection::Buy;
-                    else
-                        order.Direction = OrderDirection::Sell;
-
-                    if (type.find("market") != std::string::npos)
-                        order.Type = OrderType::Market;
-                    else
-                        order.Type = OrderType::Limit;
-                }
-
-                mSpi->OnRspQryOrder(&header, mSourceId, vec, requestID);
-            }
-        }
-        catch (const std::exception& e)
-        {
-            DCSS_LOG_ERROR(mLogger, "[ok_tg][qryorder]\t" << "(" << mApiKey << ")"
-                                                       << " parse rsp failed!(exception)" << e.what());
-        }
-    }
-    else
-    {
-        mSpi->OnRspQryOrder(nullptr, mSourceId, {}, requestID, jobj.at(U("error_code")).as_integer(), nullptr);
-    }
+					mSpi->OnRspQryOrder(&order, mSourceId, ++idx == orderArray.size(), requestID);
+				}
+			}
+		}
+		else
+		{
+			mSpi->OnRspQryOrder(&order, mSourceId, true, requestID, jobj.at(U("error_code")).as_integer(), nullptr);
+		}
+	}
+	catch (const std::exception& e)
+	{
+		DCSS_LOG_ERROR(mLogger,
+				"[ok_tg][qryorder]\t" << "(" << mApiKey << ")" << " parse rsp failed!(exception)" << e.what());
+	}
 }
 
 void OKTGApi::AddApiKey(web::uri_builder& builder)

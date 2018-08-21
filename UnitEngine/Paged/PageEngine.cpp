@@ -65,7 +65,7 @@ bool PageEngine::Write(const std::string& content, short msgType, bool isLast, u
 {
     if (mWriter.get() == nullptr)
         return false;
-    mWriter->WriteFrame(content.c_str(), content.length() + 1, source, msgType, -1);
+    mWriter->WriteFrame(content.c_str(), content.length() + 1, source, msgType, isLast, -1);
     return true;
 }
 
@@ -468,21 +468,21 @@ bool PageEngine::SubTicker(const std::string& symbol, uint8_t source)
     DCSSSubTickerField req;
     strcpy(req.Symbol, symbol.c_str());
 
-    mWriter->WriteFrame(&req, sizeof(DCSSSubTickerField) + 1, source, MSG_TYPE_SUB_TICKER, -1);
+    mWriter->WriteFrame(&req, sizeof(DCSSSubTickerField) + 1, source, MSG_TYPE_SUB_TICKER, true, -1);
 
     return true;
 }
 
-bool PageEngine::SubKline(const std::string& symbol, char klineType, uint8_t source)
+bool PageEngine::SubKline(const std::string& symbol, int klineType, uint8_t source)
 {
     if (mWriter.get() == nullptr)
         return false;
 
     DCSSSubKlineField req;
     strcpy(req.Symbol, symbol.c_str());
-    req.KlineType = klineType;
+    req.Type = (KlineType)klineType;
 
-    mWriter->WriteFrame(&req, sizeof(req) + 1, source, MSG_TYPE_SUB_KLINE, -1);
+    mWriter->WriteFrame(&req, sizeof(req) + 1, source, MSG_TYPE_SUB_KLINE, true, -1);
 
     return true;
 }
@@ -496,7 +496,7 @@ bool PageEngine::SubDepth(const std::string& symbol, int depth, uint8_t source)
     strcpy(req.Symbol, symbol.c_str());
     req.Depth = depth;
 
-    mWriter->WriteFrame(&req, sizeof(req) + 1, source, MSG_TYPE_SUB_DEPTH, -1);
+    mWriter->WriteFrame(&req, sizeof(req) + 1, source, MSG_TYPE_SUB_DEPTH, true, -1);
 
     return true;
 }
@@ -509,21 +509,21 @@ bool PageEngine::UnSubTicker(const std::string& symbol, uint8_t source)
     DCSSSubTickerField req;
     strcpy(req.Symbol, symbol.c_str());
 
-    mWriter->WriteFrame(&req, sizeof(DCSSSubTickerField) + 1, source, MSG_TYPE_UNSUB_TICKER, -1);
+    mWriter->WriteFrame(&req, sizeof(DCSSSubTickerField) + 1, source, MSG_TYPE_UNSUB_TICKER, true, -1);
 
     return true;
 }
 
-bool PageEngine::UnSubKline(const std::string& symbol, char klineType, uint8_t source)
+bool PageEngine::UnSubKline(const std::string& symbol, int klineType, uint8_t source)
 {
     if (mWriter.get() == nullptr)
         return false;
 
     DCSSSubKlineField req;
     strcpy(req.Symbol, symbol.c_str());
-    req.KlineType = klineType;
+    req.Type = (KlineType)klineType;
 
-    mWriter->WriteFrame(&req, sizeof(req) + 1, source, MSG_TYPE_UNSUB_KLINE, -1);
+    mWriter->WriteFrame(&req, sizeof(req) + 1, source, MSG_TYPE_UNSUB_KLINE, true, -1);
 
     return true;
 }
@@ -537,7 +537,7 @@ bool PageEngine::UnSubDepth(const std::string& symbol, int depth, uint8_t source
     strcpy(req.Symbol, symbol.c_str());
     req.Depth = depth;
 
-    mWriter->WriteFrame(&req, sizeof(req) + 1, source, MSG_TYPE_UNSUB_DEPTH, -1);
+    mWriter->WriteFrame(&req, sizeof(req) + 1, source, MSG_TYPE_UNSUB_DEPTH, true, -1);
 
     return true;
 }

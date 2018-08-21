@@ -23,7 +23,7 @@ public:
     explicit DCSSStrategyUtil(const std::string& strategyName);
     ~DCSSStrategyUtil() override = default;
 
-    int InsertOrder(uint8_t source, const std::string& symbol, double price, double volume, TradeTypeType tradeType);
+    int InsertOrder(uint8_t source, const std::string& symbol, double price, double volume, OrderDirection direction, OrderType type);
 
     int CancelOrder(uint8_t source, const std::string& symbol, long orderId);
 

@@ -21,12 +21,10 @@ class Strategy : public IDCSSStrategy
 public:
     Strategy(const std::string& name);
 
-    void OnRspQryKline(const DCSSKlineHeaderField* header, const std::vector<const DCSSKlineField*>& kline,
-            int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) final;
+    void OnRspQryKline(const DCSSKlineField* kline, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) final;
 
 
-    void OnRtnKline(const DCSSKlineHeaderField* header, const std::vector<const DCSSKlineField* >& kline,
-            uint8_t source, long recvTime) final;
+    void OnRtnKline(const DCSSKlineField* kline, uint8_t source, long recvTime) final;
 private:
     std::deque<double> closePirces;
 
@@ -36,32 +34,20 @@ Strategy::Strategy(const std::string& name)
 : IDCSSStrategy(name)
 { }
 
-void Strategy::OnRspQryKline(const DCSSKlineHeaderField* header, const std::vector<const DCSSKlineField*>& kline,
-        int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime)
+void Strategy::OnRspQryKline(const DCSSKlineField* kline, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime)
 {
     if (errorId == 0)
     {
-        for (const auto& item : kline)
-        {
-            std::cout << item->ClosePrice << std::endl;
-            closePirces.push_back(item->ClosePrice);
-        }
+            std::cout << "(time)" << kline->UpdateTime << "(close proce)" << kline->ClosePrice << std::endl;
+            closePirces.push_back(kline->ClosePrice);
     }
-
-
 }
 
-void Strategy::OnRtnKline(const DCSSKlineHeaderField* header, const std::vector<const DCSSKlineField*>& kline,
-        uint8_t source, long recvTime)
+void Strategy::OnRtnKline(const DCSSKlineField* kline, uint8_t source, long recvTime)
 {
-    for (auto& item : kline)
-    {
-        closePirces.pop_front();
-        closePirces.push_back(item->ClosePrice);
-    }
-
-    std::cout << kline.size() << "\ttime:" << kline.front()->Time << "\tMillisec:" << kline.front()->Millisec << "\topen:" << kline.front()->OpenPrice <<
-    "\thigh:" << kline.front()->Highest << "\tlow:" << kline.front()->Lowest << "\tclose:" << kline.front()->ClosePrice << "\tvolume:" << kline.front()->Volume << std::endl;
+	std::cout << "(time)" << kline->UpdateTime << "(close proce)" << kline->ClosePrice << std::endl;
+	closePirces.pop_front();
+	closePirces.push_back(kline->ClosePrice);
 
     int beginIndex = closePirces.size() - slowPeriod - 1;
     int endIndex = closePirces.size();
@@ -101,9 +87,9 @@ int main(int argc, char* argv[])
 
     strategy.Start();
 
-    strategy.QryKline(EXCHANGE_OKCOIN, symbol, KLINE_1MIN, 35);
+    strategy.QryKline(EXCHANGE_OKCOIN, symbol, KlineType::Min1, 35);
 
-    strategy.SubscribeKline(EXCHANGE_OKCOIN, symbol, KLINE_1MIN);
+    strategy.SubscribeKline(EXCHANGE_OKCOIN, symbol, KlineType::Min1);
 
     strategy.Block();
 

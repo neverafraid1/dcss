@@ -38,7 +38,7 @@ public:
     void ReqQryTicker(const DCSSReqQryTickerField* req, int requestID) override ;
     void ReqQryKline(const DCSSReqQryKlineField* req, int requestID) override ;
     void ReqQryUserInfo(int requestID) override ;
-    void ReqQryOrder(const DCSSReqQryOrderField* req, int requestID) override {}
+    void ReqQryOrder(const DCSSReqQryOrderField* req, int requestID) override ;
 
     void ReqInsertOrder(const DCSSReqInsertOrderField* req, int requestID) override ;
     void ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID) override {}
@@ -50,6 +50,8 @@ private:
 
     void OnRspQryUserInfo(http_response& response, int requestID);
     void OnRspQryKline(http_response& response, const DCSSReqQryKlineField* req, int requestID);
+    void OnRspQryTicker(http_response& response, const DCSSReqQryTickerField* req, int requestID);
+    void OnRspQryOrder(http_response& response, const DCSSReqQryOrderField* req, int requestID);
     void OnRspOrderInsert(http_response& response, const DCSSReqInsertOrderField* req, int requestID);
     void OnRtnAccount(const json::object& jo);
     void OnRtnOrder(const json::object& jo);
@@ -64,6 +66,7 @@ private:
     static std::unordered_map<OrderType, std::string, EnumClassHash> enumOrderTypeMap;
     static std::unordered_map<std::string, OrderType> orderTypeEnumMap;
     static std::unordered_map<KlineType, std::string, EnumClassHash> klineMap;
+    static std::unordered_map<std::string, OrderStatus> statusEnumMap;
 
     std::string mApiKey;
     std::string mSecretKey;

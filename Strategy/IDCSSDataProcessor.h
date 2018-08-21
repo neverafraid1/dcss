@@ -6,21 +6,20 @@
 #define DIGITALCURRENCYSTRATEGYSYSTEM_IDATAPROCESSOR_H
 
 #include "DataStruct.h"
-#include "Declare.h"
+#include "UnitDeclare.h"
 
 class IDCSSDataProcessor
 {
 public:
+	virtual ~IDCSSDataProcessor() = default;
+
     virtual void OnRtnTicker(const DCSSTickerField* ticker, uint8_t source, long recvTime) = 0;
 
-    virtual void OnRtnKline(const DCSSKlineHeaderField* header,
-            const std::vector<const DCSSKlineField* >& kline,
+    virtual void OnRtnKline(const DCSSKlineField* kline,
             uint8_t source,
             long recvTime) = 0;
 
-    virtual void OnRtnDepth(const DCSSDepthHeaderField* header,
-            const std::vector<const DCSSDepthField* >& ask,
-            const std::vector<const DCSSDepthField* >& bid,
+    virtual void OnRtnDepth(const DCSSDepthField* depth,
             uint8_t source,
             long recvTime) = 0;
 
@@ -32,8 +31,7 @@ public:
 
     virtual void OnRspQryTicker(const DCSSTickerField* rsp, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) = 0;
 
-    virtual void OnRspQryKline(const DCSSKlineHeaderField* header, const std::vector<const DCSSKlineField* >& kline,
-            int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) = 0;
+    virtual void OnRspQryKline(const DCSSKlineField* kline, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) = 0;
 
     virtual void OnRspQryOrder(const DCSSOrderField* rsp, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) = 0;
 

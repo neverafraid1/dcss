@@ -34,6 +34,7 @@ public:
     FH_REQID_TYPE GetRequestID() const ;
     FH_NANO_TYPE GetExtraNano() const ;
     FH_ERRORID_TYPE GetErrorID() const ;
+    FH_LASTFG_TYPE GetLastFlag() const ;
     char* GetErrorMsg() const ;
     void* GetData() const ;
 
@@ -41,6 +42,7 @@ public:
     void SetNano(FH_NANO_TYPE nano);
     void SetMsgType(FH_MSG_TP_TYPE type);
     void SetReqID(FH_REQID_TYPE reqid);
+    void SetLastFlag(FH_LASTFG_TYPE lastflag);
     void SetExtraNano(FH_NANO_TYPE extra);
     void SetErrorData(FH_ERRORID_TYPE errorid, const char* errormsg, const void* data, int dataLength);
     void SetData(const void* data, int dataLength);
@@ -120,6 +122,11 @@ inline FH_ERRORID_TYPE Frame::GetErrorID() const
     return frame->ErrorID;
 }
 
+inline FH_LASTFG_TYPE Frame::GetLastFlag() const
+{
+	return frame->LastFlag;
+}
+
 inline char* Frame::GetErrorMsg() const
 {
     if (GetErrorID() == 0)
@@ -178,6 +185,11 @@ inline void Frame::SetReqID(FH_REQID_TYPE reqid)
     frame->ReqId = reqid;
 }
 
+inline void Frame::SetLastFlag(FH_LASTFG_TYPE lastflag)
+{
+	frame->LastFlag = lastflag;
+}
+
 inline void Frame::SetExtraNano(FH_NANO_TYPE extra)
 {
     frame->ExtraNano = extra;
@@ -194,8 +206,7 @@ inline void Frame::SetErrorData(FH_ERRORID_TYPE errorid, const char* errormsg, c
         frame->ErrorID = errorid;
         if (errormsg != nullptr)
             memcpy(ADDRESS_ADD(frame, BASIC_FRAME_HEADER_LENGTH), errormsg, MAX_ERROR_MSG_LENGTH);
-        if (data != nullptr)
-            memcpy(ADDRESS_ADD(frame, ERROR_FRAME_HEADER_LENGTH), data, (size_t)dataLength);
+		memcpy(ADDRESS_ADD(frame, ERROR_FRAME_HEADER_LENGTH), data, (size_t)dataLength);
         SetFrameLength(ERROR_FRAME_HEADER_LENGTH + dataLength);
     }
 }

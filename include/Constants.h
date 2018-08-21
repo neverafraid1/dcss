@@ -9,8 +9,6 @@
 #define EXCHANGE_OKCOIN     1
 #define EXCHANGE_BINANCE    2
 
-#define MAX_CURRENCY_NUM 500
-
 enum class Source
 {
     Okex,
@@ -69,8 +67,5 @@ enum class OrderStatus
     Rejected,
     Expired
 };
-
-
-
 
 #endif //DEMO_CONSTANTS_H

@@ -6,7 +6,6 @@
 #include <iostream>
 #include "DCSSDataWrapper.h"
 #include "SysMessages.h"
-#include "Helper.h"
 
 volatile int IDCSSDataProcessor::mSingalReceived = -1;
 
@@ -33,7 +32,7 @@ void DCSSDataWrapper::Connect(const std::string& config, long time)
 {
     for (auto& it : mTdStatus)
     {
-        it.second = TD_STATUS_REQUESTED;
+        it.second = GWStatus::Requested;
     }
     mUtil->TdConnect(config);
     long startTime = GetNanoTime();
@@ -45,9 +44,9 @@ void DCSSDataWrapper::Stop()
     mForceStop = true;
 }
 
-uint8_t DCSSDataWrapper::GetTdStatus(uint8_t source)
+GWStatus DCSSDataWrapper::GetTdStatus(uint8_t source)
 {
-    return mTdStatus.count(source) == 0 ? TD_STATUS_UNKNOWN : mTdStatus.at(source);
+    return mTdStatus.count(source) == 0 ? GWStatus::Unknown : mTdStatus.at(source);
 }
 
 void DCSSDataWrapper::AddMarketData(uint8_t source)
@@ -59,7 +58,7 @@ void DCSSDataWrapper::AddMarketData(uint8_t source)
 
 void DCSSDataWrapper::AddRegisterTd(uint8_t source)
 {
-    mTdStatus[source] = TD_STATUS_ADDED;
+    mTdStatus[source] = GWStatus::Added;
 }
 
 void DCSSDataWrapper::AddTicker(const std::string& symbol, uint8_t source)
@@ -67,7 +66,7 @@ void DCSSDataWrapper::AddTicker(const std::string& symbol, uint8_t source)
     mSubedTicker[source].insert(symbol);
 }
 
-void DCSSDataWrapper::AddKline(const std::string& symbol, KlineTypeType klineType, uint8_t source)
+void DCSSDataWrapper::AddKline(const std::string& symbol, KlineType klineType, uint8_t source)
 {
     mSubedKline[source][symbol].insert(klineType);
 }
@@ -97,7 +96,7 @@ void DCSSDataWrapper::Run()
 
             if (msgType == MSG_TYPE_TRADE_ENGINE_ACK)
             {
-                if (mTdStatus[msgSource] == TD_STATUS_REQUESTED)
+                if (mTdStatus[msgSource] == GWStatus::Requested)
                 {
                     std::string content((char*) frame->GetData());
                     ProcessTdAck(content, msgSource, mCurTime);
@@ -124,42 +123,22 @@ void DCSSDataWrapper::Run()
                     }
                     case MSG_TYPE_RTN_KLINE:
                     {
-                        auto header = static_cast<const DCSSKlineHeaderField*>(data);
-                        const std::string& symbol(header->Symbol);
+                        auto kline = static_cast<const DCSSKlineField*>(data);
+                        const std::string& symbol(kline->Symbol);
                         if (mSubedKline.count(msgSource) > 0 && mSubedKline.at(msgSource).count(symbol) > 0
-                                && mSubedKline.at(msgSource).at(symbol).count(header->KlineType) > 0)
+                                && mSubedKline.at(msgSource).at(symbol).count(kline->Type) > 0)
                         {
-                            std::vector<const DCSSKlineField*> klineVec;
-                            for (auto i = 0; i < header->Size; ++i)
-                            {
-                                klineVec.emplace_back(
-                                        static_cast<const DCSSKlineField*>(data + sizeof(DCSSKlineHeaderField)
-                                                + i * sizeof(DCSSKlineField)));
-                            }
-                            mProcessor->OnRtnKline(header, klineVec, msgSource, mCurTime);
+                            mProcessor->OnRtnKline(kline, msgSource, mCurTime);
                         }
                         break;
                     }
                     case MSG_TYPE_RTN_DEPTH:
                     {
-                        auto header = static_cast<const DCSSDepthHeaderField*>(data);
-                        const std::string& symbol(header->Symbol);
-                        if (mSubedDepth.count(msgSource) > 0 && mSubedDepth.at(msgSource).count(symbol) > 0
-                                && mSubedDepth.at(msgSource).at(symbol).count(header->Depth) > 0)
+                        auto depth = static_cast<const DCSSDepthField*>(data);
+                        const std::string& symbol(depth->Symbol);
+                        if (mSubedDepth.count(msgSource) > 0 && mSubedDepth.at(msgSource).count(symbol) > 0)
                         {
-                            std::vector<const DCSSDepthField*> ask;
-                            std::vector<const DCSSDepthField*> bid;
-                            for (auto i = 0; i < header->AskNum; ++i)
-                            {
-                                ask.emplace_back(static_cast<const DCSSDepthField*>(data + sizeof(DCSSDepthHeaderField)
-                                        + i * sizeof(DCSSDepthField)));
-                            }
-                            for (auto i = 0; i < header->BidNum; ++i)
-                            {
-                                bid.emplace_back(static_cast<const DCSSDepthField*>(data + sizeof(DCSSDepthHeaderField)
-                                        + (ask.size() + i) * sizeof(DCSSDepthField)));
-                            }
-                            mProcessor->OnRtnDepth(header, ask, bid, msgSource, mCurTime);
+                            mProcessor->OnRtnDepth(depth, msgSource, mCurTime);
                         }
                         break;
                     }
@@ -181,7 +160,7 @@ void DCSSDataWrapper::Run()
                     }
                     case MSG_TYPE_RTN_TD_STATUS:
                     {
-                        mTdStatus[msgSource] = *(static_cast<GateWayStatusType*>(data));
+                        mTdStatus[msgSource] = *(static_cast<GWStatus*>(data));
                         break;
                     }
                     }
@@ -210,16 +189,7 @@ void DCSSDataWrapper::Run()
                     }
                     case MSG_TYPE_RSP_QRY_KLINE:
                     {
-                        auto header = static_cast<const DCSSKlineHeaderField*>(data);
-                        const std::string& symbol(header->Symbol);
-                        std::vector<const DCSSKlineField*> klineVec;
-                        for (auto i = 0; i < header->Size; ++i)
-                        {
-                            klineVec.emplace_back(
-                                    static_cast<const DCSSKlineField*>(data + sizeof(DCSSKlineHeaderField)
-                                            + i * sizeof(DCSSKlineField)));
-                        }
-                        mProcessor->OnRspQryKline(header, klineVec, requestId, frame->GetErrorID(), frame->GetErrorMsg(),
+                        mProcessor->OnRspQryKline(static_cast<const DCSSKlineField*>(data), requestId, frame->GetErrorID(), frame->GetErrorMsg(),
                                         msgSource, mCurTime);
                         break;
                     }
@@ -231,7 +201,6 @@ void DCSSDataWrapper::Run()
                     }
                     }
                 }
-
             }
         }
         else
@@ -259,7 +228,7 @@ bool DCSSDataWrapper::IsAllLogined()
     bool rtn(true);
     for (auto& item : mTdStatus)
     {
-        rtn &= item.second == TD_STATUS_LOGINED;
+        rtn &= (item.second == GWStatus::Logined);
     }
     return rtn;
 }

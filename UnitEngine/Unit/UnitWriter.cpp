@@ -23,14 +23,16 @@ short UnitWriter::GetPageNum() const
     return  mUnit->GetCurPageNum();
 }
 
-long UnitWriter::WriteFrameFull(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType,
-        FH_REQID_TYPE requestId, FH_NANO_TYPE extraNano, FH_ERRORID_TYPE errorId, const char* errorMsg)
+long UnitWriter::WriteFrameFull(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source,
+		FH_MSG_TP_TYPE msgType, FH_LASTFG_TYPE lastFlag, FH_REQID_TYPE requestId,
+		FH_NANO_TYPE extraNano, FH_ERRORID_TYPE errorId, const char* errorMsg)
 {
     void* buffer = mUnit->LocateFrame();
 
     Frame frame(buffer);
     frame.SetSource(source);
     frame.SetMsgType(msgType);
+    frame.SetLastFlag(lastFlag);
     frame.SetReqID(requestId);
     frame.SetErrorData(errorId, errorMsg, data, length);
     frame.SetExtraNano(extraNano);
@@ -71,11 +73,11 @@ void UnitWriter::SeekToEnd()
 SpinLock gSl;
 
 long UnitSafeWriter::WriteFrameFull(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source,
-        FH_MSG_TP_TYPE msgType, FH_REQID_TYPE requestId, FH_NANO_TYPE extraNano,
+        FH_MSG_TP_TYPE msgType, FH_LASTFG_TYPE lastFlag, FH_REQID_TYPE requestId, FH_NANO_TYPE extraNano,
         FH_ERRORID_TYPE errorId, const char* errorMsg)
 {
     gSl.Lock();
-    long nano = UnitWriter::WriteFrameFull(data, length, source, msgType, requestId, extraNano, errorId, errorMsg);
+    long nano = UnitWriter::WriteFrameFull(data, length, source, msgType, lastFlag, requestId, extraNano, errorId, errorMsg);
     gSl.UnLock();
     return nano;
 }

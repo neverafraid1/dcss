@@ -166,13 +166,13 @@ bool StrategySocketHandler::MdSubscribeTicker(const std::string& tickers, uint8_
         return false;
 }
 
-bool StrategySocketHandler::MdSubscribeKline(const std::string& symbol, char klineType, uint8_t source)
+bool StrategySocketHandler::MdSubscribeKline(const std::string& symbol, int klineType, uint8_t source)
 {
     SocketArray reqArray = {}, rspArray = {};
     reqArray[0] = PAGED_SOCKET_SUBSCRIBE_KLINE;
     reqArray[1] = source;
-    reqArray[2] = klineType;
-    memcpy(&reqArray[3], symbol.c_str(), symbol.length() + 1);
+    memcpy(&reqArray[2], &klineType, sizeof(int));
+    memcpy(&reqArray[2] + sizeof(int), symbol.c_str(), symbol.length() + 1);
     GetSocketRsp(reqArray, rspArray);
     auto rsp = reinterpret_cast<PagedSocketResponse*>(&rspArray[0]);
     if (rsp->Type == reqArray[0] && rsp->Success)
@@ -240,8 +240,8 @@ void StrategySocketHandler::UnSubAll()
                 SocketArray reqArray = {}, rspArray = {};
                 reqArray[0] = PAGED_SOCKET_UNSUBSCRIBE_KLINE;
                 reqArray[1] = source;
-                reqArray[2] = k;
-                memcpy(&reqArray[3], symbol.c_str(), symbol.length() + 1);
+                memcpy(&reqArray[2], &k, sizeof(k));
+                memcpy(&reqArray[2] + sizeof(k), symbol.c_str(), symbol.length() + 1);
                 GetSocketRsp(reqArray, rspArray);
             }
         }

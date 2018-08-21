@@ -31,7 +31,7 @@ public:
 
     bool MdSubscribeTicker(const std::string& tickers, uint8_t source) override ;
 
-    bool MdSubscribeKline(const std::string& symbol, char klineType, uint8_t source) override ;
+    bool MdSubscribeKline(const std::string& symbol, int klineType, uint8_t source) override ;
 
     bool MdSubscribeDepth(const std::string& symbol, int depth, uint8_t source) override ;
 
@@ -39,7 +39,7 @@ private:
     void UnSubAll();
 
     std::unordered_map<short, std::unordered_set<std::string> > mSubedTicker;
-    std::unordered_map<short, std::unordered_map<std::string, std::unordered_set<char> > > mSubedKline;
+    std::unordered_map<short, std::unordered_map<std::string, std::unordered_set<int> > > mSubedKline;
     std::unordered_map<short, std::unordered_map<std::string, std::unordered_set<int> > > mSubedDepth;
 };
 

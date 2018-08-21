@@ -39,26 +39,27 @@ public:
     /*no need now*/
 //    long WriteStr(const std::string& str);
     /** write a frame with full information */
-    virtual long WriteFrameFull(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType,
-            FH_REQID_TYPE requestId, FH_NANO_TYPE extraNano, FH_ERRORID_TYPE errorId, const char* errorMsg);
+    virtual long WriteFrameFull(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source,
+    		FH_MSG_TP_TYPE msgType, FH_LASTFG_TYPE lastFlag, FH_REQID_TYPE requestId,
+			FH_NANO_TYPE extraNano, FH_ERRORID_TYPE errorId, const char* errorMsg);
     /*write a basic mCurrFrame*/
-    virtual long WriteFrame(const void* data, FH_LENGTH_TYPE length,
-            FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType, FH_REQID_TYPE requestId)
+    virtual long WriteFrame(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source,
+    		FH_MSG_TP_TYPE msgType, FH_LASTFG_TYPE lastFlag, FH_REQID_TYPE requestId)
     {
-        return WriteFrameFull(data, length, source, msgType, requestId, 0, 0, nullptr);
+        return WriteFrameFull(data, length, source, msgType, lastFlag, requestId, 0, 0, nullptr);
     }
     /*write a mCurrFrame with extra nano*/
-    virtual long WriteFrameExtra(const void* data, FH_LENGTH_TYPE length,
-            FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType, FH_REQID_TYPE requestId, FH_NANO_TYPE extraNano)
+    virtual long WriteFrameExtra(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source,
+    		FH_MSG_TP_TYPE msgType, FH_LASTFG_TYPE lastFlag, FH_REQID_TYPE requestId, FH_NANO_TYPE extraNano)
     {
-        return WriteFrameFull(data, length, source, msgType, requestId, extraNano, 0, nullptr);
+        return WriteFrameFull(data, length, source, msgType, lastFlag, requestId, extraNano, 0, nullptr);
     }
     /*write an error mCurrFrame*/
     virtual long WriteErrorFrame(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source,
-            FH_MSG_TP_TYPE msgType, FH_REQID_TYPE requestId,
+            FH_MSG_TP_TYPE msgType, FH_LASTFG_TYPE lastFlag, FH_REQID_TYPE requestId,
             FH_ERRORID_TYPE errorId, const char* errorMsg)
     {
-        return WriteFrameFull(data, length, source, msgType, requestId, 0, errorId, errorMsg);
+        return WriteFrameFull(data, length, source, msgType, lastFlag, requestId, 0, errorId, errorMsg);
     }
 
 public:
@@ -78,7 +79,7 @@ public:
     static UnitWriterPtr Create(const std::string& dir, const std::string& uname, const std::string& writerName);
 
 public:
-    long WriteFrameFull(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType,
+    long WriteFrameFull(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType, FH_LASTFG_TYPE lastFlag,
             FH_REQID_TYPE requestId, FH_NANO_TYPE extraNano, FH_ERRORID_TYPE errorId, const char* errorMsg) override ;
 
 protected:

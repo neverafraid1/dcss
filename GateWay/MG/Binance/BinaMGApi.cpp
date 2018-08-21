@@ -3,8 +3,8 @@
 //
 
 #include "BinaMGApi.h"
-#include "GWHelper.hpp"
 #include "Helper.h"
+#include "SymbolDao.hpp"
 
 std::unordered_map<KlineType, std::string, EnumClassHash> BinaMGApi::klineStringMap = {
         {KlineType::Min1,   "1m"},
@@ -24,9 +24,36 @@ std::unordered_map<KlineType, std::string, EnumClassHash> BinaMGApi::klineString
         {KlineType::Month1, "1M"}
 };
 
+std::unordered_map<std::string, KlineType> BinaMGApi::stringKlineMap = {
+		{"1m",	KlineType::Min1},
+		{"3m",	KlineType::Min3},
+		{"5m",	KlineType::Min5},
+		{"15m",	KlineType::Min15},
+		{"30m",	KlineType::Min30},
+		{"1h",	KlineType::Hour1},
+		{"2h",	KlineType::Hour2},
+		{"4h",	KlineType::Hour4},
+		{"6h",	KlineType::Hour6},
+		{"8h",	KlineType::Hour8},
+		{"12h",	KlineType::Hour12},
+		{"1d",	KlineType::Day1},
+		{"3d",	KlineType::Day3},
+		{"1w",	KlineType::Week1},
+		{"1M",	KlineType::Month1}
+};
+
 BinaMGApi::BinaMGApi(uint8_t source)
 : IMGApi(source), mWsConnected(false)
 {
+    auto res = SymbolDao::GetAllSymbol(source);
+    for (const auto& item : res)
+    {
+        std::string common = std::string(std::get<1>(item)).append("_").append(std::get<2>(item));
+        std::transform(common.begin(), common.end(), common.begin(), ::toupper);
+        mBinaToCommonSymbolMap[std::get<0>(item)] = common;
+        mCommonToBinaSymbolMap[common] = std::get<0>(item);
+    }
+
     websocket_client_config config;
     mWsClient.reset(new websocket_callback_client(config));
 
@@ -89,7 +116,7 @@ void BinaMGApi::ReqSubTicker(const std::string& symbol)
 
     mSubTickNum[symbol] = 1;
 
-    std::string sub = GetBinaSymbol(symbol) + "@ticker";
+    std::string sub = mCommonToBinaSymbolMap.at(symbol) + "@ticker";
     websocket_outgoing_message msg;
     msg.set_utf8_message(sub);
     mWsClient->send(msg)
@@ -97,7 +124,7 @@ void BinaMGApi::ReqSubTicker(const std::string& symbol)
                     [=]()
                     {
                         DCSS_LOG_INFO(mLogger,
-                                "[binance] send sub " << GetBinaSymbol(symbol) << " tick request success");
+                                "[binance mg] send sub " << symbol << " tick request success");
                     })
             .then(
                     [=](pplx::task<void> task)
@@ -109,7 +136,7 @@ void BinaMGApi::ReqSubTicker(const std::string& symbol)
                         catch (const std::exception& e)
                         {
                             DCSS_LOG_ERROR(mLogger,
-                                    "[binance] send sub " << GetBinaSymbol(symbol) << " tick request fail!(expection)"
+                                    "[binance mg] send sub " << symbol << " tick request fail!(expection)"
                                                           << e.what());
                         }
 
@@ -138,14 +165,14 @@ void BinaMGApi::ReqSubDepth(const std::string& symbol, int depth)
 
     mSubDepthNum[symbol][depth] = 1;
 
-    std::string sub = GetBinaSymbol(symbol) + "@depth" + std::to_string(depth);
+    std::string sub = mCommonToBinaSymbolMap.at(symbol) + "@depth" + std::to_string(depth);
     websocket_outgoing_message msg;
     msg.set_utf8_message(sub);
     mWsClient->send(msg)
             .then(
                     [=]()
                     {
-                        DCSS_LOG_INFO(mLogger, "[binance] send sub " << symbol << " depth "
+                        DCSS_LOG_INFO(mLogger, "[binance mg] send sub " << symbol << " depth "
                                                                      << depth << " request success");
                     }
             )
@@ -158,7 +185,7 @@ void BinaMGApi::ReqSubDepth(const std::string& symbol, int depth)
                         }
                         catch (const std::exception& e)
                         {
-                            DCSS_LOG_ERROR(mLogger, "[binance] send sub "
+                            DCSS_LOG_ERROR(mLogger, "[binance mg] send sub "
                                     << symbol << " depth " << depth << " request fail!(exception)" << e.what());
                         }
                     }
@@ -173,7 +200,7 @@ void BinaMGApi::ReqSubKline(const std::string& symbol, KlineType klineType)
         return;
     }
 
-    if (BinanceKlineStringMap.count(klineType) == 0)
+    if (klineStringMap.count(klineType) == 0)
     {
         DCSS_LOG_ERROR(mLogger, "[binance]unsupported kline type " << (int)klineType);
         return;
@@ -188,7 +215,7 @@ void BinaMGApi::ReqSubKline(const std::string& symbol, KlineType klineType)
     mSubKlineNum[symbol][klineType] = 1;
 
     websocket_outgoing_message msg;
-    msg.set_utf8_message(GetBinaSymbol(symbol) + "@kline_" + BinanceKlineStringMap.at(klineType))
+    msg.set_utf8_message(mCommonToBinaSymbolMap.at(symbol) + "@kline_" + klineStringMap.at(klineType));
     mWsClient->send(msg)
             .then([=]()
             {
@@ -222,16 +249,19 @@ void BinaMGApi::OnWsMessage(const websocket_incoming_message& msg)
     }
 }
 
+void BinaMGApi::OnWsClose(websocket_close_status close_status, const utility::string_t& reason, const std::error_code& error)
+{
+
+}
+
 void BinaMGApi::OnRtnKline(const json::object& jo)
 {
-    DCSSKlineHeaderField header;
-    strcpy(header.Symbol, GetSymbolFromBina(jo.at("s").as_string()).c_str());
-    header.Size = 1;
     const json::object& jkline = jo.at("k").as_object();
-    header.Type = BinanceStringKlineMap.at(jkline.at("i").as_string());
 
     DCSSKlineField kline;
-    SplitLongTime(jo.at("E").as_number().to_int64(), kline.Date, kline.Time, kline.Millisec);
+    strcpy(kline.Symbol, mBinaToCommonSymbolMap.at(jo.at("s").as_string()).c_str());
+    kline.UpdateTime = jo.at("E").as_number().to_int64();
+    kline.Type = stringKlineMap.at(jkline.at("i").as_string());
     kline.OpenPrice = std::stod(jkline.at("o").as_string());
     kline.ClosePrice = std::stod(jkline.at("c").as_string());
     kline.Highest = std::stod(jkline.at("h").as_string());;
@@ -240,14 +270,14 @@ void BinaMGApi::OnRtnKline(const json::object& jo)
     kline.StartTime = jkline.at("t").as_number().to_int64();
     kline.CloseTime = jkline.at("T").as_number().to_int64();
 
-    mSpi->OnRtnKline(&header, {kline}, mSourceId);
+    mSpi->OnRtnKline(&kline, mSourceId);
 }
 
 void BinaMGApi::OnRtnTicker(const json::object& jo)
 {
     DCSSTickerField ticker;
-    SplitLongTime(jo.at("E").as_number().to_int64(), ticker.Date, ticker.Time, ticker.MilliSec);
-    strcpy(ticker.Symbol, GetSymbolFromBina(jo.at("s").as_string()).c_str());
+    ticker.UpdateTime = jo.at("E").as_number().to_int64();
+    strcpy(ticker.Symbol, mBinaToCommonSymbolMap.at(jo.at("s").as_string()).c_str());
     ticker.LastPrice = std::stod(jo.at("w").as_string());
     ticker.BuyPrice = std::stod(jo.at("b").as_string());
     ticker.SellPrice = std::stod(jo.at("a").as_string());

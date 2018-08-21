@@ -50,6 +50,7 @@ private:
 
 private:
     static std::unordered_map<KlineType, std::string, EnumClassHash> klineStringMap;
+    static std::unordered_map<std::string, KlineType> stringKlineMap;
 
     std::unique_ptr<websocket_callback_client> mWsClient;
     volatile bool mWsConnected;
@@ -57,6 +58,11 @@ private:
     std::unordered_map<std::string, int> mSubTickNum;
     std::unordered_map<std::string, std::unordered_map<KlineType, int, EnumClassHash> > mSubKlineNum;
     std::unordered_map<std::string, std::unordered_map<int, int> > mSubDepthNum;
+
+    //map<BTCLTC, btc_ltc>
+    std::unordered_map<std::string, std::string> mBinaToCommonSymbolMap;
+    //map<btc_ltc, BTCLTC>
+    std::unordered_map<std::string, std::string> mCommonToBinaSymbolMap;
 };
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_BINAMGAPI_H

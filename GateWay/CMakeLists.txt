@@ -7,7 +7,6 @@ INCLUDE_DIRECTORIES(../UnitEngine/Paged)
 INCLUDE_DIRECTORIES(../UnitEngine/Unit)
 INCLUDE_DIRECTORIES(../UnitEngine/utils)
 INCLUDE_DIRECTORIES(Dao)
-
 INCLUDE_DIRECTORIES(Base)
 
 #LINK_DIRECTORIES(/opt/kungfu/toolchain/boost-1.62.0/lib)

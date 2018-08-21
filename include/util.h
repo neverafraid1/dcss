@@ -21,7 +21,7 @@ inline UnitPair GetMdUnitPair(uint8_t source)
     }
 }
 
-std::string GetMdString(uint8_t source)
+inline std::string GetMdString(uint8_t source)
 {
     switch (source)
     {

@@ -12,6 +12,7 @@
 #include "IDCSSDataProcessor.h"
 #include "DCSSStrategyUtil.h"
 #include "Timer.h"
+#include "EnumClassHash.h"
 
 class DCSSDataWrapper
 {
@@ -30,7 +31,7 @@ public:
 
     void AddTicker(const std::string& symbol, uint8_t source);
 
-    void AddKline(const std::string& symbol, KlineTypeType klineType, uint8_t source);
+    void AddKline(const std::string& symbol, KlineType klineType, uint8_t source);
 
     void AddDepth(const std::string& symbol, int depth, uint8_t source);
 
@@ -39,7 +40,7 @@ public:
     /*Stop*/
     void Stop();
     /*get td status*/
-    uint8_t GetTdStatus(uint8_t source);
+    GWStatus GetTdStatus(uint8_t source);
 
     bool IsAllLogined();
 
@@ -55,8 +56,8 @@ protected:
     DCSSStrategyUtil*       mUtil;
     UnitReaderPtr           mReader;
 
-    std::map<uint8_t, uint8_t>    mTdStatus;
-    std::unordered_map<std::string, double> mLastPriceMap;
+    std::unordered_map<uint8_t, GWStatus>		mTdStatus;
+    std::unordered_map<std::string, double>		mLastPriceMap;
 
     int mRidStart;
     int mRidEnd;
@@ -64,7 +65,7 @@ protected:
 
 private:
     std::unordered_map<uint8_t, std::unordered_set<std::string> > mSubedTicker;
-    std::unordered_map<uint8_t, std::unordered_map<std::string, std::unordered_set<KlineTypeType> > > mSubedKline;
+    std::unordered_map<uint8_t, std::unordered_map<std::string, std::unordered_set<KlineType, EnumClassHash> > > mSubedKline;
     std::unordered_map<uint8_t, std::unordered_map<std::string, std::unordered_set<int> > > mSubedDepth;
 };
 

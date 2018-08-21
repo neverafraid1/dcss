@@ -20,12 +20,12 @@ std::shared_ptr<io_service> gIo;
 
 std::shared_ptr<PageSocketHandler> PageSocketHandler::mPtr(nullptr);
 
-PageSocketHandler::PageSocketHandler() : mIoRunning(false)
+PageSocketHandler::PageSocketHandler() : mIoRunning(false), mUtil(nullptr)
 { }
 
 PageSocketHandler* PageSocketHandler::GetInstance()
 {
-    // have problem when multi thread called
+    // may have problem when multi thread called
     if (mPtr.get() == nullptr)
     {
         mPtr.reset(new PageSocketHandler());
@@ -161,20 +161,20 @@ void PageSocketHandler::ProcessMsg()
     case PAGED_SOCKET_SUBSCRIBE_KLINE:
     {
         uint8_t source = gRecvData[1];
-        KlineTypeType type = gRecvData[2];
+        auto type = reinterpret_cast<int*>(&gRecvData[2]);
         PagedSocketResponse rsp = {};
         rsp.Type = reqType;
-        rsp.Success = mUtil->SubKline(&gRecvData[3], type, source);
+        rsp.Success = mUtil->SubKline(&gRecvData[2] + sizeof(int), *type, source);
         memcpy(&gSendData[0], &rsp, sizeof(rsp));
         break;
     }
     case PAGED_SOCKET_UNSUBSCRIBE_KLINE:
     {
         uint8_t source = gRecvData[1];
-        KlineTypeType type = gRecvData[2];
+        auto type = reinterpret_cast<int*>(&gRecvData[2]);
         PagedSocketResponse rsp = {};
         rsp.Type = reqType;
-        rsp.Success = mUtil->UnSubKline(&gRecvData[3], type, source);
+        rsp.Success = mUtil->UnSubKline(&gRecvData[2] + sizeof(int), *type, source);
         memcpy(&gSendData[0], &rsp, sizeof(rsp));
         break;
     }
@@ -205,6 +205,7 @@ void PageSocketHandler::ProcessMsg()
         rsp.Type = reqType;
         rsp.Success = ret;
         memcpy(&gSendData[0], &rsp, sizeof(rsp));
+        break;
     }
     default:
         break;

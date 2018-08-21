@@ -54,7 +54,7 @@ bool StrategyUtil::MdSubscribeTicker(const std::string& tickers, uint8_t source)
         return false;
 }
 
-bool StrategyUtil::MdSubscribeKline(const std::string& symbol, char klineType, uint8_t source)
+bool StrategyUtil::MdSubscribeKline(const std::string& symbol, int klineType, uint8_t source)
 {
     if (mHandler.get() != nullptr)
         return mHandler->MdSubscribeKline(symbol, klineType, source);
@@ -78,16 +78,16 @@ bool StrategyUtil::RegisterStrategy(int& ridStart, int& ridEnd)
         return false;
 }
 
-long StrategyUtil::WriteFrame(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType,
+long StrategyUtil::WriteFrame(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType, FH_LASTFG_TYPE isLast,
         FH_REQID_TYPE requestId)
 {
-    return mWriter->WriteFrame(data, length, source, msgType, requestId);
+    return mWriter->WriteFrame(data, length, source, isLast, msgType, requestId);
 }
 
 long StrategyUtil::WriteFrameExtra(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source,
-        FH_MSG_TP_TYPE msgType, FH_REQID_TYPE requestId, FH_NANO_TYPE extraNano)
+        FH_MSG_TP_TYPE msgType, FH_LASTFG_TYPE isLast, FH_REQID_TYPE requestId, FH_NANO_TYPE extraNano)
 {
-    return mWriter->WriteFrameExtra(data, length, source, msgType, requestId, extraNano);
+    return mWriter->WriteFrameExtra(data, length, source, msgType, isLast, requestId, extraNano);
 }
 
 int StrategyUtil::GetRid()

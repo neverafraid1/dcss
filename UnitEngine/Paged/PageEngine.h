@@ -80,10 +80,10 @@ public:
     void ExitClient(const std::string& clientName) override ;
     bool LoginTd(const std::string& clientName, std::string config) override ;
     bool SubTicker(const std::string& symbol, uint8_t source) override ;
-    bool SubKline(const std::string& symbol, char klineType, uint8_t source) override ;
+    bool SubKline(const std::string& symbol, int klineType, uint8_t source) override ;
     bool SubDepth(const std::string& symbol, int depth, uint8_t source) override ;
     bool UnSubTicker(const std::string& symbol, uint8_t source) override ;
-    bool UnSubKline(const std::string& symbol, char klineType, uint8_t source) override ;
+    bool UnSubKline(const std::string& symbol, int klineType, uint8_t source) override ;
     bool UnSubDepth(const std::string& symbol, int depth, uint8_t source) override ;
     void AcquireMutex() const override ;
     void ReleaseMutex() const override ;

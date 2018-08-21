@@ -5,9 +5,8 @@
 #include <csignal>
 #include <thread>
 #include <iostream>
-#include "IDCSSStrategy.h"
-#include "Helper.h"
 #include <fstream>
+#include "IDCSSStrategy.h"
 
 void RegisterSignalCallback()
 {
@@ -76,7 +75,7 @@ void IDCSSStrategy::Start()
 
 IDCSSStrategy::~IDCSSStrategy()
 {
-    DCSS_LOG_INFO(mLogger, "[IDCSSStrategytegy]");
+    DCSS_LOG_INFO(mLogger, mName << " end!");
 
     mDataThread.reset();
     mData.reset();
@@ -116,19 +115,17 @@ void IDCSSStrategy::Block()
 
 void IDCSSStrategy::OnRtnTicker(const DCSSTickerField* ticker, uint8_t source, long recvTime)
 {
-    DCSS_LOG_DEBUG(mLogger, "(recv time)" << recvTime << " (source)" << source << " (tick time)" << ticker->Time << "." << ticker->MilliSec << " (symbol)" << ticker->Symbol);
+    DCSS_LOG_DEBUG(mLogger, "(recv time)" << recvTime << " (source)" << source << " (tick time)" << ticker->UpdateTime << " (symbol)" << ticker->Symbol);
 }
 
-void IDCSSStrategy::OnRtnKline(const DCSSKlineHeaderField* header, const std::vector<const DCSSKlineField* >& kline,
-        uint8_t source, long recvTime)
+void IDCSSStrategy::OnRtnKline(const DCSSKlineField* kline, uint8_t source, long recvTime)
 {
-    DCSS_LOG_DEBUG(mLogger, "(recv time)" << recvTime << " (source)" << source << " (symbol)" << header->Symbol);
+    DCSS_LOG_DEBUG(mLogger, "(recv time)" << recvTime << " (source)" << source << " (symbol)" << kline->Symbol);
 }
 
-void IDCSSStrategy::OnRtnDepth(const DCSSDepthHeaderField* header, const std::vector<const DCSSDepthField* >& ask,
-        const std::vector<const DCSSDepthField* >& bid, uint8_t source, long recvTime)
+void IDCSSStrategy::OnRtnDepth(const DCSSDepthField* depth, uint8_t source, long recvTime)
 {
-    DCSS_LOG_DEBUG(mLogger, "(recv time)" << recvTime << " (source)" << source << " (symbol)" << header->Symbol);
+    DCSS_LOG_DEBUG(mLogger, "(recv time)" << recvTime << " (source)" << source << " (symbol)" << depth->Symbol);
 }
 
 void IDCSSStrategy::OnRtnBalance(const DCSSBalanceField* balance, uint8_t source, long recvTime)
@@ -140,7 +137,7 @@ void IDCSSStrategy::OnRtnBalance(const DCSSBalanceField* balance, uint8_t source
 void IDCSSStrategy::OnRtnOrder(const DCSSOrderField* order, uint8_t source, long recvTime)
 {
     DCSS_LOG_DEBUG(mLogger, "(recv time)" << recvTime << " (source)" << source << " (symbol)" << order->Symbol
-                                          << " (status)" << order->OrderStatus);
+                                          << " (status)" << (int)order->Status);
 }
 
 void IDCSSStrategy::OnRspOrderInsert(const DCSSRspInsertOrderField* rsp, int requestID, int errorId, const char* errorMsg, uint8_t source, long recvTime)
@@ -166,13 +163,8 @@ void IDCSSStrategy::OnRspQryTicker(const DCSSTickerField* rsp, int requestId, in
     DCSS_LOG_DEBUG(mLogger, ss.str().c_str());
 }
 
-void IDCSSStrategy::OnRspQryKline(const DCSSKlineHeaderField* header, const std::vector<const DCSSKlineField*>& kline,
-        int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime)
+void IDCSSStrategy::OnRspQryKline(const DCSSKlineField* kline, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime)
 {
-    for (const auto& item : kline)
-    {
-        std::cout << item->Time << std::endl;
-    }
     std::stringstream ss;
     ss << " (recv time)" << recvTime << "(source)" << source;
     if (errorId != 0)
@@ -225,7 +217,7 @@ void IDCSSStrategy::OnRspQryTradingAccount(const DCSSTradingAccountField* accoun
     mReqReady[requestId] = true;
 }
 
-void IDCSSStrategy::CheckOrder(uint8_t source, const std::string& symbol, double price, double volume, TradeTypeType tradeType)
+void IDCSSStrategy::CheckOrder(uint8_t source, const std::string& symbol, double price, double volume, OrderDirection direction, OrderType type)
 {
     if (!IsTdReady(source))
         throw std::runtime_error("(source)" + std::to_string(source) + " is not logined");
@@ -240,9 +232,9 @@ void IDCSSStrategy::CheckOrder(uint8_t source, const std::string& symbol, double
     const std::string& base = pair.first;
     const std::string& quote = pair.second;
 
-    switch (tradeType)
+    switch (direction)
     {
-    case BUY:
+    case OrderDirection::Buy:
     {
         double frozen = price * volume;
         if (balance.at(quote).Free < frozen)
@@ -257,7 +249,7 @@ void IDCSSStrategy::CheckOrder(uint8_t source, const std::string& symbol, double
         }
         break;
     }
-    case SELL:
+    case OrderDirection::Sell:
     {
         double frozen =  volume;
         if (balance.at(base).Free < frozen)
@@ -272,57 +264,57 @@ void IDCSSStrategy::CheckOrder(uint8_t source, const std::string& symbol, double
         }
         break;
     }
-    case BUY_MARKET:
-    {
-        if (source == EXCHANGE_OKCOIN)
-        {
-            if (!IsEqual(volume, 0.0))
-                throw std::runtime_error("okex's buy_market order should contain no volume");
-
-            double frozen = price;
-            if (balance.at(quote).Free < frozen)
-            {
-                throw std::runtime_error(quote + "'s position is not enough, we need " + std::to_string(frozen)
-                        + " while there's only " + std::to_string(balance.at(quote).Free));
-            }
-            else
-            {
-                balance.at(quote).Free -= frozen;
-                balance.at(quote).Freezed += frozen;
-            }
-        }
-        break;
-    }
-    case SELL_MARKET:
-    {
-        if (source == EXCHANGE_OKCOIN)
-        {
-            if (!IsEqual(price, 0.0))
-                throw std::runtime_error("okex's sell_market order should contain no volume");
-
-            double frozen = volume;
-            if (balance.at(base).Free < frozen)
-            {
-                throw std::runtime_error(base + "'s position is not enough, we need " = std::to_string(frozen)
-                        + " while there's only " + std::to_string(balance.at(base).Free));
-            }
-            else
-            {
-                balance.at(base).Free -= frozen;
-                balance.at(base).Freezed += frozen;
-            }
-        }
-        break;
-    }
+//    case BUY_MARKET:
+//    {
+//        if (source == EXCHANGE_OKCOIN)
+//        {
+//            if (!IsEqual(volume, 0.0))
+//                throw std::runtime_error("okex's buy_market order should contain no volume");
+//
+//            double frozen = price;
+//            if (balance.at(quote).Free < frozen)
+//            {
+//                throw std::runtime_error(quote + "'s position is not enough, we need " + std::to_string(frozen)
+//                        + " while there's only " + std::to_string(balance.at(quote).Free));
+//            }
+//            else
+//            {
+//                balance.at(quote).Free -= frozen;
+//                balance.at(quote).Freezed += frozen;
+//            }
+//        }
+//        break;
+//    }
+//    case SELL_MARKET:
+//    {
+//        if (source == EXCHANGE_OKCOIN)
+//        {
+//            if (!IsEqual(price, 0.0))
+//                throw std::runtime_error("okex's sell_market order should contain no volume");
+//
+//            double frozen = volume;
+//            if (balance.at(base).Free < frozen)
+//            {
+//                throw std::runtime_error(base + "'s position is not enough, we need " = std::to_string(frozen)
+//                        + " while there's only " + std::to_string(balance.at(base).Free));
+//            }
+//            else
+//            {
+//                balance.at(base).Free -= frozen;
+//                balance.at(base).Freezed += frozen;
+//            }
+//        }
+//        break;
+//    }
     default:
         throw std::runtime_error("invalid trade type");
     }
 }
 
-int IDCSSStrategy::InsertOrder(uint8_t source, const std::string& symbol, double price, double volume, TradeTypeType tradeType)
+int IDCSSStrategy::InsertOrder(uint8_t source, const std::string& symbol, double price, double volume, OrderDirection direction, OrderType type)
 {
-    CheckOrder(source, symbol, price, volume, tradeType);
-    return mUtil->InsertOrder(source, symbol, price, volume, tradeType);
+    CheckOrder(source, symbol, price, volume, direction, type);
+    return mUtil->InsertOrder(source, symbol, price, volume, direction, type);
 }
 
 int IDCSSStrategy::CancelOrder(uint8_t source, const std::string& symbol, long orderId)
@@ -345,11 +337,11 @@ int IDCSSStrategy::QryTicker(uint8_t source, const std::string& symbol)
     return mUtil->ReqQryTicker(source, req);
 }
 
-int IDCSSStrategy::QryKline(uint8_t source, const std::string& symbol, KlineTypeType klineType, int size, long since)
+int IDCSSStrategy::QryKline(uint8_t source, const std::string& symbol, KlineType klineType, int size, long since)
 {
     DCSSReqQryKlineField req = {};
     strcpy(req.Symbol, symbol.c_str());
-    req.KlineType = klineType;
+    req.Type = klineType;
     req.Size = size;
     req.Since = since;
 
@@ -364,9 +356,9 @@ void IDCSSStrategy::SubscribeTicker(uint8_t source, const std::string& symbol)
     mData->AddTicker(symbol, source);
 }
 
-void IDCSSStrategy::SubscribeKline(uint8_t source, const std::string& symbol, KlineTypeType klineType)
+void IDCSSStrategy::SubscribeKline(uint8_t source, const std::string& symbol, KlineType klineType)
 {
-    if (!mUtil->MdSubscribeKline(symbol, klineType, source))
+    if (!mUtil->MdSubscribeKline(symbol, (int)klineType, source))
         throw std::runtime_error("sub kline failed!");
 
     mData->AddKline(symbol, klineType, source);
@@ -385,7 +377,7 @@ bool IDCSSStrategy::IsTdReady(uint8_t source) const
     if (mData.get() != nullptr)
     {
         auto status = mData->GetTdStatus(source);
-        if (status == TD_STATUS_LOGINED)
+        if (status == GWStatus::Logined)
             return true;
     }
     return false;
@@ -396,8 +388,8 @@ bool IDCSSStrategy::IsTdConnected(uint8_t source) const
     if (mData.get() != nullptr)
     {
         auto status = mData->GetTdStatus(source);
-        if (status == TD_STATUS_CONNECTED
-                || status == TD_STATUS_LOGINED)
+        if (status == GWStatus::Connected
+                || status == GWStatus::Logined)
             return true;
     }
     return false;

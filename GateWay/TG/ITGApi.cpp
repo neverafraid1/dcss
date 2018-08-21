@@ -9,7 +9,7 @@
 #include "SysMessages.h"
 
 ITGSpi::ITGSpi(const std::string& client, DCSSLogPtr logger, const std::string& proxy)
-: mClient(client), mSignalReceived(-1), mIsRunning(false), mLogger(std::move(logger)), mProxy(proxy)
+: mClient(client), mSignalReceived(-1), mIsRunning(false), mLogger(std::move(logger)), mProxy(proxy), mDefaultAccountIndex(-1), mCurTime(0)
 {
     mWriter = UnitSafeWriter::Create(STRATEGY_BASE_FOLDER, mClient + "_TG", mClient + "_TG");
 }
@@ -45,6 +45,7 @@ bool ITGSpi::Load(const std::string& config)
             mApiMap[source] = std::move(apiPtr);
         }
     }
+    return true;
 }
 
 void ITGSpi::SetReaderThread()
@@ -147,103 +148,51 @@ void ITGSpi::Listening()
     }
 }
 
-void ITGSpi::OnRspQryTicker(const DCSSTickerField* ticker, uint8_t source, int requestId, int errorId, const char* errorMsg)
+void ITGSpi::OnRspQryTicker(const DCSSTickerField* ticker, uint8_t source, bool isLast, int requestId, int errorId, const char* errorMsg)
 {
-    if (0 == errorId)
-    {
-        mWriter->WriteFrame(ticker, sizeof(DCSSTickerField), source, MSG_TYPE_RSP_QRY_TICKER, requestId);
-    }
-    else
-    {
-        mWriter->WriteErrorFrame(ticker, sizeof(DCSSTickerField), source, MSG_TYPE_RSP_QRY_TICKER, requestId, errorId, errorMsg);
-    }
+	mWriter->WriteErrorFrame(ticker, sizeof(DCSSTickerField), source, MSG_TYPE_RSP_QRY_TICKER, isLast, requestId, errorId, errorMsg);
 }
 
-void ITGSpi::OnRspOrderAction(const DCSSRspCancelOrderField* rsp, uint8_t source, int requestId, int errorId, const char* errorMsg)
+void ITGSpi::OnRspOrderAction(const DCSSRspCancelOrderField* rsp, uint8_t source, bool isLast, int requestId, int errorId, const char* errorMsg)
 {
-    if (0 == errorId)
-    {
-        mWriter->WriteFrame(rsp, sizeof(DCSSRspCancelOrderField), source, MSG_TYPE_RSP_ORDER_ACTION, requestId);
-    }
-    else
-    {
-        mWriter->WriteErrorFrame(rsp, sizeof(DCSSRspCancelOrderField), source, MSG_TYPE_RSP_ORDER_ACTION, requestId, errorId, errorMsg);
-    }
+	mWriter->WriteErrorFrame(rsp, sizeof(DCSSRspCancelOrderField), source, MSG_TYPE_RSP_ORDER_ACTION, isLast, requestId, errorId, errorMsg);
 }
 
-void ITGSpi::OnRspOrderInsert(const DCSSRspInsertOrderField* rsp, uint8_t source, int requestId, int errorId, const char* errorMsg)
+void ITGSpi::OnRspOrderInsert(const DCSSRspInsertOrderField* rsp, uint8_t source, bool isLast, int requestId, int errorId, const char* errorMsg)
 {
-    if (0 == errorId)
-    {
-        mWriter->WriteFrame(rsp, sizeof(DCSSRspInsertOrderField), source, MSG_TYPE_RSP_ORDER_INSERT, requestId);
-    }
-    else
-    {
-        mWriter->WriteErrorFrame(rsp, 0, source, MSG_TYPE_RSP_ORDER_INSERT, requestId, errorId, errorMsg);
-    }
+	mWriter->WriteErrorFrame(rsp, 0, source, MSG_TYPE_RSP_ORDER_INSERT, isLast, requestId, errorId, errorMsg);
 }
 
-void ITGSpi::OnRspQryUserInfo(const DCSSTradingAccountField* userInfo, uint8_t source, int requestId, int errorId, const char* errorMsg)
+void ITGSpi::OnRspQryUserInfo(const DCSSTradingAccountField* userInfo, uint8_t source, bool isLast, int requestId, int errorId, const char* errorMsg)
 {
-    if (0 == errorId)
-    {
-        mWriter->WriteFrame(userInfo, sizeof(DCSSTradingAccountField), source, MSG_TYPE_RSP_QRY_ACCOUNT, requestId);
-    }
-    else
-    {
-        mWriter->WriteErrorFrame(userInfo, sizeof(DCSSTradingAccountField), source, MSG_TYPE_RSP_QRY_ACCOUNT, requestId, errorId, errorMsg);
-    }
+	mWriter->WriteErrorFrame(userInfo, sizeof(DCSSTradingAccountField), source, MSG_TYPE_RSP_QRY_ACCOUNT, isLast, requestId, errorId, errorMsg);
 }
 
 void ITGSpi::OnRtnOrder(const DCSSOrderField* order, uint8_t source)
 {
-    mWriter->WriteFrame(order, sizeof(DCSSOrderField), source, MSG_TYPE_RTN_ORDER, 0);
+    mWriter->WriteFrame(order, sizeof(DCSSOrderField), source, MSG_TYPE_RTN_ORDER, true, 0);
 }
 
 void ITGSpi::OnRtnBalance(const DCSSBalanceField* balance, uint8_t source)
 {
-    mWriter->WriteFrame(balance, sizeof(DCSSBalanceField), source, MSG_TYPE_RTN_BALANCE, 0);
+    mWriter->WriteFrame(balance, sizeof(DCSSBalanceField), source, MSG_TYPE_RTN_BALANCE, true, 0);
 }
 
 void ITGSpi::OnRtnTdStatus(const GWStatus& status, uint8_t source)
 {
-    mWriter->WriteFrame(&status, sizeof(GWStatus), source, MSG_TYPE_RTN_TD_STATUS, 0);
+    mWriter->WriteFrame(&status, sizeof(GWStatus), source, MSG_TYPE_RTN_TD_STATUS, true, 0);
 }
 
-void ITGSpi::OnRspQryOrder(const DCSSRspQryOrderHeaderField* header, uint8_t source, const std::vector<DCSSOrderField>& order,
+void ITGSpi::OnRspQryOrder(const DCSSOrderField* order, uint8_t source, bool isLast,
         int requestId, int errorId, const char* errorMsg)
 {
-    size_t length = sizeof(DCSSRspQryOrderHeaderField) + order.size() * sizeof(DCSSOrderField);
-    uint8_t tmp[length];
-    bzero(tmp, length);
-    memcpy(tmp, header, sizeof(DCSSRspQryOrderHeaderField));
-
-    for (int i = 0; i < order.size(); ++i)
-    {
-        memcpy(tmp + sizeof(DCSSRspQryOrderHeaderField) + i *sizeof(DCSSOrderField), &order[i], sizeof(DCSSOrderField));
-    }
-    if (errorId == 0)
-        mWriter->WriteFrame(tmp, length, source, MSG_TYPE_RSP_QRY_ORDER, requestId);
-    else
-        mWriter->WriteErrorFrame(tmp, length, source, MSG_TYPE_RSP_QRY_ORDER, requestId, errorId, errorMsg);
+	mWriter->WriteErrorFrame(order, sizeof(DCSSOrderField), source, MSG_TYPE_RSP_QRY_ORDER, isLast, requestId, errorId, errorMsg);
 }
 
-void ITGSpi::OnRspQryKline(const DCSSKlineHeaderField* header, uint8_t source, const std::vector<DCSSKlineField>& kline,
+void ITGSpi::OnRspQryKline(const DCSSKlineField* kline, uint8_t source, bool isLast,
         int requestId, int errorId, const char* errorMsg)
 {
-    size_t length = sizeof(DCSSKlineHeaderField) + kline.size() * sizeof(DCSSKlineField);
-    uint8_t tmp[length];
-    bzero(tmp, length);
-    memcpy(tmp, header, sizeof(DCSSKlineHeaderField));
-
-    for (int i = 0; i < kline.size(); ++i)
-    {
-        memcpy(tmp + sizeof(DCSSKlineHeaderField) + i *sizeof(DCSSKlineField), &kline[i], sizeof(DCSSKlineField));
-    }
-    if (errorId == 0)
-        mWriter->WriteFrame(tmp, length, source, MSG_TYPE_RSP_QRY_KLINE, requestId);
-    else
-        mWriter->WriteErrorFrame(tmp, length, source, MSG_TYPE_RSP_QRY_KLINE, requestId, errorId, errorMsg);
+	mWriter->WriteErrorFrame(kline, sizeof(DCSSKlineField), source, MSG_TYPE_RSP_QRY_KLINE, isLast, requestId, errorId, errorMsg);
 }
 
 
@@ -253,7 +202,7 @@ ITGApiPtr ITGApi::CreateTGApi(uint8_t source)
     {
     case EXCHANGE_OKCOIN:
     {
-        return ITGApiPtr(new OKTGApi(EXCHANGE_OKCOIN));;
+        return ITGApiPtr(new OKTGApi(EXCHANGE_OKCOIN));
     }
     case EXCHANGE_BINANCE:
     {

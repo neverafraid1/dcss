@@ -23,7 +23,7 @@ public:
 
     bool MdSubscribeTicker(const std::string& tickers, uint8_t source) override ;
 
-    bool MdSubscribeKline(const std::string& symbol, char klineType, uint8_t source) override;
+    bool MdSubscribeKline(const std::string& symbol, int klineType, uint8_t source) override;
 
     bool MdSubscribeDepth(const std::string& symbol, int depth, uint8_t source) override;
 
@@ -37,11 +37,11 @@ public:
     static StrategyUtilPtr Create(const std::string& strategyName);
 
     long WriteFrame(const void* data, FH_LENGTH_TYPE length,
-    FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType,
+    FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType, FH_LASTFG_TYPE isLast,
     FH_REQID_TYPE requestId);
 
     long WriteFrameExtra(const void* data, FH_LENGTH_TYPE length,
-    FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType,
+    FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType, FH_LASTFG_TYPE isLast,
     FH_REQID_TYPE requestId, FH_NANO_TYPE extraNano);
 
     int GetRid();

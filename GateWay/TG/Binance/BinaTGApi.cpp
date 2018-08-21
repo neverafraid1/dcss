@@ -48,6 +48,17 @@ std::unordered_map<KlineType, std::string, EnumClassHash> BinaTGApi::klineMap = 
         {KlineType::Month1, "1M"}
 };
 
+std::unordered_map<std::string, OrderStatus> BinaTGApi::statusEnumMap =
+{
+		{"NEW",					OrderStatus::Submitted},
+		{"PARTIALLY_FILLED",	OrderStatus::PartTraded},
+		{"FILLED",				OrderStatus::AllTraded},
+		{"CANCELED",			OrderStatus::AllCanceled},
+		{"PENDING_CANCEL ",		OrderStatus::Canceling},
+		{"REJECTED",			OrderStatus::Rejected},
+		{"EXPIRED",				OrderStatus::Expired}
+};
+
 BinaTGApi::BinaTGApi(uint8_t source)
 : ITGApi(source), mWsConnected(false), mAccountLastUpdateTime(0), mLogined(false)
 {
@@ -145,6 +156,37 @@ bool BinaTGApi::IsLogged() const
     return mLogined;
 }
 
+void BinaTGApi::ReqQryTicker(const DCSSReqQryTickerField* req, int requestID)
+{
+	if (mCommonToBinaSymbolMap.count(req->Symbol) == 0)
+	{
+		DCSS_LOG_ERROR(mLogger, "invalid symbol " << req->Symbol);
+		return;
+	}
+	http_request request(methods::GET);
+	request.headers().add("X-MBX-APIKEY", mApiKey);
+
+	uri_builder builder("/api/v3/ticker/price");
+	builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol));
+
+	request.set_request_uri(builder.to_uri());
+	mRestClient->request(request).then([=](http_response response)
+	{
+    	OnRspQryTicker(response, req, requestID);
+	}).then(
+			[=](pplx::task<void> task)
+			{
+				try
+				{
+					task.get();
+				}
+				catch (const std::exception& e)
+				{
+					DCSS_LOG_ERROR(mLogger, "send qry ticker failed (exception)" << e.what());
+				}
+            });
+}
+
 void BinaTGApi::ReqQryUserInfo(int requestID)
 {
     http_request request(methods::GET);
@@ -176,6 +218,35 @@ void BinaTGApi::ReqQryUserInfo(int requestID)
                     }
             );
 
+}
+
+void BinaTGApi::ReqQryOrder(const DCSSReqQryOrderField* req, int requestID)
+{
+	http_request request(methods::GET);
+	request.headers().add("X-MBX-APIKEY", mApiKey);
+
+	uri_builder builder("/api/v3/order");
+	builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol));
+	builder.append_query("timestamp", GetNanoTime() / NANOSECONDS_PER_MILLISECOND);
+	HMAC_SHA256(builder);
+
+	request.set_request_uri(builder.to_uri());
+
+	mRestClient->request(request).then([=](http_response response)
+	{
+		OnRspQryOrder(response, req, requestID);
+	}).then(
+			[=](pplx::task<void> task)
+			{
+				try
+				{
+					task.get();
+				}
+				catch (const std::exception& e)
+				{
+					DCSS_LOG_ERROR(mLogger, "[bina tg][qry order] send request failed!(exception)" << e.what());
+				}
+			});
 }
 
 void BinaTGApi::ReqQryKline(const DCSSReqQryKlineField* req, int requestID)
@@ -289,7 +360,7 @@ void BinaTGApi::OnWsClose(websocket_close_status close_status, const utility::st
     mPingThread->join();
     mPingThread.reset();
 
-    mSpi->OnRtnTdStatus(TD_STATUS_DISCONNECTED, mSourceId);
+    mSpi->OnRtnTdStatus(GWStatus::Disconnected, mSourceId);
 }
 
 void BinaTGApi::OnRtnAccount(const json::object& jo)
@@ -352,7 +423,7 @@ void BinaTGApi::OnRtnOrder(const json::object& jo)
 
     DCSSOrderField orderField;
     strcpy(orderField.Symbol, mBinaToCommonSymbolMap.at(symbol).c_str());
-    SplitLongTime(jo.at("T").as_number().to_int64(), orderField.CreateDate, orderField.CreateTime, orderField.Millisec);
+    orderField.InsertTime = jo.at("T").as_number().to_int64();
     orderField.OrderID = orderId;
     orderField.Type = orderTypeEnumMap.at(type);
     orderField.Direction = directionEnumMap.at(direction);
@@ -399,9 +470,9 @@ void BinaTGApi::OnRspQryUserInfo(http_response& response, int requestID)
         const json::value jv = response.extract_json().get();
         const json::object& jobj = jv.as_object();
 
+        DCSSTradingAccountField rsp;
         if (jobj.find("code") == jobj.end())
         {
-            DCSSTradingAccountField rsp;
             int index = 0;
 
             const json::array& jarray = jobj.at("balances").as_array();
@@ -419,11 +490,11 @@ void BinaTGApi::OnRspQryUserInfo(http_response& response, int requestID)
                 rsp.Balance[index].Freezed = locked;
              }
 
-             mSpi->OnRspQryUserInfo(&rsp, mSourceId, requestID);
+             mSpi->OnRspQryUserInfo(&rsp, mSourceId, true, requestID);
         }
         else
         {
-            mSpi->OnRspQryUserInfo(nullptr, mSourceId, requestID, jobj.at("code").as_integer(), jobj.at("msg").as_string().c_str());
+            mSpi->OnRspQryUserInfo(&rsp, mSourceId, true, requestID, jobj.at("code").as_integer(), jobj.at("msg").as_string().c_str());
         }
     }
     catch (const std::exception& e)
@@ -437,40 +508,37 @@ void BinaTGApi::OnRspQryKline(http_response& response, const DCSSReqQryKlineFiel
     try
     {
         const json::value jv = response.extract_json().get();
+        DCSSKlineField kline;
+        strcpy(kline.Symbol, req->Symbol);
+        kline.Type = req->Type;
         if (jv.is_array())
         {
             const json::array& arr = jv.as_array();
 
-            DCSSKlineHeaderField header;
-            strcpy(header.Symbol, req->Symbol);
-            header.Type = req->Type;
-            header.Size = arr.size();
-
-            std::vector<DCSSKlineField> klineVec(header.Size);
-            int idx = 0;
+            size_t idx(0);
             for (const auto& item : arr)
             {
+            	++idx;
                 if (item.is_array())
                 {
-                    DCSSKlineField& kline = klineVec[idx++];
                     const json::array& klineArr = item.as_array();
-                    SplitLongTime(klineArr.at(0).as_number().to_int64(), kline.Date, kline.Time, kline.Millisec);
+                    kline.UpdateTime = klineArr.at(0).as_number().to_int64();
                     kline.OpenPrice = std::stod(klineArr.at(1).as_string());
                     kline.Highest = std::stod(klineArr.at(2).as_string());
                     kline.Lowest = std::stod(klineArr.at(3).as_string());
                     kline.ClosePrice = std::stod(klineArr.at(4).as_string());
                     kline.Volume = std::stod(klineArr.at(5).as_string());
+
+                    mSpi->OnRspQryKline(&kline, mSourceId, idx == arr.size(), requestID);
                 }
             }
-
-            mSpi->OnRspQryKline(&header, mSourceId, klineVec, requestID);
         }
         else if (jv.is_object())
         {
             const json::object& obj = jv.as_object();
             if (obj.find("code") != obj.end())
             {
-                mSpi->OnRspQryKline(nullptr, mSourceId, std::vector<DCSSKlineField>(),
+                mSpi->OnRspQryKline(&kline, mSourceId, true,
                         requestID, obj.at("code").as_integer(), obj.at("msg").as_string().c_str());
             }
         }
@@ -479,6 +547,62 @@ void BinaTGApi::OnRspQryKline(http_response& response, const DCSSReqQryKlineFiel
     {
         DCSS_LOG_ERROR(mLogger, "error during parse (exception)" << e.what());
     }
+}
+
+void BinaTGApi::OnRspQryTicker(http_response& response, const DCSSReqQryTickerField* req, int requestID)
+{
+	try
+	{
+		const json::value jv = response.extract_json().get();
+		const json::object& jo = jv.as_object();
+		DCSSTickerField ticker;
+		strcpy(ticker.Symbol, req->Symbol);
+		if (jo.find("code") == jo.end())
+		{
+			ticker.LastPrice = std::stod(jo.at("price").as_string());
+
+			mSpi->OnRspQryTicker(&ticker, mSourceId, true, requestID);
+		}
+		else
+		{
+			mSpi->OnRspQryTicker(&ticker, mSourceId, true, requestID, jo.at("code").as_integer(), jo.at("msg").as_string().c_str());
+		}
+	}
+	catch (const std::exception& e)
+	{
+		DCSS_LOG_ERROR(mLogger, "error during parse (exception)" << e.what());
+	}
+}
+
+void BinaTGApi::OnRspQryOrder(http_response& response, const DCSSReqQryOrderField* req, int requestID)
+{
+	try
+	{
+		const json::value jv = response.extract_json().get();
+		const json::object& jo = jv.as_object();
+		DCSSOrderField order;
+		strcpy(order.Symbol, req->Symbol);
+		order.OrderID = req->OrderID;
+		if (jo.find("code") != jo.end())
+		{
+			DCSSOrderField order;
+			order.Direction = directionEnumMap.at(jo.at("side").as_string());
+			order.Type = orderTypeEnumMap.at(jo.at("type").as_string());
+			order.OriginQuantity = std::stod(jo.at("origQty").as_string());
+			order.ExecuteQuantity = std::stod(jo.at("executedQty").as_string());
+			order.Price = std::stod(jo.at("price").as_string());
+			order.UpdateTime = jo.at("updateTime").as_number().to_int64();
+			order.Status = statusEnumMap.at(jo.at("status").as_string());
+
+			mSpi->OnRspQryOrder(&order, mSourceId, true, requestID);
+		}
+		else
+			mSpi->OnRspQryOrder(&order, mSourceId, true, requestID, jo.at("code").as_integer(), jo.at("msg").as_string().c_str());
+	}
+	catch (const std::exception& e)
+	{
+		DCSS_LOG_ERROR(mLogger, "error during parse (exception)" << e.what());
+	}
 }
 
 void BinaTGApi::OnRspOrderInsert(http_response& response, const DCSSReqInsertOrderField* req, int requestID)
@@ -490,17 +614,18 @@ void BinaTGApi::OnRspOrderInsert(http_response& response, const DCSSReqInsertOrd
         if (!jo.is_object())
             return;
 
+        DCSSRspInsertOrderField rsp;
+
         if (jo.has_integer_field("code"))
         {
-            mSpi->OnRspOrderInsert(nullptr, mSourceId, requestID, jo.at("code").as_integer(), jo.at("msg").as_string().c_str());
+            mSpi->OnRspOrderInsert(&rsp, mSourceId, true, requestID, jo.at("code").as_integer(), jo.at("msg").as_string().c_str());
         }
         else
         {
-            DCSSRspInsertOrderField rsp;
             rsp.OrderID = jo.at("orderId").as_number().to_int64();
             rsp.Result = jo.at("status").as_string() != "REJECTED";
 
-            mSpi->OnRspOrderInsert(&rsp, mSourceId, requestID);
+            mSpi->OnRspOrderInsert(&rsp, mSourceId, true, requestID);
         }
     }
     catch (const std::exception& e)

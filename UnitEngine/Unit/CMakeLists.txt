@@ -19,7 +19,7 @@ SET(LIB_UTIL_SOURCE_FILES ../utils/Timer.cpp)
 SET(LIB_INCLUDE_FILES ${LIB_UTIL_INCLUDE_FILES} Frame.hpp FrameHeader.h
         ./IPageProvider.h ./IStrategyUtil.h Page.h ./PageHeader.h ./PageProvider.h ./PageUtil.h
         ./StrategySocketHandler.h ./StrategyUtil.h ./Unit.h ./UnitHandler.h
-        ./UnitReader.h ./UnitWriter.h ../utils/UnitDeclare.h ../utils/SpinLock.h ../utils/SysMessages.h ../../include/util.h ../../include/DataStruct.h ../../include/Constants.h)
+        ./UnitReader.h ./UnitWriter.h ../utils/UnitDeclare.h ../utils/SpinLock.h ../utils/SysMessages.h ../../include/util.h  ../../include/DataStruct.h ../../include/Constants.h)
 SET(LIB_SOURCE_FILES ${LIB_UTIL_SOURCE_FILES} Page.cpp PageUtil.cpp PageProvider.cpp
         StrategyUtil.cpp Unit.cpp UnitHandler.cpp
         UnitReader.cpp UnitWriter.cpp)
