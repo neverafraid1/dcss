@@ -20,7 +20,7 @@
 #define DECLARE_PTR(x) typedef std::shared_ptr<x> x##Ptr;
 #define PRE_DECLARE_PTR(x) class x; DECLARE_PTR(x)
 
-#define DCSS_FOLDER "/home/wangzhen/dcss/"
+#define DCSS_FOLDER "/shared/dcss/"
 #define DCSS_UNIT_FOLDER DCSS_FOLDER "unit/"
 #define DCSS_SOCKET_FOLDER DCSS_FOLDER "socket/"
 #define STRATEGY_BASE_FOLDER DCSS_UNIT_FOLDER "strategy/"

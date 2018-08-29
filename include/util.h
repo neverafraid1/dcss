@@ -15,9 +15,9 @@ inline UnitPair GetMdUnitPair(uint8_t source)
     switch (source)
     {
     case EXCHANGE_OKCOIN:
-        return {"/home/wangzhen/dcss/unit/MD/OKEX", "MD_OKEX"};
+        return {"/shared/dcss/unit/MD/OKEX", "MD_OKEX"};
     case EXCHANGE_BINANCE:
-    	return {"/home/wangzhen/dcss/unit/MD/BINA", "MD_BINA"};
+    	return {"/shared/dcss/unit/MD/BINA", "MD_BINA"};
     default:
         return {"", ""};
     }

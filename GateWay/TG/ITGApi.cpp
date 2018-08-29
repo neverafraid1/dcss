@@ -25,7 +25,6 @@ bool ITGSpi::Load(const std::string& config)
 {
     mReader = UnitReader::Create(STRATEGY_BASE_FOLDER, mClient, GetNanoTime());
     nlohmann::json conf = nlohmann::json::parse(config);
-    std::string folder = conf.at("folder");
     auto accounts = conf.find("accounts");
     for (auto& item : accounts.value())
     {
