@@ -102,11 +102,7 @@ inline void* Page::LocateWritableFrame()
 
 inline void* Page::LocateReadableFrame()
 {
-    if (GetCurStatus() == UNIT_FRAME_STATUS_WRITTEN)
-        return mCurrFrame.GetAddress();
-    else
-        return nullptr;
-//    return (GetCurStatus() == UNIT_FRAME_STATUS_WRITTEN ? mCurrFrame.GetAddress() : nullptr);
+    return (GetCurStatus() == UNIT_FRAME_STATUS_WRITTEN ? mCurrFrame.GetAddress() : nullptr);
 }
 
 UNIT_NAMESPACE_END

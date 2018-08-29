@@ -53,6 +53,7 @@ bool ITGEngine::RemoveClient(const std::string& name)
         auto ptr = mSpiMap.at(name);
         mSpiMap.erase(name);
         ptr->ForceStop();
+        ptr.reset();
         return true;
     }
     return false;
@@ -60,7 +61,7 @@ bool ITGEngine::RemoveClient(const std::string& name)
 
 void ITGEngine::Listening()
 {
-    if (mReader.get() == nullptr)
+    if (mReader == nullptr)
     {
         throw std::runtime_error("reader is not inited! please call init() before start()");
     }
@@ -69,7 +70,7 @@ void ITGEngine::Listening()
     while (mIsRunning && SignalReceived < 0)
     {
         frame = mReader->GetNextFrame();
-        if (frame.get() != nullptr)
+        if (frame != nullptr)
         {
             mCurTime = frame->GetNano();
             FH_MSG_TP_TYPE msgType = frame->GetMsgType();
@@ -84,13 +85,13 @@ void ITGEngine::Listening()
                         nlohmann::json j_request = nlohmann::json::parse(content);
                         std::string clientName = j_request.at("name");
                         if (RegisterClient(clientName, j_request.at("config")))
-                            DCSS_LOG_INFO(mLogger, "[user] Accecpted: " << clientName);
+                            DCSS_LOG_INFO(mLogger, "[RegisterClient] Accecpted: " << clientName);
                         else
-                            DCSS_LOG_INFO(mLogger, "[user] Rejected: " << clientName);
+                            DCSS_LOG_INFO(mLogger, "[RegisterClient] Rejected: " << clientName);
                     }
-                    catch (...)
+                    catch (const std::exception& e)
                     {
-                        DCSS_LOG_ERROR(mLogger, "error in parsing TRADE_ENGINE_LOGIN: " << (char*) frame->GetData());
+                        DCSS_LOG_ERROR(mLogger, "error in parsing TRADE_ENGINE_LOGIN: " << e.what());
                     }
                 }
                 else if (msgType == MSG_TYPE_STRATEGY_END)
@@ -101,11 +102,11 @@ void ITGEngine::Listening()
                         nlohmann::json j_request = nlohmann::json::parse(content);
                         std::string clientName = j_request.at("name");
                         if (RemoveClient(clientName))
-                            DCSS_LOG_INFO(mLogger, "[user] Removed: " << clientName);
+                            DCSS_LOG_INFO(mLogger, "[RemoveClient] Removed: " << clientName);
                     }
-                    catch (...)
+                    catch (const std::exception& e)
                     {
-                        DCSS_LOG_ERROR(mLogger, "error in parsing STRATEGY_END: " << (char*) frame->GetData());
+                        DCSS_LOG_ERROR(mLogger, "error in parsing STRATEGY_END: " << e.what());
                     }
                 }
             }

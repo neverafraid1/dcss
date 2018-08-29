@@ -6,7 +6,7 @@
 #define DCSS_OKTGENGINE_H
 
 #include "../ITGApi.h"
-#include "Helper.h"
+#include "EnumClassHash.h"
 
 #include <cpprest/http_client.h>
 #include <cpprest/ws_client.h>
@@ -78,6 +78,7 @@ private:
 
     std::string mApiKey;
     std::string mSecretKey;
+    std::string mProxy;
 
     std::unique_ptr<http_client> mRestClient;
     std::unique_ptr<websocket_callback_client> mWsClient;

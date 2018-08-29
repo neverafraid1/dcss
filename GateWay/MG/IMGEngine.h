@@ -18,12 +18,12 @@ class IMGEngine : public IEngine, public std::enable_shared_from_this<IMGEngine>
 public:
     IMGEngine() = default;
 
-    ~IMGEngine() override = default;
+    ~IMGEngine() override ;
 
 public:
     void SetReaderThread() override ;
 
-    void Load(const std::string& str);
+    void Load(const nlohmann::json& config);
 
     void Connect();
 
@@ -58,6 +58,8 @@ public:
 
     void Register(IMGEnginePtr spi);
 
+    void SetProxy(const std::string& proxy);
+
     virtual void Connect() = 0;
     virtual bool IsConnected() const = 0;
     virtual std::string Name() const = 0;
@@ -72,15 +74,15 @@ public:
     virtual void ReqUnSubKline(const std::string& Symbol, KlineType klineType) = 0;
 
 protected:
-    explicit IMGApi(uint8_t source)
-            : mSourceId(source)
-    {}
+    explicit IMGApi(uint8_t source);
+
     virtual ~IMGApi() = default;
 
 protected:
     uint8_t mSourceId;
-    IMGEnginePtr mSpi;
-    DCSSLogPtr mLogger;
+    IMGEngine* mSpi;
+    DCSSLog* mLogger;
+    std::string mProxy;
 };
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_MGENGINE_H

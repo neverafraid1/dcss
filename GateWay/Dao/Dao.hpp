@@ -21,7 +21,7 @@ public:
 
     void Init(const std::string& db, const std::string& server, const std::string& user, const std::string& passwd, unsigned int port)
     {
-        if (!conn.connect(db.c_str(), server.c_str(), user.c_str(), passwd.c_str(), port))
+        if (!conn.connected() && !conn.connect(db.c_str(), server.c_str(), user.c_str(), passwd.c_str(), port))
         {
             std::string str;
             str.append("connect to ").append(server).append(" ").append(db).append(" failed!");

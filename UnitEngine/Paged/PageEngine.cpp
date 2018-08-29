@@ -63,7 +63,7 @@ PageEngine::PageEngine()
 
 bool PageEngine::Write(const std::string& content, short msgType, bool isLast, uint8_t source)
 {
-    if (mWriter.get() == nullptr)
+    if (mWriter == nullptr)
         return false;
     mWriter->WriteFrame(content.c_str(), content.length() + 1, source, msgType, isLast, -1);
     return true;
@@ -121,7 +121,7 @@ void PageEngine::Stop()
 
     /*stop task thread first*/
     mTaskRunning = false;
-    if (mTaskThread.get() != nullptr)
+    if (mTaskThread != nullptr)
     {
         mTaskThread->join();
         mTaskThread.reset();
@@ -130,7 +130,7 @@ void PageEngine::Stop()
 
     /*stop comm thread*/
     mCommRunning = false;
-    if (mCommThread.get() != nullptr)
+    if (mCommThread != nullptr)
     {
         mCommThread->join();
         mCommThread.reset();
@@ -139,7 +139,7 @@ void PageEngine::Stop()
 
     /*stop socket io thread*/
     PageSocketHandler::GetInstance()->Stop();
-    if (mSocketThread.get() != nullptr)
+    if (mSocketThread != nullptr)
     {
         mSocketThread->join();
         mSocketThread.reset();
@@ -462,7 +462,7 @@ bool PageEngine::LoginTd(const std::string& clientName, std::string config)
 
 bool PageEngine::SubTicker(const std::string& symbol, uint8_t source)
 {
-    if (mWriter.get() == nullptr)
+    if (mWriter == nullptr)
         return false;
 
     DCSSSubTickerField req;
@@ -475,7 +475,7 @@ bool PageEngine::SubTicker(const std::string& symbol, uint8_t source)
 
 bool PageEngine::SubKline(const std::string& symbol, int klineType, uint8_t source)
 {
-    if (mWriter.get() == nullptr)
+    if (mWriter == nullptr)
         return false;
 
     DCSSSubKlineField req;
@@ -489,7 +489,7 @@ bool PageEngine::SubKline(const std::string& symbol, int klineType, uint8_t sour
 
 bool PageEngine::SubDepth(const std::string& symbol, int depth, uint8_t source)
 {
-    if (mWriter.get() == nullptr)
+    if (mWriter == nullptr)
         return false;
 
     DCSSSubDepthField req;
@@ -503,7 +503,7 @@ bool PageEngine::SubDepth(const std::string& symbol, int depth, uint8_t source)
 
 bool PageEngine::UnSubTicker(const std::string& symbol, uint8_t source)
 {
-    if (mWriter.get() == nullptr)
+    if (mWriter == nullptr)
         return false;
 
     DCSSSubTickerField req;
@@ -516,7 +516,7 @@ bool PageEngine::UnSubTicker(const std::string& symbol, uint8_t source)
 
 bool PageEngine::UnSubKline(const std::string& symbol, int klineType, uint8_t source)
 {
-    if (mWriter.get() == nullptr)
+    if (mWriter == nullptr)
         return false;
 
     DCSSSubKlineField req;
@@ -530,7 +530,7 @@ bool PageEngine::UnSubKline(const std::string& symbol, int klineType, uint8_t so
 
 bool PageEngine::UnSubDepth(const std::string& symbol, int depth, uint8_t source)
 {
-    if (mWriter.get() == nullptr)
+    if (mWriter == nullptr)
         return false;
 
     DCSSSubDepthField req;

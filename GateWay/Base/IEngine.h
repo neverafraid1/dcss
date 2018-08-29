@@ -51,8 +51,6 @@ public:
     /*block main thread*/
     void WaitForStop();
 
-    void SetProxy(const std::string& proxy);
-
 protected:
     IEngine();
 

@@ -7,7 +7,6 @@
 
 #include <unordered_map>
 #include <unordered_set>
-#include "Declare.h"
 #include "UnitReader.h"
 #include "IDCSSDataProcessor.h"
 #include "DCSSStrategyUtil.h"
@@ -20,7 +19,7 @@ public:
     /*setup reader*/
     void PreRun();
     /*request td connect, default timeout is 10s*/
-    void Connect(const std::string& config, long time = 5 * NANOSECONDS_PER_SECOND);
+    void Connect(const std::string& config, long time = 10 * NANOSECONDS_PER_SECOND);
 
 public:
     DCSSDataWrapper(IDCSSDataProcessor* processor, DCSSStrategyUtil* util);
@@ -56,8 +55,8 @@ protected:
     DCSSStrategyUtil*       mUtil;
     UnitReaderPtr           mReader;
 
-    std::unordered_map<uint8_t, GWStatus>		mTdStatus;
-    std::unordered_map<std::string, double>		mLastPriceMap;
+    std::unordered_map<uint8_t, std::unique_ptr<GWStatus> >		mTdStatus;
+    std::unordered_map<std::string, std::unique_ptr<double> >		mLastPriceMap;
 
     int mRidStart;
     int mRidEnd;

@@ -24,7 +24,7 @@ void Unit::Expire()
     if (!mExpired)
     {
         mExpired = true;
-        if (mCurPage.get() != nullptr)
+        if (mCurPage != nullptr)
         {
             mPageProviderPtr->ReleasePage(mCurPage->GetBuffer(), UNIT_PAGE_SIZE, mServiceIdx);
             mCurPage.reset();
@@ -35,14 +35,14 @@ void Unit::Expire()
 
 void Unit::SeekTime(long time)
 {
-    if (mCurPage.get() != nullptr)
+    if (mCurPage != nullptr)
         mPageProviderPtr->ReleasePage(mCurPage->GetBuffer(), UNIT_PAGE_SIZE, mServiceIdx);
 
     if (time == TIME_TO_LAST)
     {
         std::vector<short> pageNums = PageUtil::GetPageNums(mDirectory, mUnitName);
         mCurPage = mPageProviderPtr->GetPage(mDirectory, mUnitName, mServiceIdx, (pageNums.size() > 0) ? pageNums.back() : 1);
-        if (mCurPage.get() !=nullptr)
+        if (mCurPage !=nullptr)
             mCurPage->SkipWrittenFrame();
     }
     else if (time == TIME_FROM_FIRST)
@@ -54,11 +54,11 @@ void Unit::SeekTime(long time)
     {
         short pageNum = PageUtil::GetPageNumWithTime(mDirectory, mUnitName, time);
         mCurPage = mPageProviderPtr->GetPage(mDirectory, mUnitName, mServiceIdx, pageNum);
-        if (mCurPage.get() !=nullptr)
+        if (mCurPage !=nullptr)
             mCurPage->SkipWrittenFrame();
     }
 
-    mExpired = (mCurPage.get() == nullptr);
+    mExpired = (mCurPage == nullptr);
 }
 
 void Unit::LoadNextPage()
@@ -66,7 +66,7 @@ void Unit::LoadNextPage()
     if (mExpired)
         return;
 
-    if (mCurPage.get() == nullptr)
+    if (mCurPage == nullptr)
     {
         mCurPage = mPageProviderPtr->GetPage(mDirectory, mUnitName, mServiceIdx, 1);
     }
@@ -94,16 +94,16 @@ void* Unit::LocateFrame()
         while (frame ==nullptr)
         {
             LoadNextPage();
-            frame = mCurPage->LocateReadableFrame();
+            frame = mCurPage->LocateWritableFrame();
         }
         return frame;
     }
     // if reading, we need an written mCurrFrame
     else
     {
-        if (mCurPage.get() == nullptr || mCurPage->IsAtPageEnd())
+        if (mCurPage == nullptr || mCurPage->IsAtPageEnd())
             LoadNextPage();
-        if (mCurPage.get() !=nullptr)
+        if (mCurPage !=nullptr)
             return mCurPage->LocateReadableFrame();
     }
     return nullptr;

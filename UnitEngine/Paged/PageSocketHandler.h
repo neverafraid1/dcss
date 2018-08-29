@@ -5,8 +5,6 @@
 #ifndef DIGITALCURRENCYSTRATEGYSYSTEM_PAGESOCKETHANDLER_H
 #define DIGITALCURRENCYSTRATEGYSYSTEM_PAGESOCKETHANDLER_H
 
-
-#include "Declare.h"
 #include "DCSSLog.h"
 #include "PageSocketStruct.h"
 

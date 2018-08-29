@@ -24,7 +24,7 @@ void DCSSDataWrapper::PreRun()
 {
     const std::string& name = mUtil->GetName();
     mFolders.emplace_back(STRATEGY_BASE_FOLDER);
-    mNames.push_back(name + "_TG");
+    mNames.emplace_back(name + "_TG");
     mReader = UnitReader::CreateReaderWithSys(mFolders, mNames, GetNanoTime(), mProcessor->GetName());
 }
 
@@ -32,7 +32,7 @@ void DCSSDataWrapper::Connect(const std::string& config, long time)
 {
     for (auto& it : mTdStatus)
     {
-        it.second = GWStatus::Requested;
+        *(it.second) = GWStatus::Requested;
     }
     mUtil->TdConnect(config);
     long startTime = GetNanoTime();
@@ -46,7 +46,7 @@ void DCSSDataWrapper::Stop()
 
 GWStatus DCSSDataWrapper::GetTdStatus(uint8_t source)
 {
-    return mTdStatus.count(source) == 0 ? GWStatus::Unknown : mTdStatus.at(source);
+    return mTdStatus.count(source) == 0 ? GWStatus::Unknown : *(mTdStatus.at(source));
 }
 
 void DCSSDataWrapper::AddMarketData(uint8_t source)
@@ -58,7 +58,7 @@ void DCSSDataWrapper::AddMarketData(uint8_t source)
 
 void DCSSDataWrapper::AddRegisterTd(uint8_t source)
 {
-    mTdStatus[source] = GWStatus::Added;
+    mTdStatus[source].reset(new GWStatus(GWStatus::Added));
 }
 
 void DCSSDataWrapper::AddTicker(const std::string& symbol, uint8_t source)
@@ -85,7 +85,7 @@ void DCSSDataWrapper::Run()
     while (!mForceStop && mProcessor->mSingalReceived <= 0)
     {
         frame = mReader->GetNextFrame();
-        if (frame.get() != nullptr)
+        if (frame != nullptr)
         {
             mCurTime = frame->GetNano();
 
@@ -96,7 +96,7 @@ void DCSSDataWrapper::Run()
 
             if (msgType == MSG_TYPE_TRADE_ENGINE_ACK)
             {
-                if (mTdStatus[msgSource] == GWStatus::Requested)
+                if (*(mTdStatus[msgSource]) == GWStatus::Requested)
                 {
                     std::string content((char*) frame->GetData());
                     ProcessTdAck(content, msgSource, mCurTime);
@@ -116,7 +116,6 @@ void DCSSDataWrapper::Run()
                         const std::string& symbol(ticker->Symbol);
                         if (mSubedTicker.count(msgSource) > 0 && mSubedTicker.at(msgSource).count(symbol) > 0)
                         {
-                            mLastPriceMap[symbol] = ticker->LastPrice;
                             mProcessor->OnRtnTicker(ticker, msgSource, mCurTime);
                         }
                         break;
@@ -160,7 +159,7 @@ void DCSSDataWrapper::Run()
                     }
                     case MSG_TYPE_RTN_TD_STATUS:
                     {
-                        mTdStatus[msgSource] = *(static_cast<GWStatus*>(data));
+                        *(mTdStatus[msgSource]) = *(static_cast<GWStatus*>(data));
                         break;
                     }
                     }
@@ -212,9 +211,7 @@ void DCSSDataWrapper::Run()
 
     if (mProcessor->mSingalReceived > 0)
     {
-        char msg[100];
-        sprintf(msg, "%s%d", "[DataWrapper] signal received: ", mProcessor->mSingalReceived);
-        mProcessor->Debug(msg);
+        mProcessor->Debug((std::string("[DataWrapper] signal received: ") + std::to_string(mProcessor->mSingalReceived)).c_str());
     }
 
     if (mForceStop)
@@ -228,7 +225,7 @@ bool DCSSDataWrapper::IsAllLogined()
     bool rtn(true);
     for (auto& item : mTdStatus)
     {
-        rtn &= (item.second == GWStatus::Logined);
+        rtn &= (*(item.second) == GWStatus::Logined);
     }
     return rtn;
 }

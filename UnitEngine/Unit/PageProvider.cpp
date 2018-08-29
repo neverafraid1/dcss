@@ -8,7 +8,6 @@
 #include "PageUtil.h"
 #include "Page.h"
 #include "StrategySocketHandler.h"
-#include "Helper.h"
 
 #include <boost/asio.hpp>
 

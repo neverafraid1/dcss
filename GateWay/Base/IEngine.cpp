@@ -37,7 +37,6 @@ bool IEngine::Start()
         std::signal(SIGINT, IEngine::SignalHandler);
         std::signal(SIGHUP, IEngine::SignalHandler);
         std::signal(SIGQUIT, IEngine::SignalHandler);
-        std::signal(SIGKILL, IEngine::SignalHandler);
 
         SetReaderThread();
     }
@@ -49,7 +48,7 @@ bool IEngine::Stop()
 {
     mIsRunning = false;
 
-    if (mReaderThread.get() != nullptr)
+    if (mReaderThread != nullptr)
     {
         mReaderThread->join();
         mReaderThread.reset();
@@ -62,14 +61,10 @@ bool IEngine::Stop()
 
 void IEngine::WaitForStop()
 {
-    if (mReaderThread.get() != nullptr)
+    if (mReaderThread != nullptr)
     {
         mReaderThread->join();
         mReaderThread.reset();
     }
 }
 
-void IEngine::SetProxy(const std::string& proxy)
-{
-    mProxy = proxy;
-}

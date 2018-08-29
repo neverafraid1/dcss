@@ -29,7 +29,7 @@ class ITGSpi : public std::enable_shared_from_this<ITGSpi>
 {
 public:
     ITGSpi(const std::string& client, DCSSLogPtr logger, const std::string& proxy);
-    ~ITGSpi() = default;
+    ~ITGSpi();
 
 public:
     bool Load(const std::string& config);
@@ -124,6 +124,7 @@ public:
     /*only interface to create a api*/
     static ITGApiPtr CreateTGApi(uint8_t source);
 
+public:
     virtual void LoadAccount(const nlohmann::json& config) = 0;
     virtual void Connect() = 0;
     virtual void Disconnect() = 0;
@@ -143,16 +144,14 @@ public:
     virtual void ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID) = 0;
 
 protected:
-    explicit ITGApi(uint8_t source)
-            :mSourceId(source)
-    {}
+    explicit ITGApi(uint8_t source);
     virtual ~ITGApi() = default;
 
 protected:
     const uint8_t mSourceId;
-    DCSSLogPtr mLogger;
+    DCSSLog* mLogger;
     std::string mProxy;
-    ITGSpiPtr mSpi;
+    ITGSpi* mSpi;
 };
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_ITGAPI_H

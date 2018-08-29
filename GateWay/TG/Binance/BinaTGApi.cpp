@@ -74,20 +74,23 @@ BinaTGApi::BinaTGApi(uint8_t source)
 
 BinaTGApi::~BinaTGApi()
 {
-    mWsClient->close(websocket_close_status::normal, "destruct");
-    if (mPingThread)
+    mWsClient->close(websocket_close_status::normal, "destruct").get();
+    do
     {
-        mPingThread->join();
-        mPingThread.reset();
+    	std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
-    mWsClient.reset();
-    mRestClient.reset();
+    while (IsConnected());
+
+
+    mPingThread->join();
 }
 
 void BinaTGApi::LoadAccount(const nlohmann::json& config)
 {
     mApiKey = config.at("api_key");
     mSecretKey = config.at("secret_key");
+    if (config.count("proxy") > 0)
+    	mProxy = config.at("proxy");
 }
 
 void BinaTGApi::Connect()
@@ -113,8 +116,15 @@ void BinaTGApi::Connect()
     mWsClient->set_message_handler(std::bind(&BinaTGApi::OnWsMessage, this, std::placeholders::_1));
     mWsClient->set_close_handler(std::bind(&BinaTGApi::OnWsClose, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
-    mWsClient->connect("wss://stream.binance.com:9443")
-            .then([this]()
+    http_request request(methods::POST);
+    request.headers().add("X-MBX-APIKEY", mApiKey);
+    uri_builder builder("/api/v1/userDataStream");
+    request.set_request_uri(builder.to_uri());
+    auto response = mRestClient->request(request).get();
+    mListenKey = response.extract_json().get().as_object().at("listenKey").as_string();
+
+    mWsClient->connect("wss://stream.binance.com:9443/ws/" + mListenKey)
+            .then([=]()
             {
                 OnWsConnected();
             })
@@ -138,12 +148,14 @@ void BinaTGApi::Disconnect()
     {
         mWsClient->close(websocket_close_status::normal, "disconnect by client");
         mWsConnected = false;
+        mSpi->OnRtnTdStatus(GWStatus::Disconnected, mSourceId);
     }
 }
 
 void BinaTGApi::Login()
 {
     mLogined = true;
+    mSpi->OnRtnTdStatus(GWStatus::Logined, mSourceId);
 }
 
 bool BinaTGApi::IsConnected() const
@@ -189,6 +201,12 @@ void BinaTGApi::ReqQryTicker(const DCSSReqQryTickerField* req, int requestID)
 
 void BinaTGApi::ReqQryUserInfo(int requestID)
 {
+	web_proxy proxy(U(mProxy));
+
+	http_client_config http_config;
+	http_config.set_proxy(proxy);
+	mRestClient.reset(new http_client(U("https://api.binance.com"), http_config));
+
     http_request request(methods::GET);
     request.headers().add("X-MBX-APIKEY", mApiKey);
 
@@ -355,12 +373,9 @@ void BinaTGApi::OnWsMessage(const websocket_incoming_message& msg)
 void BinaTGApi::OnWsClose(websocket_close_status close_status, const utility::string_t& reason,
         const std::error_code& error)
 {
+	DCSS_LOG_INFO(mLogger, "ws close due to " << reason);
+	mSpi->OnRtnTdStatus(GWStatus::Disconnected, mSourceId);
     mWsConnected = false;
-
-    mPingThread->join();
-    mPingThread.reset();
-
-    mSpi->OnRtnTdStatus(GWStatus::Disconnected, mSourceId);
 }
 
 void BinaTGApi::OnRtnAccount(const json::object& jo)
@@ -439,17 +454,20 @@ void BinaTGApi::OnWsConnected()
     DCSS_LOG_INFO(mLogger, "[binance][tg] ws connect success!");
     mWsConnected = true;
 
+    mSpi->OnRtnTdStatus(GWStatus::Connected, mSourceId);
+
     mPingThread.reset(new std::thread(&BinaTGApi::Ping, this));
+    Login();
 }
 
 void BinaTGApi::Ping()
 {
-    http_request request(methods::POST);
-    request.headers().add("X-MBX-APIKEY", mApiKey);
-    uri_builder builder("/api/v1/userDataStream");
-    request.set_request_uri(builder.to_uri());
-    auto response = mRestClient->request(request).get();
-    mListenKey = response.extract_json().get().as_object().at("listenKey").as_string();
+//    http_request request(methods::POST);
+//    request.headers().add("X-MBX-APIKEY", mApiKey);
+//    uri_builder builder("/api/v1/userDataStream");
+//    request.set_request_uri(builder.to_uri());
+//    auto response = mRestClient->request(request).get();
+//    mListenKey = response.extract_json().get().as_object().at("listenKey").as_string();
     int loop(0);
     while (mWsConnected)
     {

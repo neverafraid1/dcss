@@ -7,6 +7,7 @@
 #include <iostream>
 #include <fstream>
 #include "IDCSSStrategy.h"
+#include <json.hpp>
 
 void RegisterSignalCallback()
 {
@@ -14,7 +15,6 @@ void RegisterSignalCallback()
     std::signal(SIGINT, IDCSSDataProcessor::SignalHandler);
     std::signal(SIGHUP, IDCSSDataProcessor::SignalHandler);
     std::signal(SIGQUIT, IDCSSDataProcessor::SignalHandler);
-    std::signal(SIGKILL, IDCSSDataProcessor::SignalHandler);
 }
 
 IDCSSStrategy::IDCSSStrategy(const std::string& name) : mName(name)
@@ -31,16 +31,41 @@ void IDCSSStrategy::SetConfigPath(const std::string& path)
     mConfigPath = path;
 }
 
-void IDCSSStrategy::Init(const std::vector<uint8_t>& tgSources, const std::vector<uint8_t>& mgSources)
+bool IDCSSStrategy::Init()
 {
-    for (auto& item : tgSources)
+	DCSS_LOG_INFO(mLogger, "load config information from " << mConfigPath);
+
+    std::ifstream in(mConfigPath);
+    std::ostringstream oss;
+    oss << in.rdbuf();
+    in.close();
+
+    mConfig = oss.str();
+
+    nlohmann::json object = nlohmann::json::parse(mConfig);
+    if (object.count("accounts") == 0)
     {
-        mData->AddRegisterTd(item);
-        mSourceSet.insert(item);
+    	DCSS_LOG_ERROR(mLogger, "config must contains account info");
+    	return false;
     }
 
-    for (auto& item : mgSources)
-        mData->AddMarketData(item);
+    const nlohmann::json::array_t& accounts = object.at("accounts");
+    for (const auto& item : accounts)
+    {
+    	if (item.count("source") == 0 ||
+    			item.count("api_key") == 0 ||
+				item.count("secret_key") == 0)
+    	{
+    		DCSS_LOG_ERROR(mLogger, "config has invalid info");
+    		return false;
+    	}
+    	short source = item.at("source");
+    	mData->AddRegisterTd(source);
+    	mData->AddMarketData(source);
+    	mSourceSet.insert(source);
+    }
+
+    return true;
 }
 
 void IDCSSStrategy::Start()
@@ -50,12 +75,7 @@ void IDCSSStrategy::Start()
     mDataThread.reset(new std::thread(&DCSSDataWrapper::Run, mData.get()));
     DCSS_LOG_INFO(mLogger, "data thread start");
 
-    std::ifstream in(mConfigPath);
-    std::ostringstream oss;
-    oss << in.rdbuf();
-    in.close();
-
-    mData->Connect(oss.str());
+    mData->Connect(mConfig);
     if (mData->IsAllLogined())
         DCSS_LOG_INFO(mLogger, "td logined");
     else
@@ -87,7 +107,7 @@ void IDCSSStrategy::Terminate()
 {
     Stop();
 
-    if (mDataThread.get() != nullptr)
+    if (mDataThread != nullptr)
     {
         mDataThread.reset();
     }
@@ -97,19 +117,19 @@ void IDCSSStrategy::Terminate()
 
 void IDCSSStrategy::Stop()
 {
-    if (mData.get() != nullptr)
+    if (mData != nullptr)
         mData->Stop();
 }
 
 void IDCSSStrategy::Run()
 {
-    if (mData.get() != nullptr)
+    if (mData != nullptr)
         mData->Run();
 }
 
 void IDCSSStrategy::Block()
 {
-    if (mDataThread.get() != nullptr)
+    if (mDataThread != nullptr)
         mDataThread->join();
 }
 
@@ -205,7 +225,6 @@ void IDCSSStrategy::OnRspQryTradingAccount(const DCSSTradingAccountField* accoun
             mBalance[source][account->Balance[i].Currency].Free = account->Balance[i].Free;
             mBalance[source][account->Balance[i].Currency].Freezed = account->Balance[i].Freezed;
         }
-        std::cout << "1111111" << std::endl;
     }
     else
     {
@@ -374,7 +393,7 @@ void IDCSSStrategy::SubscribeDepth(uint8_t source, const std::string& symbol, in
 
 bool IDCSSStrategy::IsTdReady(uint8_t source) const
 {
-    if (mData.get() != nullptr)
+    if (mData != nullptr)
     {
         auto status = mData->GetTdStatus(source);
         if (status == GWStatus::Logined)
@@ -385,7 +404,7 @@ bool IDCSSStrategy::IsTdReady(uint8_t source) const
 
 bool IDCSSStrategy::IsTdConnected(uint8_t source) const
 {
-    if (mData.get() != nullptr)
+    if (mData != nullptr)
     {
         auto status = mData->GetTdStatus(source);
         if (status == GWStatus::Connected

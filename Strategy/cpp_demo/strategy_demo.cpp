@@ -38,8 +38,8 @@ void Strategy::OnRspQryKline(const DCSSKlineField* kline, int requestId, int err
 {
     if (errorId == 0)
     {
-            std::cout << "(time)" << kline->UpdateTime << "(close proce)" << kline->ClosePrice << std::endl;
-            closePirces.push_back(kline->ClosePrice);
+    	std::cout << "(time)" << kline->UpdateTime << "(close proce)" << kline->ClosePrice << std::endl;
+    	closePirces.emplace_back(kline->ClosePrice);
     }
 }
 
@@ -47,7 +47,7 @@ void Strategy::OnRtnKline(const DCSSKlineField* kline, uint8_t source, long recv
 {
 	std::cout << "(time)" << kline->UpdateTime << "(close proce)" << kline->ClosePrice << std::endl;
 	closePirces.pop_front();
-	closePirces.push_back(kline->ClosePrice);
+	closePirces.emplace_back(kline->ClosePrice);
 
     int beginIndex = closePirces.size() - slowPeriod - 1;
     int endIndex = closePirces.size();
@@ -74,7 +74,6 @@ void Strategy::OnRtnKline(const DCSSKlineField* kline, uint8_t source, long recv
             std::cout << std::setiosflags(std::ios::fixed) << *macd << std::endl;
     }
 
-
 }
 
 Strategy strategy("cpp_test");
@@ -83,13 +82,17 @@ int main(int argc, char* argv[])
 {
     strategy.SetConfigPath(argv[1]);
 
-    strategy.Init({EXCHANGE_OKCOIN}, {});
+    if (!strategy.Init())
+    {
+    	std::cerr << "init failed" << std::endl;
+    	return 0;
+    }
 
     strategy.Start();
 
-    strategy.QryKline(EXCHANGE_OKCOIN, symbol, KlineType::Min1, 35);
+//    strategy.QryKline(EXCHANGE_OKCOIN, symbol, KlineType::Min1, 35);
 
-    strategy.SubscribeKline(EXCHANGE_OKCOIN, symbol, KlineType::Min1);
+//    strategy.SubscribeKline(EXCHANGE_OKCOIN, symbol, KlineType::Min1);
 
     strategy.Block();
 

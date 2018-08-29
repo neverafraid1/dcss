@@ -16,8 +16,8 @@ USING_UNIT_NAMESPACE
 #define STRATEGY_LOG_MAX_FILE_SIZE 10 * 1024 * 1024
 #define STRATEGY_LOG_MAX_BACKUP_INDEX 10
 
-const std::string LOG_CONFIGURATION_FILE = "/opt/DCSS/etc/log4cplus/default.properties";
-const std::string LOG_CONFIGURATION_STRATEGY_FILE = "/opt/DCSS/etc/log4cplus/strategy.pattern";
+const std::string LOG_CONFIGURATION_FILE = "/opt/dcss/master/etc/log4cplus/default.propreties";
+const std::string LOG_CONFIGURATION_STRATEGY_FILE = "/opt/dcss/master/etc/log4cplus/strategy.pattern";
 static bool IsConfigured = false;
 
 bool DCSSLog::DoConfigure(std::string ConfigureName)

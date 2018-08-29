@@ -7,7 +7,7 @@
 
 #include "../ITGApi.h"
 #include "SymbolDao.hpp"
-#include "Helper.h"
+#include "EnumClassHash.h"
 
 #include <cpprest/http_client.h>
 #include <cpprest/ws_client.h>
@@ -70,6 +70,7 @@ private:
 
     std::string mApiKey;
     std::string mSecretKey;
+    std::string mProxy;
 
     std::string mListenKey;
 

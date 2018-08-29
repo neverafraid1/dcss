@@ -26,9 +26,9 @@ typedef bool		FH_LASTFG_TYPE;
 //////////////////////////////////////
 /// (uint8_t) UnitFrameStatus
 //////////////////////////////////////
-#define UNIT_FRAME_STATUS_RAW       1
-#define UNIT_FRAME_STATUS_WRITTEN   2
-#define UNIT_FRAME_STATUS_PAGE_END  3
+#define UNIT_FRAME_STATUS_RAW       0
+#define UNIT_FRAME_STATUS_WRITTEN   1
+#define UNIT_FRAME_STATUS_PAGE_END  2
 
 struct FrameHeader
 {

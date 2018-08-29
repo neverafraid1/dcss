@@ -35,7 +35,7 @@ void StrategyUtil::Init()
 
 bool StrategyUtil::TdConnect(const std::string& config)
 {
-    if (mHandler.get() != nullptr)
+    if (mHandler != nullptr)
         return mHandler->TdConnect(config);
     else
         return false;
@@ -48,7 +48,7 @@ IntPair StrategyUtil::GetRidRange() const
 
 bool StrategyUtil::MdSubscribeTicker(const std::string& tickers, uint8_t source)
 {
-    if (mHandler.get() != nullptr)
+    if (mHandler != nullptr)
         return mHandler->MdSubscribeTicker(tickers, source);
     else
         return false;
@@ -56,7 +56,7 @@ bool StrategyUtil::MdSubscribeTicker(const std::string& tickers, uint8_t source)
 
 bool StrategyUtil::MdSubscribeKline(const std::string& symbol, int klineType, uint8_t source)
 {
-    if (mHandler.get() != nullptr)
+    if (mHandler != nullptr)
         return mHandler->MdSubscribeKline(symbol, klineType, source);
     else
         return false;
@@ -64,7 +64,7 @@ bool StrategyUtil::MdSubscribeKline(const std::string& symbol, int klineType, ui
 
 bool StrategyUtil::MdSubscribeDepth(const std::string& symbol, int depth, uint8_t source)
 {
-    if (mHandler.get() != nullptr)
+    if (mHandler != nullptr)
         return mHandler->MdSubscribeDepth(symbol, depth, source);
     else
         return false;
@@ -72,7 +72,7 @@ bool StrategyUtil::MdSubscribeDepth(const std::string& symbol, int depth, uint8_
 
 bool StrategyUtil::RegisterStrategy(int& ridStart, int& ridEnd)
 {
-    if (mHandler.get() != nullptr)
+    if (mHandler != nullptr)
         return mHandler->RegisterStrategy(ridStart, ridEnd);
     else
         return false;
@@ -81,7 +81,7 @@ bool StrategyUtil::RegisterStrategy(int& ridStart, int& ridEnd)
 long StrategyUtil::WriteFrame(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source, FH_MSG_TP_TYPE msgType, FH_LASTFG_TYPE isLast,
         FH_REQID_TYPE requestId)
 {
-    return mWriter->WriteFrame(data, length, source, isLast, msgType, requestId);
+    return mWriter->WriteFrame(data, length, source, msgType, isLast, requestId);
 }
 
 long StrategyUtil::WriteFrameExtra(const void* data, FH_LENGTH_TYPE length, FH_SOURCE_TYPE source,

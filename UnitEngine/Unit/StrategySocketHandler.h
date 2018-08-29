@@ -8,7 +8,6 @@
 #include "PageProvider.h"
 #include "IStrategyUtil.h"
 #include "PageSocketStruct.h"
-#include "Declare.h"
 #include "UnitDeclare.h"
 
 #include <array>

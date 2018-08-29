@@ -6,7 +6,7 @@
 #define DIGITALCURRENCYSTRATEGYSYSTEM_BINAMGAPI_H
 
 #include "../IMGEngine.h"
-#include "Helper.h"
+#include "EnumClassHash.h"
 
 #include <cpprest/ws_client.h>
 #include <cpprest/details/web_utilities.h>
@@ -33,14 +33,16 @@ public:
     void ReqSubDepth(const std::string& symbol, int depth) override ;
     void ReqSubKline(const std::string& symbol, KlineType klineType) override ;
 
-    void ReqUnSubTicker(const std::string& symbol) override {}
-    void ReqUnSubDepth(const std::string& symbol, int depth) override {}
-    void ReqUnSubKline(const std::string& symbol, KlineType klineType) override {}
+    void ReqUnSubTicker(const std::string& symbol) override ;
+    void ReqUnSubDepth(const std::string& symbol, int depth) override ;
+    void ReqUnSubKline(const std::string& symbol, KlineType klineType) override ;
 
     std::string Name() const override {return "BINA_MG"; }
 
 private:
     void OnWsMessage(const websocket_incoming_message& msg);
+    void OnWsTicker(const websocket_incoming_message& msg);
+    void OnWsKline(const websocket_incoming_message& msg);
     void OnWsClose(websocket_close_status close_status, const utility::string_t& reason, const std::error_code& error);
 
     void OnRtnKline(const json::object& jo);
@@ -48,11 +50,17 @@ private:
 
     void OnWsConnect();
 
+    std::shared_ptr<websocket_callback_client> CreateNewWsClient();
+
+    std::string GetTickerChannel(const std::string& symbol);
+    std::string GetKlineChannel(const std::string& symbol, KlineType type);
+    std::string GetDepthChannel(const std::string& symbol, int depth);
+
 private:
     static std::unordered_map<KlineType, std::string, EnumClassHash> klineStringMap;
     static std::unordered_map<std::string, KlineType> stringKlineMap;
 
-    std::unique_ptr<websocket_callback_client> mWsClient;
+//    std::unique_ptr<websocket_callback_client> mWsClient;
     volatile bool mWsConnected;
 
     std::unordered_map<std::string, int> mSubTickNum;
@@ -63,6 +71,10 @@ private:
     std::unordered_map<std::string, std::string> mBinaToCommonSymbolMap;
     //map<btc_ltc, BTCLTC>
     std::unordered_map<std::string, std::string> mCommonToBinaSymbolMap;
+
+    std::unordered_map<std::string, std::shared_ptr<websocket_callback_client> > mSubTickerClient;
+    std::unordered_map<std::string, std::shared_ptr<websocket_callback_client> > mSubDepthClient;
+    std::unordered_map<std::string, std::shared_ptr<websocket_callback_client> > mSubKlineClient;
 };
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_BINAMGAPI_H

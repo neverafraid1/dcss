@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+/usr/bin/supervisorctl -c /opt/dcss/master/etc/supervisor/supervisord.conf

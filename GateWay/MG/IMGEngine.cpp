@@ -10,19 +10,26 @@
 #include "Timer.h"
 #include "SysMessages.h"
 
+IMGEngine::~IMGEngine()
+{
+	mMGApi.reset();
+	mReader.reset();
+	mWriter.reset();
+}
+
 void IMGEngine::SetReaderThread()
 {
     mReaderThread.reset(new std::thread(std::bind(&IMGEngine::Listening, this)));
 }
 
-void IMGEngine::Load(const std::string& str)
+void IMGEngine::Load(const nlohmann::json& config)
 {
     mLogger = DCSSLog::GetLogger(Name());
-    nlohmann::json config = nlohmann::json::parse(str);
     uint8_t source = config.at("source");
     auto pair = GetMdUnitPair(source);
     mMGApi = IMGApi::Create(source);
     mMGApi->Register(shared_from_this());
+    mMGApi->SetProxy(config.at("proxy").get<std::string>());
     Connect();
     while (!IsConnected())
     {
@@ -55,7 +62,7 @@ void IMGEngine::Listening()
     while (mIsRunning && SignalReceived < 0)
     {
         frame = mReader->GetNextFrame();
-        if (frame.get() != nullptr)
+        if (frame != nullptr)
         {
             uint8_t source = frame->GetSource();
             if (source != mMGApi->GetSource())
@@ -141,7 +148,8 @@ void IMGEngine::OnRtnKline(const DCSSKlineField* kline, uint8_t source)
 {
     if (mIsRunning)
     {
-        mWriter->WriteFrame(kline, sizeof(DCSSKlineField), source, MSG_TYPE_RTN_KLINE, true, -1);
+
+//        mWriter->WriteFrame(kline, sizeof(DCSSKlineField), source, MSG_TYPE_RTN_KLINE, true, -1);
     }
 }
 
@@ -158,10 +166,21 @@ IMGApiPtr IMGApi::Create(uint8_t source)
     }
 }
 
+IMGApi::IMGApi(uint8_t source)
+: mSourceId(source), mSpi(nullptr), mLogger(nullptr)
+{}
+
 void IMGApi::Register(IMGEnginePtr spi)
 {
-    mSpi = std::move(spi);
-    mLogger = mSpi->GetLogger();
+	if (!spi)
+		return;
+    mSpi = spi.get();
+    mLogger = mSpi->GetLogger().get();
+}
+
+void IMGApi::SetProxy(const std::string& proxy)
+{
+	mProxy = proxy;
 }
 
 short IMGApi::GetSource() const

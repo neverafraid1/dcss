@@ -24,14 +24,6 @@ std::unordered_map<KlineType, std::string, EnumClassHash> OKMGApi::klineStringMa
 OKMGApi::OKMGApi(uint8_t source)
 : IMGApi(source), IsWsConnected(false), Ponged(true)
 {
-    web_proxy proxy("http://192.168.1.164:1080");
-    websocket_client_config config;
-    config.set_proxy(proxy);
-
-    mWsClient.reset(new websocket_callback_client(config));
-
-    mWsClient->set_message_handler(std::bind(&OKMGApi::OnWsMessage, this, std::placeholders::_1));
-    mWsClient->set_close_handler(std::bind(&OKMGApi::OnWsClose, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
 OKMGApi::~OKMGApi()
@@ -43,6 +35,21 @@ OKMGApi::~OKMGApi()
 
 void OKMGApi::Connect()
 {
+	if (mProxy.empty())
+	{
+		mWsClient.reset(new websocket_callback_client());
+	}
+	else
+	{
+		web_proxy proxy(mProxy);
+		websocket_client_config config;
+		config.set_proxy(proxy);
+		mWsClient.reset(new websocket_callback_client(config));
+	}
+
+	mWsClient->set_message_handler(std::bind(&OKMGApi::OnWsMessage, this, std::placeholders::_1));
+	mWsClient->set_close_handler(std::bind(&OKMGApi::OnWsClose, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+
     mWsClient->connect(U("wss://real.okex.com:10441/websocket"))
             .then([this]()
             {

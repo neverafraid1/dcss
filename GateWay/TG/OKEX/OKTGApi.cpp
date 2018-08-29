@@ -52,11 +52,14 @@ OKTGApi::OKTGApi(uint8_t source)
 
 OKTGApi::~OKTGApi()
 {
-    mWsClient->close();
+    mWsClient->close(websocket_close_status::normal, "destruct").get();
+    do
+    {
+    	std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    while (IsConnected());
+
     mPingThread->join();
-    mPingThread.reset();
-    mWsClient.reset();
-    mRestClient.reset();
 }
 
 void OKTGApi::OnWsClose(web::websockets::client::websocket_close_status close_status,
@@ -65,12 +68,9 @@ void OKTGApi::OnWsClose(web::websockets::client::websocket_close_status close_st
     DCSS_LOG_INFO(mLogger, "[ok_tg][wsclose](" << mApiKey << ")(close_status)" << (int)close_status
     << "(reason)" << reason << "(error)" << error.message());
 
-    IsWsConnected = false;
-
-    mPingThread->join();
-    mPingThread.reset();
-
     mSpi->OnRtnTdStatus(GWStatus::Disconnected, mSourceId);
+
+    IsWsConnected = false;
 }
 
 void OKTGApi::ResetRestClient()
@@ -84,11 +84,9 @@ void OKTGApi::ResetRestClient()
 
 void OKTGApi::OnWSMessage(const web::websockets::client::websocket_incoming_message& msg)
 {
-    std::string s = msg.extract_string().get();
-    std::cout << s << std::endl;
     try
     {
-        json::value jvalue = json::value::parse(s);
+        json::value jvalue = json::value::parse(msg.extract_string().get());
         if (jvalue.is_object())
         {
             std::string event = jvalue.as_object().at(U("event")).as_string();
@@ -186,20 +184,31 @@ void OKTGApi::LoadAccount(const nlohmann::json& config)
 {
     mApiKey = config.at("api_key");
     mSecretKey = config.at("secret_key");
+    if (config.count("proxy") > 0)
+    	mProxy = config.at("proxy");
 }
 
 void OKTGApi::Connect()
 {
-    web_proxy proxy("http://192.168.1.164:1080");
+
 //    http_client_config http_config;
 //    http_config.set_proxy(proxy);
 //
 //    mRestClient.reset(new http_client(U(OK_REST_ROOT_URL), http_config));
 
-    websocket_client_config ws_config;
-    ws_config.set_proxy(proxy);
+    if (mProxy.empty())
+    {
+    	mWsClient.reset(new websocket_callback_client());
+    }
+    else
+    {
+    	web_proxy proxy(mProxy);
+        websocket_client_config ws_config;
+        ws_config.set_proxy(proxy);
 
-    mWsClient.reset(new websocket_callback_client(ws_config));
+        mWsClient.reset(new websocket_callback_client(ws_config));
+    }
+
     mWsClient->set_message_handler(std::bind(&OKTGApi::OnWSMessage, this, std::placeholders::_1));
     mWsClient->set_close_handler(std::bind(&OKTGApi::OnWsClose, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 

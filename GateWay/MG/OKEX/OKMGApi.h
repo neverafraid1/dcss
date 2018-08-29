@@ -6,7 +6,7 @@
 #define DIGITALCURRENCYSTRATEGYSYSTEM_OKMGENGINE_H
 
 #include "../IMGEngine.h"
-#include "Helper.h"
+#include "EnumClassHash.h"
 
 #include <cpprest/ws_client.h>
 #include <cpprest/details/web_utilities.h>

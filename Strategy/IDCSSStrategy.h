@@ -49,7 +49,7 @@ public:
 public:
     void SetConfigPath(const std::string& path);
 
-    void Init(const std::vector<uint8_t>& tgSources, const std::vector<uint8_t>& mgSources);
+    bool Init();
 
     int InsertOrder(uint8_t source, const std::string& symbol, double price, double volume, OrderDirection direction, OrderType type);
 
@@ -126,6 +126,8 @@ private:
     std::unordered_map<int, bool> mReqReady;
 
     std::string mConfigPath;
+
+    std::string mConfig;
 };
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_ISTRATEGY_H

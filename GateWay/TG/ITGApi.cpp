@@ -14,12 +14,18 @@ ITGSpi::ITGSpi(const std::string& client, DCSSLogPtr logger, const std::string& 
     mWriter = UnitSafeWriter::Create(STRATEGY_BASE_FOLDER, mClient + "_TG", mClient + "_TG");
 }
 
+ITGSpi::~ITGSpi()
+{
+	mApiMap.clear();
+	mReader.reset();
+	mWriter.reset();
+}
+
 bool ITGSpi::Load(const std::string& config)
 {
     mReader = UnitReader::Create(STRATEGY_BASE_FOLDER, mClient, GetNanoTime());
     nlohmann::json conf = nlohmann::json::parse(config);
     std::string folder = conf.at("folder");
-    std::cout << folder << std::endl;
     auto accounts = conf.find("accounts");
     for (auto& item : accounts.value())
     {
@@ -71,7 +77,7 @@ void ITGSpi::ForceStop()
 
 void ITGSpi::Listening()
 {
-    if (mReader.get() == nullptr)
+    if (mReader == nullptr)
     {
         throw std::runtime_error("reader is not inited! please call init() before start()");
     }
@@ -82,7 +88,7 @@ void ITGSpi::Listening()
     while (mIsRunning && mSignalReceived < 0)
     {
         frame = mReader->GetNextFrame();
-        if (frame.get() != nullptr)
+        if (frame != nullptr)
         {
             mCurTime = frame->GetNano();
             uint8_t source = frame->GetSource();
@@ -91,7 +97,6 @@ void ITGSpi::Listening()
 
             if (mApiMap.count(source) == 0 || !mApiMap.at(source)->IsLogged())
             {
-                // TODO
                 continue;
             }
 
@@ -196,6 +201,10 @@ void ITGSpi::OnRspQryKline(const DCSSKlineField* kline, uint8_t source, bool isL
 }
 
 
+ITGApi::ITGApi(uint8_t source)
+: mSourceId(source), mSpi(nullptr), mLogger(nullptr)
+{}
+
 ITGApiPtr ITGApi::CreateTGApi(uint8_t source)
 {
     switch (source)
@@ -217,10 +226,10 @@ ITGApiPtr ITGApi::CreateTGApi(uint8_t source)
 
 void ITGApi::RegisterSpi(ITGSpiPtr spi)
 {
-    if (spi.get() == nullptr)
+    if (spi == nullptr)
         return;
 
-    mSpi = spi;
-    mLogger = mSpi->GetLogger();
+    mSpi = spi.get();
+    mLogger = mSpi->GetLogger().get();
     mProxy = mSpi->GetProxy();
 }

@@ -16,6 +16,8 @@ inline UnitPair GetMdUnitPair(uint8_t source)
     {
     case EXCHANGE_OKCOIN:
         return {"/home/wangzhen/dcss/unit/MD/OKEX", "MD_OKEX"};
+    case EXCHANGE_BINANCE:
+    	return {"/home/wangzhen/dcss/unit/MD/BINA", "MD_BINA"};
     default:
         return {"", ""};
     }
@@ -27,6 +29,8 @@ inline std::string GetMdString(uint8_t source)
     {
     case EXCHANGE_OKCOIN:
         return "okex";
+    case EXCHANGE_BINANCE:
+    	return "bina";
     default:
         return "";
     }
@@ -38,6 +42,8 @@ inline UnitPair GetTdUnitPair(uint8_t source)
     {
     case EXCHANGE_OKCOIN:
         return {"/shared/dcss/unit/TD/OKEX", "TD_OKEX"};
+    case EXCHANGE_BINANCE:
+        return {"/shared/dcss/unit/TD/BINA", "TD_BINA"};
     default:
         return {"", ""};
     }

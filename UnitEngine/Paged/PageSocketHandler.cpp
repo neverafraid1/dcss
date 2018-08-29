@@ -26,7 +26,7 @@ PageSocketHandler::PageSocketHandler() : mIoRunning(false), mUtil(nullptr)
 PageSocketHandler* PageSocketHandler::GetInstance()
 {
     // may have problem when multi thread called
-    if (mPtr.get() == nullptr)
+    if (mPtr == nullptr)
     {
         mPtr.reset(new PageSocketHandler());
     }
