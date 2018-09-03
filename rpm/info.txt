@@ -1,5 +1,5 @@
-Git Version : 99ec08407236d9c5025ab14c8723f4e856193514
-Build System: Linux-3.10.0-862.11.6.el7.x86_64
-CMake       : /usr/local/bin/cmake
-Builder     : wangzhen
-Time        : 20180829143052
+Git Version : ${GIT_HASH}
+Build System: ${CMAKE_SYSTEM}
+CMake       : ${CMAKE_COMMAND}
+Builder     : $ENV{USER}
+Time        : ${BUILDTIME}
