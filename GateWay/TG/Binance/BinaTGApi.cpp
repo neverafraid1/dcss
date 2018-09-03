@@ -245,6 +245,7 @@ void BinaTGApi::ReqQryOrder(const DCSSReqQryOrderField* req, int requestID)
 
 	uri_builder builder("/api/v3/order");
 	builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol));
+	builder.append_query("orderId", req->OrderID);
 	builder.append_query("timestamp", GetNanoTime() / NANOSECONDS_PER_MILLISECOND);
 	HMAC_SHA256(builder);
 
@@ -263,6 +264,35 @@ void BinaTGApi::ReqQryOrder(const DCSSReqQryOrderField* req, int requestID)
 				catch (const std::exception& e)
 				{
 					DCSS_LOG_ERROR(mLogger, "[bina tg][qry order] send request failed!(exception)" << e.what());
+				}
+			});
+}
+
+void BinaTGApi::ReqQryOpenOrder(const DCSSReqQryOrderField* req, int requestID)
+{
+	http_request request(methods::GET);
+	request.headers().add("X-MBX-APIKEY", mApiKey);
+
+	uri_builder builder("/api/v3/openOrders");
+	if (strlen(req->Symbol) > 0)
+		builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol));
+	builder.append_query("timestamp", GetNanoTime() / NANOSECONDS_PER_MILLISECOND);
+	HMAC_SHA256(builder);
+
+	request.set_request_uri(builder.to_uri());
+	mRestClient->request(request).then([=](http_response response)
+	{
+		OnRspQryOpenOrder(response, req, requestID);
+	}).then(
+			[=](pplx::task<void> task)
+			{
+				try
+				{
+					task.get();
+				}
+				catch (const std::exception& e)
+				{
+					DCSS_LOG_ERROR(mLogger, "[bina tg][qry open order] send request failed!(exception)" << e.what());
 				}
 			});
 }
@@ -603,19 +633,80 @@ void BinaTGApi::OnRspQryOrder(http_response& response, const DCSSReqQryOrderFiel
 		order.OrderID = req->OrderID;
 		if (jo.find("code") != jo.end())
 		{
+			const std::string& side = jo.at("side").as_string();
+			const std::string& type = jo.at("type").as_string();
+			const std::string& status = jo.at("status").as_string();
+
+			if (directionEnumMap.count(side) == 0 ||
+					orderTypeEnumMap.count(type) == 0 ||
+					statusEnumMap.count(status) == 0)
+				return;
+
 			DCSSOrderField order;
-			order.Direction = directionEnumMap.at(jo.at("side").as_string());
-			order.Type = orderTypeEnumMap.at(jo.at("type").as_string());
+			order.Direction = directionEnumMap.at(side);
+			order.Type = orderTypeEnumMap.at(type);
 			order.OriginQuantity = std::stod(jo.at("origQty").as_string());
 			order.ExecuteQuantity = std::stod(jo.at("executedQty").as_string());
 			order.Price = std::stod(jo.at("price").as_string());
 			order.UpdateTime = jo.at("updateTime").as_number().to_int64();
-			order.Status = statusEnumMap.at(jo.at("status").as_string());
+			order.Status = statusEnumMap.at(status);
 
 			mSpi->OnRspQryOrder(&order, mSourceId, true, requestID);
 		}
 		else
 			mSpi->OnRspQryOrder(&order, mSourceId, true, requestID, jo.at("code").as_integer(), jo.at("msg").as_string().c_str());
+	}
+	catch (const std::exception& e)
+	{
+		DCSS_LOG_ERROR(mLogger, "error during parse (exception)" << e.what());
+	}
+}
+
+void BinaTGApi::OnRspQryOpenOrder(http_response& response, const DCSSReqQryOrderField* req, int requestID)
+{
+	try
+	{
+		DCSSOrderField order;
+		strcpy(order.Symbol, req->Symbol);
+		const json::value jv = response.extract_json().get();
+		if (jv.is_object())
+		{
+			const json::object& jo = jv.as_object();
+			if (jo.find("code") != jo.end())
+				mSpi->OnRspQryOpenOrder(&order, mSourceId, true, requestID, jo.at("code").as_integer(), jo.at("msg").as_string().c_str());
+		}
+		else
+		{
+			const json::array& orders = jv.as_array();
+			size_t total = orders.size();
+			size_t index = 0;
+			for (auto& item : orders)
+			{
+				++index;
+				const json::object& orderItem = item.as_object();
+
+				const std::string& side = orderItem.at("side").as_string();
+				const std::string& type = orderItem.at("type").as_string();
+				const std::string& status = orderItem.at("status").as_string();
+
+				if (directionEnumMap.count(side) == 0 ||
+						orderTypeEnumMap.count(type) == 0 ||
+						statusEnumMap.count(status) == 0)
+					continue;
+
+				order.InsertTime = orderItem.at("time").as_number().to_int64();
+				order.OrderID = orderItem.at("orderId").as_number().to_int64();
+				order.Direction = directionEnumMap.at(side);
+				order.Type = orderTypeEnumMap.at(type);
+				order.OriginQuantity = std::stod(orderItem.at("origQty").as_string());
+				order.ExecuteQuantity = std::stod(orderItem.at("executeQty").as_string());
+				order.Price = std::stod(orderItem.at("price").as_string());
+				order.UpdateTime = orderItem.at("updateTime").as_number().to_int64();
+				order.Status = statusEnumMap.at(status);
+
+				mSpi->OnRspQryOpenOrder(&order, mSourceId, index == total, requestID);
+			}
+		}
 	}
 	catch (const std::exception& e)
 	{

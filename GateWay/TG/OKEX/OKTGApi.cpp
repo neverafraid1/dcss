@@ -535,6 +535,34 @@ void OKTGApi::ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID)
             });
 }
 
+void OKTGApi::ReqQryOpenOrder(const DCSSReqQryOrderField* req, int requestID)
+{
+    uri_builder builder(U("order_info.do"));
+
+    AddApiKey(builder);
+    builder.append_query(U("order_id"), (long)-1);
+    builder.append_query(U("symbol"), U(std::string(req->Symbol)));
+    AddSecKeyAndSign(builder);
+
+    mRestClient->request(methods::POST, builder.to_string())
+            .then([=](http_response response)
+            {
+                OnRspQryOrder(response, req, requestID);
+
+            }).then([=](pplx::task<void> task)
+            {
+                try
+                {
+                    task.get();
+                }
+                catch (const std::exception& e)
+                {
+                    DCSS_LOG_ERROR(mLogger, "[ok_tg][qryorder]\t" << "(" << mApiKey << ")"
+                                                              << " send request failed!(exception)" << e.what());
+                }
+            });
+}
+
 void OKTGApi::OnRspQryTicker(http_response& response, int requestID, const char21& symbol)
 {
 	try
@@ -561,10 +589,10 @@ void OKTGApi::OnRspQryTicker(http_response& response, int requestID, const char2
 			mSpi->OnRspQryTicker(&ticker, mSourceId, true, requestID,
 					jobj.at(U("error_code")).as_integer(), nullptr);
 		}
-	} catch (const std::exception& e)
+	}
+	catch (const std::exception& e)
 	{
-		DCSS_LOG_ERROR(mLogger,
-				"(api key)" << mApiKey << " parse rsp failed!(exception)" << e.what());
+		DCSS_LOG_ERROR(mLogger, "error during parse (exception)" << e.what());
 	}
 }
 
@@ -608,10 +636,10 @@ void OKTGApi::OnRspQryKline(http_response& response, const DCSSReqQryKlineField*
 						jobj.at(U("error_code")).as_integer(), nullptr);
 			}
 		}
-	} catch (const std::exception& e)
+	}
+	catch (const std::exception& e)
 	{
-		DCSS_LOG_ERROR(mLogger,
-				"(api key)" << mApiKey << " parse rsp failed!(exception)" << e.what());
+		DCSS_LOG_ERROR(mLogger, "error during parse (exception)" << e.what());
 	}
 }
 
@@ -692,8 +720,7 @@ void OKTGApi::OnRspQryUserInfo(http_response& response, int requestID)
 	}
 	catch (const std::exception& e)
 	{
-		DCSS_LOG_ERROR(mLogger,
-				"[ok_tg][qryuserinfo] " << "(" << mApiKey << ")" << " parse rsp failed!(exception)" << e.what());
+		DCSS_LOG_ERROR(mLogger, "error during parse (exception)" << e.what());
 	}
 }
 
@@ -721,8 +748,7 @@ void OKTGApi::OnRspInsertOrder(web::http::http_response& response, int requestID
 	}
 	catch (const std::exception& e)
 	{
-		DCSS_LOG_ERROR(mLogger,
-				"[ok_tg][insertorder]\t" << "(" << mApiKey << ")" << " parse rsp failed!(exception)" << e.what());
+		DCSS_LOG_ERROR(mLogger, "error during parse (exception)" << e.what());
 	}
 }
 
@@ -778,8 +804,7 @@ void OKTGApi::OnRspCancelOrder(web::http::http_response& response, int requestID
 	}
 	catch (const std::exception& e)
 	{
-		DCSS_LOG_ERROR(mLogger,
-				"[ok_tg][cancelorder]\t" << "(" << mApiKey << ")" << " parse rsp failed!(exception)" << e.what());
+		DCSS_LOG_ERROR(mLogger, "error during parse (exception)" << e.what());
 	}
 }
 
@@ -833,8 +858,61 @@ void OKTGApi::OnRspQryOrder(web::http::http_response& response, const DCSSReqQry
 	}
 	catch (const std::exception& e)
 	{
-		DCSS_LOG_ERROR(mLogger,
-				"[ok_tg][qryorder]\t" << "(" << mApiKey << ")" << " parse rsp failed!(exception)" << e.what());
+		DCSS_LOG_ERROR(mLogger, "error during parse (exception)" << e.what());
+	}
+}
+
+void OKTGApi::OnRspQryOpenOrder(http_response& response, const DCSSReqQryOrderField* req, int requestID)
+{
+	try
+	{
+		const json::value& jv = response.extract_json().get();
+		const json::object& jobj = jv.as_object();
+		DCSSOrderField order;
+		strcpy(order.Symbol, req->Symbol);
+		if (jobj.find(U("error_code")) == jobj.end())
+		{
+			if (jobj.at(U("result")).as_bool())
+			{
+				const json::array& orderArray = jobj.at(U("orders")).as_array();
+
+				int idx = 0;
+				for (const auto& i : orderArray)
+				{
+					const json::object& orderObj = i.as_object();
+					order.OriginQuantity = orderObj.at(U("amount")).as_double();
+					order.InsertTime = orderObj.at(U("create_date")).as_number().to_int64();
+					order.Price = orderObj.at(U("avg_price")).as_double();
+					order.ExecuteQuantity =
+							orderObj.at(U("deal_amount")).as_double();
+					order.OrderID =
+							orderObj.at(U("order_id")).as_number().to_int64();
+					order.Price = orderObj.at(U("price")).as_double();
+					order.Status = intOrderStatusMap.at(
+							orderObj.at(U("status")).as_integer());
+					std::string type = orderObj.at(U("type")).as_string();
+					if (type.find("buy") != std::string::npos) order.Direction =
+							OrderDirection::Buy;
+					else
+						order.Direction = OrderDirection::Sell;
+
+					if (type.find("market") != std::string::npos) order.Type =
+							OrderType::Market;
+					else
+						order.Type = OrderType::Limit;
+
+					mSpi->OnRspQryOpenOrder(&order, mSourceId, ++idx == orderArray.size(), requestID);
+				}
+			}
+		}
+		else
+		{
+			mSpi->OnRspQryOrder(&order, mSourceId, true, requestID, jobj.at(U("error_code")).as_integer(), nullptr);
+		}
+	}
+	catch (const std::exception& e)
+	{
+		DCSS_LOG_ERROR(mLogger, "error during parse (exception)" << e.what());
 	}
 }
 

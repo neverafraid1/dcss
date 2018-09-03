@@ -63,7 +63,7 @@ void OKMGApi::Connect()
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(mLogger, "[connect] send connect failed!(exception)" << e.what());
+                    DCSS_LOG_ERROR(mLogger, "[connect][okex mg] send connect failed!(exception)" << e.what());
                 }
             });
 }
@@ -76,7 +76,6 @@ void OKMGApi::OnWsMessage(const web::websockets::client::websocket_incoming_mess
         std::string event = jv.as_object().at(U("event")).as_string();
         if (event == "pong")
         {
-            DCSS_LOG_DEBUG(mLogger, "[on message] recv pong from remote");
             Ponged = true;
         }
     }
@@ -234,7 +233,6 @@ void OKMGApi::Ping()
             websocket_outgoing_message msg;
             msg.set_utf8_message(jv.serialize());
             mWsClient->send(msg);
-            DCSS_LOG_DEBUG(mLogger, "[Ping] send ping to remote");
         }
         std::this_thread::sleep_for(std::chrono::seconds(30));
     }
@@ -265,7 +263,7 @@ void OKMGApi::ReqSubTicker(const std::string& symbol)
     mWsClient->send(msg)
             .then([=]()
             {
-                DCSS_LOG_INFO(mLogger, "[sub_tick] send sub "
+                DCSS_LOG_INFO(mLogger, "[okex mg] send sub "
                                       << symbol << " tick request success");
                 mSubTickMap[sub] = symbol;
             }).then([=](pplx::task<void> task)
@@ -276,7 +274,7 @@ void OKMGApi::ReqSubTicker(const std::string& symbol)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(mLogger, "[sub_tick] send sub "
+                    DCSS_LOG_ERROR(mLogger, "[okex mg] send sub "
                     << symbol << " tick request fail!(exception)" << e.what());
                 }
             });
@@ -286,7 +284,7 @@ void OKMGApi::ReqSubDepth(const std::string& symbol, int depth)
 {
     if (!IsWsConnected)
     {
-        DCSS_LOG_INFO(mLogger, "[sub_depth] not connected to exchange now!");
+        DCSS_LOG_INFO(mLogger, "[okex mg] not connected to exchange now!");
         return;
     }
 
@@ -310,7 +308,7 @@ void OKMGApi::ReqSubDepth(const std::string& symbol, int depth)
     mWsClient->send(msg)
             .then([=]()
             {
-                DCSS_LOG_INFO(mLogger, "[sub_depth] send sub "
+                DCSS_LOG_INFO(mLogger, "[okex mg] send sub "
                         << symbol << " depth " << depth << " request success");
 
                 mSubDepthMap[sub] = std::make_pair(symbol, depth);
@@ -322,7 +320,7 @@ void OKMGApi::ReqSubDepth(const std::string& symbol, int depth)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(mLogger, "[sub_depth] send sub "
+                    DCSS_LOG_ERROR(mLogger, "[okex mg] send sub "
                             << symbol << " depth "<< depth << "  request fail!(exception)" << e.what());
                 }
             });
@@ -332,13 +330,13 @@ void OKMGApi::ReqSubKline(const std::string& symbol, KlineType klineType)
 {
     if (!IsWsConnected)
     {
-        DCSS_LOG_INFO(mLogger, "[sub_kline] not connected to exchange now!");
+        DCSS_LOG_INFO(mLogger, "[okex mg] not connected to exchange now!");
         return;
     }
 
     if (klineStringMap.count(klineType) == 0)
     {
-        DCSS_LOG_INFO(mLogger, "[sub_kline] don't support this kline type!");
+        DCSS_LOG_INFO(mLogger, "[okex mg] don't support this kline type!");
         return;
     }
 
@@ -361,7 +359,7 @@ void OKMGApi::ReqSubKline(const std::string& symbol, KlineType klineType)
     mWsClient->send(msg)
             .then([=]()
             {
-                DCSS_LOG_INFO(mLogger, "[sub_kline] send sub "
+                DCSS_LOG_INFO(mLogger, "[okex mg] send sub "
                         << symbol << " kline request success");
 
                 mSubKlineMap[sub] = std::make_pair(symbol, klineType);
@@ -373,7 +371,7 @@ void OKMGApi::ReqSubKline(const std::string& symbol, KlineType klineType)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(mLogger, "[sub_kline] send sub "
+                    DCSS_LOG_ERROR(mLogger, "[okex mg] send sub "
                             << symbol << " kline request fail!(exception)" << e.what());
                 }
             });
@@ -383,7 +381,7 @@ void OKMGApi::ReqUnSubTicker(const std::string& symbol)
 {
     if (!IsWsConnected)
     {
-        DCSS_LOG_INFO(mLogger, "[unsub_tick] not connected to exchange now!");
+        DCSS_LOG_INFO(mLogger, "[okex mg] not connected to exchange now!");
         return;
     }
 
@@ -394,7 +392,7 @@ void OKMGApi::ReqUnSubTicker(const std::string& symbol)
 
     if (mSubTickMap.count(unsub) == 0)
     {
-        DCSS_LOG_INFO(mLogger, "[unsub_tick] " << symbol << " tick is not sub");
+        DCSS_LOG_INFO(mLogger, "[okex mg] " << symbol << " tick is not sub");
         return;
     }
 
@@ -407,7 +405,7 @@ void OKMGApi::ReqUnSubTicker(const std::string& symbol)
     mWsClient->send(msg)
             .then([=]()
             {
-                DCSS_LOG_INFO(mLogger, "[unsub_tick] send unsub "
+                DCSS_LOG_INFO(mLogger, "[okex mg] send unsub "
                         << symbol << " tick request success");
             }).then([=](pplx::task<void> task)
             {
@@ -417,7 +415,7 @@ void OKMGApi::ReqUnSubTicker(const std::string& symbol)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(mLogger, "[unsub_tick] send unsub "
+                    DCSS_LOG_ERROR(mLogger, "[okex mg] send unsub "
                             << symbol << " tick request fail!(exception)" << e.what());
                 }
             });
@@ -427,7 +425,7 @@ void OKMGApi::ReqUnSubDepth(const std::string& symbol, int depth)
 {
     if (!IsWsConnected)
     {
-        DCSS_LOG_INFO(mLogger, "[unsub_depth] not connected to exchange now!");
+        DCSS_LOG_INFO(mLogger, "[okex mg] not connected to exchange now!");
         return;
     }
 
@@ -447,8 +445,8 @@ void OKMGApi::ReqUnSubDepth(const std::string& symbol, int depth)
     mWsClient->send(msg)
             .then([=]()
             {
-                DCSS_LOG_INFO(mLogger, "[unsub_depth] send unsub "
-                        << symbol << " tick request success");
+                DCSS_LOG_INFO(mLogger, "[okex mg] send unsub "
+                        << symbol << " depth request success");
 
                 mSubDepthMap[unsub] = std::make_pair(symbol, depth);
             }).then([=](pplx::task<void> task)
@@ -459,8 +457,8 @@ void OKMGApi::ReqUnSubDepth(const std::string& symbol, int depth)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(mLogger, "[unsub_depth] send unsub "
-                            << symbol << " tick request fail!(exception)" << e.what());
+                    DCSS_LOG_ERROR(mLogger, "[okex mg] send unsub "
+                            << symbol << " depth request fail!(exception)" << e.what());
                 }
             });
 }
@@ -469,13 +467,13 @@ void OKMGApi::ReqUnSubKline(const std::string& symbol, KlineType klineType)
 {
     if (!IsWsConnected)
     {
-        DCSS_LOG_INFO(mLogger, "[unsub_kline] not connected to exchange now!");
+        DCSS_LOG_INFO(mLogger, "[okex mg] not connected to exchange now!");
         return;
     }
 
     if (klineStringMap.count(klineType) == 0)
     {
-        DCSS_LOG_INFO(mLogger, "[unsub_kline] don't support this kline type!");
+        DCSS_LOG_INFO(mLogger, "[okex mg] don't support this kline type!");
         return;
     }
 
@@ -493,8 +491,8 @@ void OKMGApi::ReqUnSubKline(const std::string& symbol, KlineType klineType)
     mWsClient->send(msg)
             .then([=]()
             {
-                DCSS_LOG_INFO(mLogger, "[unsub_kline] send unsub "
-                        << symbol << " tick request success");
+                DCSS_LOG_INFO(mLogger, "[okex mg] send unsub "
+                        << symbol << " kline request success");
 
                 mSubKlineMap[unsub] = std::make_pair(symbol, klineType);
             }).then([=](pplx::task<void> task)
@@ -505,8 +503,8 @@ void OKMGApi::ReqUnSubKline(const std::string& symbol, KlineType klineType)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(mLogger, "[unsub_kline] send unsub "
-                            << symbol << " tick request fail!(exception)" << e.what());
+                    DCSS_LOG_ERROR(mLogger, "[okex mg] send unsub "
+                            << symbol << " kline request fail!(exception)" << e.what());
                 }
             });
 }

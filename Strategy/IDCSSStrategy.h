@@ -5,57 +5,41 @@
 #ifndef DIGITALCURRENCYSTRATEGYSYSTEM_ISTRATEGY_H
 #define DIGITALCURRENCYSTRATEGYSYSTEM_ISTRATEGY_H
 
-#include "DCSSDataWrapper.h"
-#include "DCSSLog.h"
+#include <memory>
+#include "DataStruct.h"
 
-class IDCSSStrategy : public IDCSSDataProcessor
+class DCSSStrategyImpl;
+
+class IDCSSStrategy
 {
 public:
     explicit IDCSSStrategy(const std::string& name);
 
-    virtual ~IDCSSStrategy() override ;
+    virtual ~IDCSSStrategy() = default;
 
 public:
-    void OnRtnTicker(const DCSSTickerField* ticker, uint8_t source, long recvTime) override ;
+    virtual void OnRtnTicker(const DCSSTickerField* ticker, uint8_t source, long recvTime);
 
-    void OnRtnKline(const DCSSKlineField* kline,
-            uint8_t source,
-            long recvTime) override;
+    virtual void OnRtnKline(const DCSSKlineField* kline, uint8_t source, long recvTime);
 
-    void OnRtnDepth(const DCSSDepthField* depth,
-            uint8_t source,
-            long recvTime) override;
+    virtual void OnRtnDepth(const DCSSDepthField* depth, uint8_t source, long recvTime);
 
-    void OnRtnOrder(const DCSSOrderField* order, uint8_t source, long recvTime) override ;
+    virtual void OnRtnOrder(const DCSSOrderField* order, uint8_t source, long recvTime);
 
-    void OnRspOrderInsert(const DCSSRspInsertOrderField* rsp, int requestID, int errorId, const char* errorMsg, uint8_t source, long recvTime) override ;
+    virtual void OnRspOrderInsert(const DCSSRspInsertOrderField* rsp, int requestID, int errorId, const char* errorMsg, uint8_t source, long recvTime);
 
-    void OnRspQryTicker(const DCSSTickerField* rsp, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) override ;
+    virtual void OnRspQryTicker(const DCSSTickerField* rsp, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime);
 
-    void OnRspQryKline(const DCSSKlineField* kline, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) override ;
+    virtual void OnRspQryKline(const DCSSKlineField* kline, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime);
 
-    void OnRspQryOrder(const DCSSOrderField* rsp, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) override ;
-
-    void Debug(const char* msg) override;
-
-    void OnTime(long curTime) override ;
-
-    std::string GetName() const override { return mName; };
-
-    void OnRspQryTradingAccount(const DCSSTradingAccountField* account, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime) final ;
-
-    void OnRtnBalance(const DCSSBalanceField* balance, uint8_t source, long recvTime) final ;
+    virtual void OnRspQryOrder(const DCSSOrderField* rsp, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime);
 
 public:
-    void SetConfigPath(const std::string& path);
-
-    bool Init();
+    bool Init(const std::string& path);
 
     int InsertOrder(uint8_t source, const std::string& symbol, double price, double volume, OrderDirection direction, OrderType type);
 
     int CancelOrder(uint8_t source, const std::string& symbol, long orderId);
-
-    int QryTradingAccount(uint8_t source);
 
     int QryTicker(uint8_t source, const std::string& symbol);
 
@@ -66,6 +50,12 @@ public:
     void SubscribeKline(uint8_t source, const std::string& symbol, KlineType klineType);
 
     void SubscribeDepth(uint8_t source, const std::string& symbol, int depth);
+
+    void Debug(const char* msg);
+
+    void Info(const char* msg);
+
+    void Error(const char* msg);
 
 public:
     /*start data thread*/
@@ -79,55 +69,10 @@ public:
     /*block process by data thread*/
     void Block();
 
-protected:
-    bool IsTdReady(uint8_t source) const;
-
-    bool IsTdConnected(uint8_t source) const;
-
 private:
-    void CheckOrder(uint8_t source, const std::string& symbol, double price, double volume, OrderDirection direction, OrderType type);
+    // can't use unique_ptr due to incomplete type
+    std::shared_ptr<DCSSStrategyImpl> pImpl;
 
-    inline std::pair<std::string, std::string> SplitStrSymbol(const std::string& symbol)
-    {
-        auto idx = symbol.find('_');
-        if (idx == std::string::npos)
-            return std::move(std::make_pair("", ""));
-
-        return std::move(std::make_pair(symbol.substr(0, idx), symbol.substr(idx + 1, symbol.length() - idx - 1)));
-    };
-
-protected:
-    /*logger*/
-    DCSSLogPtr mLogger;
-    /*strategy name*/
-    const std::string mName;
-    /*data thread*/
-    ThreadPtr mDataThread;
-    /*data wrapper*/
-    DCSSDataWrapperPtr mData;
-    /*strategy utils*/
-    DCSSStrategyUtilPtr mUtil;
-
-private:
-
-    struct Balance
-    {
-        double Free;
-        double Freezed;
-
-        Balance() : Free(0.0), Freezed(0.0) {}
-    };
-
-    /*map<source, map<currency, {free, frozen}> >*/
-    std::unordered_map<uint8_t, std::unordered_map<std::string, Balance> > mBalance;
-
-    std::unordered_set<uint8_t> mSourceSet;
-
-    std::unordered_map<int, bool> mReqReady;
-
-    std::string mConfigPath;
-
-    std::string mConfig;
 };
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_ISTRATEGY_H

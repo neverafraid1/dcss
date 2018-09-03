@@ -192,7 +192,7 @@ void DCSSDataWrapper::Run()
                                         msgSource, mCurTime);
                         break;
                     }
-                    case MSG_TYPE_RSP_QRY_ORDER:
+                    case MSG_TYPE_RSP_QRY_SIGNAL_ORDER:
                     {
                         mProcessor->OnRspQryOrder(static_cast<DCSSOrderField*>(data), requestId, frame->GetErrorID(),
                                 frame->GetErrorMsg(), msgSource, mCurTime);

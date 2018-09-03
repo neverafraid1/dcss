@@ -30,7 +30,7 @@ inline std::string GetMdString(uint8_t source)
     case EXCHANGE_OKCOIN:
         return "okex";
     case EXCHANGE_BINANCE:
-    	return "bina";
+        return "bina";
     default:
         return "";
     }

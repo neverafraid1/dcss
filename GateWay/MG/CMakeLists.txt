@@ -14,3 +14,4 @@ link_libraries(cpprest dcsslog boost_system ssl crypto log4cplus unit mysqlpp)
 add_executable(dcssmg main.cpp ${MG_SOURCE_FILES})
 
 install(TARGETS ${PROJECT_NAME} DESTINATION "bin")
+install(FILES ../../include/EnumClassHash.h DESTINATION "include")

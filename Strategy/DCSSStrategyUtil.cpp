@@ -92,3 +92,12 @@ int DCSSStrategyUtil::ReqQryKline(uint8_t source, const DCSSReqQryKlineField& re
 
     return rid;
 }
+
+int DCSSStrategyUtil::ReqQryOpenOrder(uint8_t source, const DCSSReqQryOrderField& req)
+{
+	int rid = GetRid();
+
+	WriteFrame(&req, sizeof(DCSSReqQryOrderField), source, MSG_TYPE_REQ_QRY_OPEN_ORDER, true, rid);
+
+	return rid;
+}

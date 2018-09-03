@@ -80,15 +80,17 @@ Strategy strategy("cpp_test");
 
 int main(int argc, char* argv[])
 {
-    strategy.SetConfigPath(argv[1]);
-
-    if (!strategy.Init())
+    if (!strategy.Init(argv[1]))
     {
     	std::cerr << "init failed" << std::endl;
     	return 0;
     }
 
     strategy.Start();
+
+    strategy.SubscribeTicker(EXCHANGE_OKCOIN, symbol);
+
+    strategy.SubscribeTicker(EXCHANGE_BINANCE, symbol);
 
 //    strategy.QryKline(EXCHANGE_OKCOIN, symbol, KlineType::Min1, 35);
 

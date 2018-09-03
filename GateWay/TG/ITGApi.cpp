@@ -93,7 +93,6 @@ void ITGSpi::Listening()
             uint8_t source = frame->GetSource();
             FH_MSG_TP_TYPE msgType = frame->GetMsgType();
 
-
             if (mApiMap.count(source) == 0 || !mApiMap.at(source)->IsLogged())
             {
                 continue;
@@ -108,33 +107,39 @@ void ITGSpi::Listening()
             {
             case MSG_TYPE_REQ_ORDER_INSERT:
             {
-                auto req = reinterpret_cast<DCSSReqInsertOrderField*>(data);
-                tgApi->ReqInsertOrder(req, requestId);
+                tgApi->ReqInsertOrder(reinterpret_cast<DCSSReqInsertOrderField*>(data), requestId);
                 DCSS_LOG_DEBUG(mLogger, "[insert_order] (rid)" << requestId << " (ticker)");
                 break;
             }
             case MSG_TYPE_REQ_ORDER_ACTION:
             {
-                auto req = reinterpret_cast<DCSSReqCancelOrderField*>(data);
-                tgApi->ReqCancelOrder(req, requestId);
+                tgApi->ReqCancelOrder(reinterpret_cast<DCSSReqCancelOrderField*>(data), requestId);
                 break;
             }
             case MSG_TYPE_REQ_QRY_TICKER:
             {
-                auto req = reinterpret_cast<DCSSReqQryTickerField*>(data);
-                tgApi->ReqQryTicker(req, requestId);
+                tgApi->ReqQryTicker(reinterpret_cast<DCSSReqQryTickerField*>(data), requestId);
                 break;
             }
             case MSG_TYPE_REQ_QRY_KLINE:
             {
-                auto req = reinterpret_cast<DCSSReqQryKlineField*>(data);
-                tgApi->ReqQryKline(req, requestId);
+                tgApi->ReqQryKline(reinterpret_cast<DCSSReqQryKlineField*>(data), requestId);
                 break;
             }
             case MSG_TYPE_REQ_QRY_ACCOUNT:
             {
                 tgApi->ReqQryUserInfo(requestId);
                 break;
+            }
+            case MSG_TYPE_REQ_QRY_SIGNAL_ORDER:
+            {
+            	tgApi->ReqQryOrder(reinterpret_cast<DCSSReqQryOrderField*>(data), requestId);
+            	break;
+            }
+            case MSG_TYPE_REQ_QRY_OPEN_ORDER:
+            {
+            	tgApi->ReqQryOpenOrder(reinterpret_cast<DCSSReqQryOrderField*>(data), requestId);
+            	break;
             }
             default:break;
             }
@@ -190,7 +195,13 @@ void ITGSpi::OnRtnTdStatus(const GWStatus& status, uint8_t source)
 void ITGSpi::OnRspQryOrder(const DCSSOrderField* order, uint8_t source, bool isLast,
         int requestId, int errorId, const char* errorMsg)
 {
-	mWriter->WriteErrorFrame(order, sizeof(DCSSOrderField), source, MSG_TYPE_RSP_QRY_ORDER, isLast, requestId, errorId, errorMsg);
+	mWriter->WriteErrorFrame(order, sizeof(DCSSOrderField), source, MSG_TYPE_RSP_QRY_SIGNAL_ORDER, isLast, requestId, errorId, errorMsg);
+}
+
+void ITGSpi::OnRspQryOpenOrder(const DCSSOrderField* order, uint8_t source, bool isLast,
+        int requestId, int errorId, const char* errorMsg)
+{
+	mWriter->WriteErrorFrame(order, sizeof(DCSSOrderField), source, MSG_TYPE_RSP_QRY_OPEN_ORDER, isLast, requestId, errorId, errorMsg);
 }
 
 void ITGSpi::OnRspQryKline(const DCSSKlineField* kline, uint8_t source, bool isLast,

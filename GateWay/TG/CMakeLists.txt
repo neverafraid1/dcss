@@ -20,3 +20,4 @@ link_libraries(cpprest dcsslog boost_system ssl crypto unit log4cplus pthread bo
 add_executable(dcsstg main.cpp ${TD_SOURCE_FILES} ${BINA_SOURCE_FILES} ${OK_SOURCE_FILES})
 
 install(TARGETS ${PROJECT_NAME} DESTINATION "bin")
+install(FILES ../../include/EnumClassHash.h DESTINATION "include")

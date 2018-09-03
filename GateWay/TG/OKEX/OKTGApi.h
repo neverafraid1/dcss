@@ -40,9 +40,9 @@ public:
     void ReqQryKline(const DCSSReqQryKlineField* req, int requestID) override ;
     void ReqQryUserInfo(int requestID) override ;
     void ReqQryOrder(const DCSSReqQryOrderField* req, int requestID) override ;
-
     void ReqInsertOrder(const DCSSReqInsertOrderField* req, int requestID) override ;
     void ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID) override ;
+    void ReqQryOpenOrder(const DCSSReqQryOrderField* req, int requestID) override ;
 
 private:
     void OnWsConnected();
@@ -54,6 +54,7 @@ private:
     void OnRspInsertOrder(http_response& response, int requestID);
     void OnRspCancelOrder(http_response& response, int requestID);
     void OnRspQryOrder(http_response& response, const DCSSReqQryOrderField* req, int requestID);
+    void OnRspQryOpenOrder(http_response& response, const DCSSReqQryOrderField* req, int requestID);
 
 private:
 

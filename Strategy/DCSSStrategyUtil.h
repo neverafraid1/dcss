@@ -33,6 +33,8 @@ public:
 
     int ReqQryKline(uint8_t source, const DCSSReqQryKlineField& req);
 
+    int ReqQryOpenOrder(uint8_t source, const DCSSReqQryOrderField& req);
+
     /*get nano time*/
     long GetNano();
     /*get string time YYYY-MM-DD HH:MM:SS*/

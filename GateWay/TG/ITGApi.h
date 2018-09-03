@@ -81,6 +81,9 @@ public:
     void OnRspQryOrder(const DCSSOrderField* order, uint8_t source, bool isLast, int requestId,
     		int errorId = 0, const char* errorMsg = nullptr);
 
+    void OnRspQryOpenOrder(const DCSSOrderField* order, uint8_t source, bool isLast, int requestId,
+    		int errorId = 0, const char* errorMsg = nullptr);
+
     void OnRtnBalance(const DCSSBalanceField* balance, uint8_t source);
 
     void OnRtnTdStatus(const GWStatus& status, uint8_t source);
@@ -140,6 +143,7 @@ public:
     virtual void ReqQryKline(const DCSSReqQryKlineField* req, int requestID) = 0;
     virtual void ReqQryUserInfo(int requestID) = 0;
     virtual void ReqQryOrder(const DCSSReqQryOrderField* req, int requestID) = 0;
+    virtual void ReqQryOpenOrder(const DCSSReqQryOrderField* req, int requestID) = 0;
     virtual void ReqInsertOrder(const DCSSReqInsertOrderField* req, int requestID) = 0;
     virtual void ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID) = 0;
 

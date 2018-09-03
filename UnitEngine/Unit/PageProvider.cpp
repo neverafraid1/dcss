@@ -213,7 +213,6 @@ bool StrategySocketHandler::RegisterStrategy(int& ridStart, int& ridEnd)
     return rsp->Type == req.Type && rsp->Success;
 }
 
-
 void StrategySocketHandler::UnSubAll()
 {
     for (auto& item : mSubedTicker)

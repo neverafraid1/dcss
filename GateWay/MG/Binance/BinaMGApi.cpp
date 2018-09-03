@@ -170,7 +170,7 @@ void BinaMGApi::ReqSubTicker(const std::string& symbol)
     	return;
     }
 
-    mSubTickerClient[channel] = std::move(client);
+    mSubTickerClient[channel] = client;
 
     DCSS_LOG_INFO(mLogger, "[binance mg](channel)" << channel << " sub success");
 }
@@ -213,7 +213,7 @@ void BinaMGApi::ReqSubDepth(const std::string& symbol, int depth)
     	return;
     }
 
-    mSubDepthClient[channel] = std::move(client);
+    mSubDepthClient[channel] = client;
 
     DCSS_LOG_INFO(mLogger, "[binance mg](channel)" << channel << " sub success");
 }
@@ -256,7 +256,7 @@ void BinaMGApi::ReqSubKline(const std::string& symbol, KlineType klineType)
     	return;
     }
 
-    mSubKlineClient[channel] = std::move(client);
+    mSubKlineClient[channel] = client;
 
     DCSS_LOG_INFO(mLogger, "[binance mg](channel)" << channel << " sub success");
 }
@@ -270,10 +270,10 @@ void BinaMGApi::ReqUnSubTicker(const std::string& symbol)
 	if (mSubTickerClient.count(channel) == 0)
 		return;
 
-	auto client = mSubTickerClient.erase(mSubTickerClient.find(channel));
+	auto client = mSubTickerClient.at(channel);
 	try
 	{
-		client->second->close(websocket_close_status::normal, "unsub (channel)" + channel).get();
+		client->close(websocket_close_status::normal, "unsub (channel)" + channel).get();
 	}
 	catch (const std::exception& e)
 	{
@@ -282,6 +282,7 @@ void BinaMGApi::ReqUnSubTicker(const std::string& symbol)
 
 	DCSS_LOG_INFO(mLogger, "[binance mg](channel)" << channel << " unnub success");
 
+	mSubTickerClient.erase(channel);
 	mSubTickNum.erase(symbol);
 }
 
@@ -296,10 +297,10 @@ void BinaMGApi::ReqUnSubKline(const std::string& symbol, KlineType klineType)
 	if (mSubKlineClient.count(channel) == 0)
 		return;
 
-	auto client = mSubKlineClient.erase(mSubKlineClient.find(channel));
+	auto client = mSubKlineClient.at(channel);
 	try
 	{
-		client->second->close(websocket_close_status::normal, "unsub (channel)" + channel).get();
+		client->close(websocket_close_status::normal, "unsub (channel)" + channel).get();
 	}
 	catch (const std::exception& e)
 	{
@@ -308,6 +309,7 @@ void BinaMGApi::ReqUnSubKline(const std::string& symbol, KlineType klineType)
 
 	DCSS_LOG_INFO(mLogger, "[binance mg](channel)" << channel << " unnub success");
 
+	mSubKlineClient.erase(channel);
 	mSubKlineNum.at(symbol).erase(klineType);
 	if (mSubKlineNum.at(symbol).empty())
 		mSubKlineNum.erase(symbol);
@@ -324,10 +326,10 @@ void BinaMGApi::ReqUnSubDepth(const std::string& symbol, int depth)
 	if (mSubDepthClient.count(channel) == 0)
 		return;
 
-	auto client = mSubDepthClient.erase(mSubDepthClient.find(channel));
+	auto client = mSubDepthClient.at(channel);
 	try
 	{
-		client->second->close(websocket_close_status::normal, "unsub (channel)" + channel).get();
+		client->close(websocket_close_status::normal, "unsub (channel)" + channel).get();
 	}
 	catch (const std::exception& e)
 	{
@@ -335,6 +337,7 @@ void BinaMGApi::ReqUnSubDepth(const std::string& symbol, int depth)
 	}
 
 	DCSS_LOG_INFO(mLogger, "[binance mg](channel)" << channel << " unnub success");
+	mSubDepthClient.erase(channel);
 	mSubDepthNum.at(symbol).erase(depth);
 	if (mSubDepthNum.at(symbol).empty())
 		mSubDepthNum.erase(symbol);
