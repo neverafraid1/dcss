@@ -1,0 +1,17 @@
+{
+        "name":"cpp_test",
+        "accounts":[
+                {
+                        "proxy":"http://192.168.1.164:1080",
+                        "source":1,
+                        "api_key":"6a76c636-9fa0-466a-bf4e-b946c76e4948",
+                        "secret_key":"2E005E607E3D3F98DE8D9B7481128841"
+                },
+                {
+                        "proxy":"http://192.168.1.164:1080",
+                        "source":2,
+                        "api_key":"8HUEmI4khXCzZx1iVsUZrUcLkFk8K9vr73J9qU0INXmrsz5sSGdIA3hvQfka3F1n",
+                        "secret_key":"Ctsu7P9rWo7rAVIoGvdS1ZxugGslsycoRWUUHtJQfv4jX0VgDs0k559WvM4fM4FC"
+                }
+        ]
+}

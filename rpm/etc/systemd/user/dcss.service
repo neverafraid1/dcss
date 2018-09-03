@@ -1,0 +1,16 @@
+[Unit]
+Description=DigitalCurrencyStrategySystem
+After=syslog.target
+
+[Service]
+Type=forking
+EnvironmentFile=/opt/dcss/master/etc/sysconfig/dcss
+ExecStart=/usr/bin/supervisord -c /opt/dcss/master/etc/supervisor/supervisord.conf
+ExecReload=/usr/bin/supervisorctl -c /opt/dcss/master/etc/supervisor/supervisord.conf reload
+ExecStop=/usr/bin/supervisorctl -c /opt/dcss/master/etc/supervisor/supervisord.conf shutdown
+LimitDATA=infinity
+LimitSTACK=infinity
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target
