@@ -59,10 +59,23 @@ int DCSSStrategyUtil::CancelOrder(uint8_t source, const std::string& symbol, lon
 
     DCSSReqCancelOrderField req = {};
     strcpy(req.Symbol, symbol.c_str());
-    req.OrderID[0] = orderId;
+    req.OrderID = orderId;
     WriteFrame(&req, sizeof(DCSSReqCancelOrderField), source, MSG_TYPE_REQ_ORDER_ACTION, true, rid);
 
     return rid;
+}
+
+int DCSSStrategyUtil::ReqQryOrder(uint8_t source, const std::string& symbol, long orderId)
+{
+	int rid = GetRid();
+
+	DCSSReqQryOrderField req = {};
+	strcpy(req.Symbol, symbol.c_str());
+	req.OrderID = orderId;
+	WriteFrame(&req, sizeof(DCSSReqQryOrderField), source, MSG_TYPE_REQ_QRY_SIGNAL_ORDER, true, rid);
+
+	return rid;
+
 }
 
 int DCSSStrategyUtil::ReqQryAccount(uint8_t source)

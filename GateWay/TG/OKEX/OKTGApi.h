@@ -52,7 +52,7 @@ private:
     void OnRspQryKline(http_response& response, const DCSSReqQryKlineField* req, int requestID);
     void OnRspQryUserInfo(http_response& response, int requestID);
     void OnRspInsertOrder(http_response& response, int requestID);
-    void OnRspCancelOrder(http_response& response, int requestID);
+    void OnRspCancelOrder(http_response& response, const DCSSReqCancelOrderField* req, int requestID);
     void OnRspQryOrder(http_response& response, const DCSSReqQryOrderField* req, int requestID);
     void OnRspQryOpenOrder(http_response& response, const DCSSReqQryOrderField* req, int requestID);
 

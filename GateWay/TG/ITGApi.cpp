@@ -47,7 +47,7 @@ bool ITGSpi::Load(const std::string& config)
                 DCSS_LOG_ERROR(mLogger, "cannot login tg (source)" << source);
                 return false;
             }
-            mApiMap[source] = std::move(apiPtr);
+            mApiMap[source] = apiPtr;
         }
     }
     return true;
@@ -169,7 +169,7 @@ void ITGSpi::OnRspOrderAction(const DCSSRspCancelOrderField* rsp, uint8_t source
 
 void ITGSpi::OnRspOrderInsert(const DCSSRspInsertOrderField* rsp, uint8_t source, bool isLast, int requestId, int errorId, const char* errorMsg)
 {
-	mWriter->WriteErrorFrame(rsp, 0, source, MSG_TYPE_RSP_ORDER_INSERT, isLast, requestId, errorId, errorMsg);
+	mWriter->WriteErrorFrame(rsp, sizeof(DCSSRspInsertOrderField), source, MSG_TYPE_RSP_ORDER_INSERT, isLast, requestId, errorId, errorMsg);
 }
 
 void ITGSpi::OnRspQryUserInfo(const DCSSTradingAccountField* userInfo, uint8_t source, bool isLast, int requestId, int errorId, const char* errorMsg)

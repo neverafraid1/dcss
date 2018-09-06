@@ -8,6 +8,7 @@ include_directories(../UnitEngine/Unit)
 include_directories(../UnitEngine/utils)
 include_directories(Dao)
 include_directories(Base)
+include_directories(Common)
 
 add_subdirectory(TG)
 add_subdirectory(MG)

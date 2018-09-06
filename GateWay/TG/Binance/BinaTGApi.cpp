@@ -9,6 +9,8 @@
 #include "Timer.h"
 #include "Helper.h"
 #include "SymbolDao.hpp"
+#include "BinanceConstant.h"
+using namespace BinanceConstant;
 
 std::unordered_map<OrderDirection, std::string, EnumClassHash> BinaTGApi::enumDirectionMap = {
         {OrderDirection::Buy,   "BUY"},
@@ -98,7 +100,7 @@ void BinaTGApi::Connect()
     if (mProxy.empty())
     {
         mWsClient.reset(new websocket_callback_client());
-        mRestClient.reset(new http_client(U("https://api.binance.com")));
+        mRestClient.reset(new http_client(API_BASE_URL));
     }
     else
     {
@@ -110,20 +112,20 @@ void BinaTGApi::Connect()
 
         http_client_config http_config;
         http_config.set_proxy(proxy);
-        mRestClient.reset(new http_client(U("https://api.binance.com"), http_config));
+        mRestClient.reset(new http_client(API_BASE_URL, http_config));
     }
 
     mWsClient->set_message_handler(std::bind(&BinaTGApi::OnWsMessage, this, std::placeholders::_1));
     mWsClient->set_close_handler(std::bind(&BinaTGApi::OnWsClose, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
     http_request request(methods::POST);
-    request.headers().add("X-MBX-APIKEY", mApiKey);
-    uri_builder builder("/api/v1/userDataStream");
+    request.headers().add(X_MBX_APIKEY, mApiKey);
+    uri_builder builder(USER_DATA_STREAM);
     request.set_request_uri(builder.to_uri());
     auto response = mRestClient->request(request).get();
     mListenKey = response.extract_json().get().as_object().at("listenKey").as_string();
 
-    mWsClient->connect("wss://stream.binance.com:9443/ws/" + mListenKey)
+    mWsClient->connect(WS_API_BASE_URL + mListenKey)
             .then([=]()
             {
                 OnWsConnected();
@@ -176,9 +178,9 @@ void BinaTGApi::ReqQryTicker(const DCSSReqQryTickerField* req, int requestID)
 		return;
 	}
 	http_request request(methods::GET);
-	request.headers().add("X-MBX-APIKEY", mApiKey);
+	request.headers().add(X_MBX_APIKEY, mApiKey);
 
-	uri_builder builder("/api/v3/ticker/price");
+	uri_builder builder(PRICE);
 	builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol));
 
 	request.set_request_uri(builder.to_uri());
@@ -205,13 +207,13 @@ void BinaTGApi::ReqQryUserInfo(int requestID)
 
 	http_client_config http_config;
 	http_config.set_proxy(proxy);
-	mRestClient.reset(new http_client(U("https://api.binance.com"), http_config));
+	mRestClient.reset(new http_client(API_BASE_URL, http_config));
 
     http_request request(methods::GET);
-    request.headers().add("X-MBX-APIKEY", mApiKey);
+    request.headers().add(X_MBX_APIKEY, mApiKey);
 
-    uri_builder builder("/api/v3/account");
-    builder.append_query("timestamp", GetNanoTime() / NANOSECONDS_PER_MILLISECOND);
+    uri_builder builder(ACCOUNT_INFO);
+    AddTimeStamp(builder);
     HMAC_SHA256(builder);
 
     request.set_request_uri(builder.to_uri());
@@ -241,12 +243,12 @@ void BinaTGApi::ReqQryUserInfo(int requestID)
 void BinaTGApi::ReqQryOrder(const DCSSReqQryOrderField* req, int requestID)
 {
 	http_request request(methods::GET);
-	request.headers().add("X-MBX-APIKEY", mApiKey);
+	request.headers().add(X_MBX_APIKEY, mApiKey);
 
-	uri_builder builder("/api/v3/order");
+	uri_builder builder(ORDER);
 	builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol));
 	builder.append_query("orderId", req->OrderID);
-	builder.append_query("timestamp", GetNanoTime() / NANOSECONDS_PER_MILLISECOND);
+	AddTimeStamp(builder);
 	HMAC_SHA256(builder);
 
 	request.set_request_uri(builder.to_uri());
@@ -271,12 +273,12 @@ void BinaTGApi::ReqQryOrder(const DCSSReqQryOrderField* req, int requestID)
 void BinaTGApi::ReqQryOpenOrder(const DCSSReqQryOrderField* req, int requestID)
 {
 	http_request request(methods::GET);
-	request.headers().add("X-MBX-APIKEY", mApiKey);
+	request.headers().add(X_MBX_APIKEY, mApiKey);
 
 	uri_builder builder("/api/v3/openOrders");
 	if (strlen(req->Symbol) > 0)
 		builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol));
-	builder.append_query("timestamp", GetNanoTime() / NANOSECONDS_PER_MILLISECOND);
+	AddTimeStamp(builder);
 	HMAC_SHA256(builder);
 
 	request.set_request_uri(builder.to_uri());
@@ -306,7 +308,9 @@ void BinaTGApi::ReqQryKline(const DCSSReqQryKlineField* req, int requestID)
     }
 
     http_request request(methods::GET);
-    uri_builder builder("/api/v1/klines");
+	request.headers().add(X_MBX_APIKEY, mApiKey);
+
+    uri_builder builder(KLINE);
     builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol));
     builder.append_query("interval", klineMap.at(req->Type));
     if (req->Size > 0)
@@ -346,8 +350,9 @@ void BinaTGApi::ReqInsertOrder(const DCSSReqInsertOrderField* req, int requestID
         return;
     }
     http_request request(methods::POST);
-    request.headers().add("X-MBX-APIKEY", mApiKey);
-    uri_builder builder("/api/v3/order");
+    request.headers().add(X_MBX_APIKEY, mApiKey);
+
+    uri_builder builder(ORDER);
     builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol));
     builder.append_query("side", enumDirectionMap.at(req->Direction));
     builder.append_query("type", enumOrderTypeMap.at(req->Type));
@@ -356,7 +361,7 @@ void BinaTGApi::ReqInsertOrder(const DCSSReqInsertOrderField* req, int requestID
     if (!IsEqual(req->Price, 0.0))
         builder.append_query("price", req->Price);
 
-    builder.append_query("timestamp", GetNanoTime() / NANOSECONDS_PER_MILLISECOND);
+    AddTimeStamp(builder);
     HMAC_SHA256(builder);
 
     request.set_request_uri(builder.to_uri());
@@ -383,6 +388,43 @@ void BinaTGApi::ReqInsertOrder(const DCSSReqInsertOrderField* req, int requestID
             );
 }
 
+void BinaTGApi::ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID)
+{
+    if (mCommonToBinaSymbolMap.count(req->Symbol) == 0)
+    {
+        DCSS_LOG_ERROR(mLogger, "error symbol " << req->Symbol);
+        return;
+    }
+    http_request request(methods::DEL);
+    request.headers().add(X_MBX_APIKEY, mApiKey);
+
+    uri_builder builder(ORDER);
+    builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol));
+    builder.append_query("orderId", req->OrderID);
+
+	AddTimeStamp(builder);
+	HMAC_SHA256(builder);
+
+	request.set_request_uri(builder.to_uri());
+	mRestClient->request(request).then([=](http_response response)
+	{
+		OnRspCancelOrder(response, req, requestID);
+	}
+
+	).then([=](pplx::task<void> task)
+	{
+		try
+		{
+			task.get();
+		}
+		catch (const std::exception& e)
+		{
+
+		}
+	}
+
+	);
+}
 
 /// rsp ///
 void BinaTGApi::OnWsMessage(const websocket_incoming_message& msg)
@@ -503,7 +545,7 @@ void BinaTGApi::Ping()
     {
         if (++loop >= 30 * 60)
         {
-            uri_builder builder("/api/v1/userDataStream");
+            uri_builder builder(USER_DATA_STREAM);
             builder.append_query("listenKey", mListenKey);
             mRestClient->request(methods::PUT, builder.to_string());
             loop = 0;
@@ -741,6 +783,36 @@ void BinaTGApi::OnRspOrderInsert(http_response& response, const DCSSReqInsertOrd
     {
         DCSS_LOG_ERROR(mLogger, "error during parse (exception)" << e.what());
     }
+}
+
+void BinaTGApi::OnRspCancelOrder(http_response& response, const DCSSReqCancelOrderField* req, int requestID)
+{
+	try
+	{
+		const json::value& jo = response.extract_json().get();
+		if (!jo.is_object())
+			return;
+
+		DCSSRspCancelOrderField rsp;
+		rsp.OrderID = req->OrderID;
+		if (jo.has_integer_field("code"))
+		{
+			mSpi->OnRspOrderAction(&rsp, mSourceId, true, requestID, jo.at("code").as_integer(), jo.at("msg").as_string().c_str());
+		}
+		else
+		{
+			mSpi->OnRspOrderAction(&rsp, mSourceId, true, requestID);
+		}
+	}
+	catch (const std::exception& e)
+	{
+		DCSS_LOG_ERROR(mLogger, "error during parse (exception)" << e.what());
+	}
+}
+
+void BinaTGApi::AddTimeStamp(uri_builder& builder)
+{
+	builder.append_query("timestamp", GetNanoTime() / NANOSECONDS_PER_MILLISECOND);
 }
 
 void BinaTGApi::HMAC_SHA256(uri_builder& builder)

@@ -146,6 +146,11 @@ int DCSSStrategyImpl::CancelOrder(uint8_t source, const std::string& symbol, lon
     return mUtil->CancelOrder(source, symbol, orderId);
 }
 
+int DCSSStrategyImpl::QryOrder(uint8_t source, const std::string& symbol, long orderId)
+{
+	return mUtil->ReqQryOrder(source, symbol, orderId);
+}
+
 int DCSSStrategyImpl::QryTradingAccount(uint8_t source)
 {
     int rid = mUtil->ReqQryAccount(source);

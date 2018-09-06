@@ -50,6 +50,11 @@ int IDCSSStrategy::CancelOrder(uint8_t source, const std::string& symbol, long o
     return pImpl->CancelOrder(source, symbol, orderId);
 }
 
+int IDCSSStrategy::QryOrder(uint8_t source, const std::string& symbol, long orderId)
+{
+	return pImpl->QryOrder(source, symbol, orderId);
+}
+
 int IDCSSStrategy::QryTicker(uint8_t source, const std::string& symbol)
 {
     return pImpl->QryTicker(source, symbol);

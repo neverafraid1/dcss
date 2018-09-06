@@ -31,6 +31,8 @@ public:
 
     int CancelOrder(uint8_t source, const std::string& symbol, long orderId);
 
+    int QryOrder(uint8_t source, const std::string& symbol, long orderId);
+
     int QryTicker(uint8_t source, const std::string& symbol);
 
     int QryKline(uint8_t source, const std::string& symbol, KlineType klineType, int size = 0, long since = 0);

@@ -3,4 +3,4 @@ ENGINE_HOME=/opt/dcss/master
 DCSSTG_HOME=/opt/dcss/master
 DCSSMG_HOME=/opt/dcss/master
 ENGINE_LIB=/opt/dcss/master/lib/unit
-LD_LIBRARY_PATH=/opt/dcss/master/lib/unit:/usr/local/lib/
+LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/dcss/master/lib/unit:/usr/local/lib/:/usr/local/lib64/

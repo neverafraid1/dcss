@@ -42,7 +42,7 @@ public:
     void ReqQryOpenOrder(const DCSSReqQryOrderField* req, int requestID) override ;
 
     void ReqInsertOrder(const DCSSReqInsertOrderField* req, int requestID) override ;
-    void ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID) override {}
+    void ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID) override ;
 
 private:
     void OnWsMessage(const websocket_incoming_message& msg);
@@ -55,9 +55,11 @@ private:
     void OnRspQryOrder(http_response& response, const DCSSReqQryOrderField* req, int requestID);
     void OnRspQryOpenOrder(http_response& response, const DCSSReqQryOrderField* req, int requestID);
     void OnRspOrderInsert(http_response& response, const DCSSReqInsertOrderField* req, int requestID);
+    void OnRspCancelOrder(http_response& response, const DCSSReqCancelOrderField* req, int requestID);
     void OnRtnAccount(const json::object& jo);
     void OnRtnOrder(const json::object& jo);
 
+    void AddTimeStamp(uri_builder& builder);
     void HMAC_SHA256(uri_builder& builder);
 
     void Ping();

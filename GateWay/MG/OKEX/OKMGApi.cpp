@@ -4,6 +4,8 @@
 
 #include "OKMGApi.h"
 #include "Timer.h"
+#include "OkexConstant.h"
+using namespace OkexConstant;
 
 std::unordered_map<KlineType, std::string, EnumClassHash> OKMGApi::klineStringMap = {
         {KlineType::Min1,   "1min"},
@@ -50,7 +52,7 @@ void OKMGApi::Connect()
 	mWsClient->set_message_handler(std::bind(&OKMGApi::OnWsMessage, this, std::placeholders::_1));
 	mWsClient->set_close_handler(std::bind(&OKMGApi::OnWsClose, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
-    mWsClient->connect(U("wss://real.okex.com:10441/websocket"))
+    mWsClient->connect(U(WS_API_BASE_URL))
             .then([this]()
             {
                 OnWsConnect();
@@ -137,6 +139,11 @@ void OKMGApi::OnWsClose(web::websockets::client::websocket_close_status close_st
                                               <<  "(error)" << error.message());
 
     IsWsConnected = false;
+
+    if (close_status != websocket_close_status::normal)
+    {
+    	std::thread t(std::bind(&OKMGApi::Connect, this));
+    }
 }
 
 void OKMGApi::OnWsConnect()

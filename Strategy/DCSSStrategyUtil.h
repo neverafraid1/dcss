@@ -27,6 +27,8 @@ public:
 
     int CancelOrder(uint8_t source, const std::string& symbol, long orderId);
 
+    int ReqQryOrder(uint8_t source, const std::string& symbol, long orderId);
+
     int ReqQryAccount(uint8_t source);
 
     int ReqQryTicker(uint8_t source, const DCSSReqQryTickerField& req);

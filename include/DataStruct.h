@@ -197,8 +197,8 @@ struct DCSSReqCancelOrderField
 {
     // 币对如ltc_btc
     char21 Symbol;
-    // 订单ID(一次最多取消三笔订单)
-    long3 OrderID;
+    // 订单ID
+    long OrderID;
 
     DCSSReqCancelOrderField()
     {
@@ -208,10 +208,8 @@ struct DCSSReqCancelOrderField
 
 struct DCSSRspCancelOrderField
 {
-    // 撤单请求成功的订单ID，等待系统执行撤单
-    long3 SuccessID;
-    // 撤单请求失败的订单ID
-    long3 ErrorID;
+    // 订单ID
+    long OrderID;
 
     DCSSRspCancelOrderField()
     {

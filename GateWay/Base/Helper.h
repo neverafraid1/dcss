@@ -61,4 +61,11 @@ inline bool IsEqual(const double& d1, const double& d2, double fEpsilon = 0.0000
     return !(fDelta > fEpsilon);
 }
 
+template <typename DataType>
+void PointerDeleter(DataType* pointer)
+{
+	delete pointer;
+	pointer = nullptr;
+}
+
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_HELPER_H
