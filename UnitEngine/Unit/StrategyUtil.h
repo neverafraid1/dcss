@@ -6,11 +6,13 @@
 #define DIGITALCURRENCYSTRATEGYSYSTEM_STRATEGYUTIL_H
 
 #include "IStrategyUtil.h"
-#include "UnitWriter.h"
+#include "FrameHeader.h"
 
 UNIT_NAMESPACE_START
+
 PRE_DECLARE_PTR(StrategyUtil);
 PRE_DECLARE_PTR(StrategySocketHandler);
+PRE_DECLARE_PTR(UnitWriter);
 
 /**
  * wrapper of strategy utilities for dcss strategy
@@ -25,7 +27,7 @@ public:
 
     bool MdSubscribeKline(const std::string& symbol, int klineType, uint8_t source) override;
 
-    bool MdSubscribeDepth(const std::string& symbol, int depth, uint8_t source) override;
+    bool MdSubscribeDepth(const std::string& symbol, uint8_t source) override;
 
     bool RegisterStrategy(int& ridStart, int& ridEnd) override ;
 

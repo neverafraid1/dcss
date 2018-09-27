@@ -32,13 +32,13 @@ public:
 
     virtual bool SubKline(const std::string& symbol, int klineType, uint8_t source) = 0;
 
-    virtual bool SubDepth(const std::string& symbol, int depth, uint8_t source) = 0;
+    virtual bool SubDepth(const std::string& symbol, uint8_t source) = 0;
 
     virtual bool UnSubTicker(const std::string& tickers, uint8_t source) = 0;
 
     virtual bool UnSubKline(const std::string& symbol, int klineType, uint8_t source) = 0;
 
-    virtual bool UnSubDepth(const std::string& symbol, int depth, uint8_t source) = 0;
+    virtual bool UnSubDepth(const std::string& symbol, uint8_t source) = 0;
 
     virtual void AcquireMutex() const = 0;
 

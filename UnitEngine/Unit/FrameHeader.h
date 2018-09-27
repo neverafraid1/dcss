@@ -7,7 +7,9 @@
 
 #include <cstdint>
 #include <cstring>
-#include "constants.h"
+
+#include "UnitDeclare.h"
+
 #define __FRAME_VERSION__ 1
 
 UNIT_NAMESPACE_START

@@ -7,7 +7,6 @@
 
 #include "PageSocketHandler.h"
 #include "PageCommStruct.h"
-#include "UnitWriter.h"
 #include "DCSSLog.h"
 #include "PageServiceTask.h"
 
@@ -15,6 +14,8 @@
 #include <thread>
 
 UNIT_NAMESPACE_START
+
+PRE_DECLARE_PTR(UnitWriter);
 
 /**
  * we call each unit handler(writer or reader) a client for page engine
@@ -81,10 +82,10 @@ public:
     bool LoginTd(const std::string& clientName, std::string config) override ;
     bool SubTicker(const std::string& symbol, uint8_t source) override ;
     bool SubKline(const std::string& symbol, int klineType, uint8_t source) override ;
-    bool SubDepth(const std::string& symbol, int depth, uint8_t source) override ;
+    bool SubDepth(const std::string& symbol, uint8_t source) override ;
     bool UnSubTicker(const std::string& symbol, uint8_t source) override ;
     bool UnSubKline(const std::string& symbol, int klineType, uint8_t source) override ;
-    bool UnSubDepth(const std::string& symbol, int depth, uint8_t source) override ;
+    bool UnSubDepth(const std::string& symbol, uint8_t source) override ;
     void AcquireMutex() const override ;
     void ReleaseMutex() const override ;
 

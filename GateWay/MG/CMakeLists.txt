@@ -10,7 +10,7 @@ set(MG_SOURCE_FILES IMGEngine.h IMGEngine.cpp OKEX/OKMGApi.h ../MD5/MD5.h ../MD5
 
 include_directories(../MD5 ../../include ../Base ../Dao /usr/include/mysql ../Common)
 link_directories(/opt/dcss/master/lib/unit)
-link_libraries(cpprest dcsslog boost_system ssl crypto log4cplus unit mysqlpp)
+link_libraries(cpprest dcsslog boost_system ssl crypto log4cplus unit mysqlpp pthread)
 add_executable(dcssmg main.cpp ${MG_SOURCE_FILES})
 
 install(TARGETS ${PROJECT_NAME} DESTINATION "bin")

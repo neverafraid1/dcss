@@ -6,14 +6,9 @@
 #define DCSS_TGENGINE_H
 
 #include <json.hpp>
-
-#include "DataStruct.h"
 #include "IEngine.h"
-#include "UnitWriter.h"
-#include "UnitReader.h"
-#include "ITGApi.h"
 
-PRE_DECLARE_PTR(ITGApi);
+PRE_DECLARE_PTR(ITGSpi);
 
 /**
  * base class of all trade engine

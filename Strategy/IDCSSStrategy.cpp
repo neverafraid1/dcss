@@ -10,7 +10,7 @@ IDCSSStrategy::IDCSSStrategy(const std::string& name)
 	pImpl.reset(new DCSSStrategyImpl(name, this));
 }
 
-bool IDCSSStrategy::Init(const std::string& path)
+bool IDCSSStrategy::SetConfigPath(const std::string& path)
 {
 	return pImpl->Init(path);
 }
@@ -65,6 +65,21 @@ int IDCSSStrategy::QryKline(uint8_t source, const std::string& symbol, KlineType
     return pImpl->QryKline(source, symbol, klineType, size, since);
 }
 
+int IDCSSStrategy::QrySymbol(uint8_t source, const std::string& symbol)
+{
+    return pImpl->QrySymbol(source, symbol);
+}
+
+bool IDCSSStrategy::QrySymbolSync(uint8_t source, const std::string& symbol, DCSSSymbolField& symbolField, std::string& errorMsg, int timeOut)
+{
+    return pImpl->QrySymbolSync(source, symbol, symbolField, errorMsg, timeOut);
+}
+
+bool IDCSSStrategy::QryCurrencyBalance(uint8_t source, const std::string& currency, DCSSBalanceField& balance, std::string& errorMsg)
+{
+    return pImpl->QryCurrencyBalance(source, currency, balance, errorMsg);
+}
+
 void IDCSSStrategy::SubscribeTicker(uint8_t source, const std::string& symbol)
 {
     pImpl->SubscribeTicker(source, symbol);
@@ -75,9 +90,9 @@ void IDCSSStrategy::SubscribeKline(uint8_t source, const std::string& symbol, Kl
     pImpl->SubscribeKline(source, symbol, klineType);
 }
 
-void IDCSSStrategy::SubscribeDepth(uint8_t source, const std::string& symbol, int depth)
+void IDCSSStrategy::SubscribeDepth(uint8_t source, const std::string& symbol)
 {
-    pImpl->SubscribeDepth(source, symbol, depth);
+    pImpl->SubscribeDepth(source, symbol);
 }
 
 void IDCSSStrategy::OnRtnTicker(const DCSSTickerField* ticker, uint8_t source, long recvTime)
@@ -147,17 +162,28 @@ void IDCSSStrategy::OnRspQryOrder(const DCSSOrderField* rsp, int requestId, int 
     DCSS_LOG_DEBUG(pImpl->GetLogger(), ss.str().c_str());
 }
 
-void IDCSSStrategy::Debug(const char* msg)
+void IDCSSStrategy::OnRspQrySymbol(const DCSSSymbolField* rsp, int requestId, int errorId, const char* errorMsg, uint8_t source, long recvTime)
+{
+    std::stringstream ss;
+    ss << " (recv time)" << recvTime << "(source)" << source;
+    if (errorId != 0)
+        ss << " (error id)" << errorId;
+    if (errorMsg != nullptr)
+        ss << " (error msg)" << errorMsg;
+    DCSS_LOG_DEBUG(pImpl->GetLogger(), ss.str().c_str());
+}
+
+void IDCSSStrategy::Debug(const std::string& msg)
 {
     DCSS_LOG_DEBUG(pImpl->GetLogger(), msg);
 }
 
-void IDCSSStrategy::Info(const char* msg)
+void IDCSSStrategy::Info(const std::string& msg)
 {
 	DCSS_LOG_INFO(pImpl->GetLogger(), msg);
 }
 
-void IDCSSStrategy::Error(const char* msg)
+void IDCSSStrategy::Error(const std::string& msg)
 {
 	DCSS_LOG_ERROR(pImpl->GetLogger(), msg);
 }

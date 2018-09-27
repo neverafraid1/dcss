@@ -21,7 +21,7 @@ using namespace web;
 class OKMGApi : public IMGApi
 {
 public:
-    explicit OKMGApi(uint8_t source);
+    OKMGApi();
     ~OKMGApi() override ;
 
 public:
@@ -30,11 +30,11 @@ public:
 
 public:
     void ReqSubTicker(const std::string& symbol) override ;
-    void ReqSubDepth(const std::string& symbol, int depth) override ;
+    void ReqSubDepth(const std::string& symbol) override ;
     void ReqSubKline(const std::string& symbol, KlineType klineType) override ;
 
     void ReqUnSubTicker(const std::string& symbol) override ;
-    void ReqUnSubDepth(const std::string& symbol, int depth) override ;
+    void ReqUnSubDepth(const std::string& symbol) override ;
     void ReqUnSubKline(const std::string& symbol, KlineType klineType) override ;
 
     std::string Name() const override {return "OK_MG"; }
@@ -47,7 +47,7 @@ private:
 
     void OnRtnTick(const json::value& v, const std::string& symbol);
     void OnRtnKline(const json::value& v, const std::pair<std::string, KlineType>& pair);
-    void OnRtnDepth(const json::value& v, const std::pair<std::string, int>& pair);
+    void OnRtnDepth(const json::value& v, const std::string& symbol);
 
     void Ping();
 
@@ -61,13 +61,18 @@ private:
 
     std::map<std::string, std::string> mSubTickMap; // <request, symbol>
     std::map<std::string, std::pair<std::string, KlineType> > mSubKlineMap;
-    std::map<std::string, std::pair<std::string, int> > mSubDepthMap;
+    std::map<std::string, std::string> mSubDepthMap;
 
-    std::map<std::string, int> mSubTickNum;
-    std::map<std::string, std::map<KlineType, int> > mSubKlineNum;
-    std::map<std::string, std::map<int, int> > mSubDepthNum;
+    std::unordered_map<std::string, int> mSubTickNum;
+    std::unordered_map<std::string, std::map<KlineType, int> > mSubKlineNum;
+    std::unordered_map<std::string, int> mSubDepthNum;
 
     std::unique_ptr<std::thread> mPingThread;
+
+    std::unordered_map<std::string, std::map<double, double, std::greater<double> > > mBidDepth;
+    std::unordered_map<std::string, std::map<double, double, std::less<double> > > mAskDepth;
+
+    int mLastDepthUpdateTime;
 };
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_OKMGENGINE_H

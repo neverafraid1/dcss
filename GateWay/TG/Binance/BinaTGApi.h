@@ -24,7 +24,7 @@ using namespace web;
 class BinaTGApi : public ITGApi
 {
 public:
-    explicit BinaTGApi(uint8_t source);
+    BinaTGApi();
     ~BinaTGApi() override ;
 public:
     void LoadAccount(const nlohmann::json& config) override ;
@@ -43,6 +43,7 @@ public:
 
     void ReqInsertOrder(const DCSSReqInsertOrderField* req, int requestID) override ;
     void ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID) override ;
+    void ReqQrySymbol(const DCSSReqQrySymbolField* req, int requestID) override ;
 
 private:
     void OnWsMessage(const websocket_incoming_message& msg);
@@ -64,6 +65,8 @@ private:
 
     void Ping();
 
+    void ResetRestClient();
+
 private:
     static std::unordered_map<OrderDirection, std::string, EnumClassHash> enumDirectionMap;
     static std::unordered_map<std::string, OrderDirection> directionEnumMap;
@@ -78,13 +81,13 @@ private:
 
     std::string mListenKey;
 
-    std::unique_ptr<http_client> mRestClient;
-    std::unique_ptr<websocket_callback_client> mWsClient;
+    http_client* mRestClient;
+    websocket_callback_client* mWsClient;
 
     std::unique_ptr<std::thread> mPingThread;
 
-    std::atomic_bool mWsConnected;
-    std::atomic_bool mLogined;
+    volatile bool mWsConnected;
+    volatile bool mLogined;
 
     long mAccountLastUpdateTime;
     std::unordered_map<int, long> mOrderLastUpdateTime;
@@ -92,7 +95,7 @@ private:
     //map<BTCLTC, btc_ltc>
     std::unordered_map<std::string, std::string> mBinaToCommonSymbolMap;
     //map<btc_ltc, BTCLTC>
-    std::unordered_map<std::string, std::string> mCommonToBinaSymbolMap;
+    std::unordered_map<std::string, DCSSSymbolField> mCommonToBinaSymbolMap;
 };
 
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_BINATGAPI_H

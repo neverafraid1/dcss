@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_INSTALL_PREFIX "/opt/dcss/master")
 add_compile_options(-g)
 
-set(STRATEGY_SOURCE_FILES DCSSDataWrapper.cpp DCSSDataWrapper.h IDCSSStrategy.h IDCSSStrategy.cpp DCSSStrategyUtil.h DCSSStrategyUtil.cpp IDCSSDataProcessor.h DCSSStrategyImpl.cpp DCSSStrategyImpl.h ../GateWay/Dao/SymbolDao.hpp ../GateWay/Dao/Dao.hpp ../include/EnumClassHash.h)
+set(STRATEGY_SOURCE_FILES DCSSDataWrapper.cpp DCSSDataWrapper.h IDCSSStrategy.h IDCSSStrategy.cpp DCSSStrategyImpl.cpp DCSSStrategyImpl.h ../GateWay/Dao/SymbolDao.hpp ../GateWay/Dao/Dao.hpp ../include/EnumClassHash.h)
 
 include_directories(../include ../UnitEngine/utils ../UnitEngine/Unit ../UnitEngine/Logger)
 link_directories(/usr/local/lib/unit/)

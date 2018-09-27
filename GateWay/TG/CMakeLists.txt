@@ -4,7 +4,7 @@ project(dcsstg)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_INSTALL_PREFIX "/opt/dcss/master")
 
-set(CMAKE_CXX_FLAGS -g)
+add_compile_options(-g)
 
 set(TD_SOURCE_FILES ITGEngine.h ITGEngine.cpp ../Base/IEngine.cpp ../Base/IEngine.h ../Base/Helper.h ITGApi.h ITGApi.cpp)
 

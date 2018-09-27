@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <cstring>
 #include <cmath>
+#include <float.h>
 
 /*btc_ltc --> <btc, ltc>*/
 inline std::pair<std::string, std::string> SplitStrSymbol(const std::string& symbol)
@@ -54,11 +55,9 @@ inline void SplitTime(const time_t& t, char* date, char* time)
     memcpy(time, strtime.c_str(), sizeof(strtime.length()));
 }
 
-inline bool IsEqual(const double& d1, const double& d2, double fEpsilon = 0.00001)
+inline bool IsEqual(const double& d1, const double& d2)
 {
-    double fDelta = std::fabs( d1 - d2 );
-
-    return !(fDelta > fEpsilon);
+    return !(std::fabs( d1 - d2 ) > DBL_EPSILON);
 }
 
 template <typename DataType>

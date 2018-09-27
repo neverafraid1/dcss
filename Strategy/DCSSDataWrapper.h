@@ -7,12 +7,13 @@
 
 #include <unordered_map>
 #include <unordered_set>
+#include "UnitDeclare.h"
 #include "UnitReader.h"
-#include "IDCSSDataProcessor.h"
-#include "DCSSStrategyUtil.h"
-#include "Timer.h"
 #include "EnumClassHash.h"
 
+USING_UNIT_NAMESPACE
+
+class DCSSStrategyImpl;
 class DCSSDataWrapper
 {
 public:
@@ -22,7 +23,7 @@ public:
     void Connect(const std::string& config, long time = 10 * NANOSECONDS_PER_SECOND);
 
 public:
-    DCSSDataWrapper(IDCSSDataProcessor* processor, DCSSStrategyUtil* util);
+    explicit DCSSDataWrapper(DCSSStrategyImpl* impl);
 
     void AddRegisterTd(uint8_t source);
 
@@ -32,7 +33,7 @@ public:
 
     void AddKline(const std::string& symbol, KlineType klineType, uint8_t source);
 
-    void AddDepth(const std::string& symbol, int depth, uint8_t source);
+    void AddDepth(const std::string& symbol, uint8_t source);
 
     /*looping*/
     void Run();
@@ -51,8 +52,7 @@ protected:
 
     std::vector<std::string> mFolders;
     std::vector<std::string> mNames;
-    IDCSSDataProcessor*     mProcessor;
-    DCSSStrategyUtil*       mUtil;
+    DCSSStrategyImpl*       mImpl;
     UnitReaderPtr           mReader;
 
     std::unordered_map<uint8_t, std::unique_ptr<GWStatus> >		mTdStatus;
@@ -65,7 +65,8 @@ protected:
 private:
     std::unordered_map<uint8_t, std::unordered_set<std::string> > mSubedTicker;
     std::unordered_map<uint8_t, std::unordered_map<std::string, std::unordered_set<KlineType, EnumClassHash> > > mSubedKline;
-    std::unordered_map<uint8_t, std::unordered_map<std::string, std::unordered_set<int> > > mSubedDepth;
+    std::unordered_map<uint8_t, std::unordered_set<std::string> > mSubedDepth;
+
 };
 
 DECLARE_PTR(DCSSDataWrapper);

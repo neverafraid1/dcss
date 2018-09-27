@@ -1,0 +1,7 @@
+{
+    "db":"ccts",
+    "host":"192.168.1.162",
+    "user":"root",
+    "passwd":"softwin",
+    "port":3306
+}

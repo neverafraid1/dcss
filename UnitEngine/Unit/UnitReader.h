@@ -7,7 +7,6 @@
 
 #include "UnitHandler.h"
 #include "Frame.hpp"
-#include "Unit.h"
 
 UNIT_NAMESPACE_START
 

@@ -2,14 +2,13 @@
 // Created by wangzhen on 18-6-20.
 //
 
+#include <boost/asio.hpp>
+
 #include "PageProvider.h"
 #include "PageCommStruct.h"
-#include "PageSocketStruct.h"
 #include "PageUtil.h"
 #include "Page.h"
 #include "StrategySocketHandler.h"
-
-#include <boost/asio.hpp>
 
 USING_UNIT_NAMESPACE
 
@@ -183,18 +182,17 @@ bool StrategySocketHandler::MdSubscribeKline(const std::string& symbol, int klin
         return false;
 }
 
-bool StrategySocketHandler::MdSubscribeDepth(const std::string& symbol, int depth, uint8_t source)
+bool StrategySocketHandler::MdSubscribeDepth(const std::string& symbol, uint8_t source)
 {
     SocketArray reqArray = {}, rspArray = {};
     reqArray[0] = PAGED_SOCKET_SUBSCRIBE_DEPTH;
     reqArray[1] = source;
-    memcpy(&reqArray[2], &depth, sizeof(depth));
-    memcpy(&reqArray[2] + sizeof(int), symbol.c_str(), symbol.length() + 1);
+    memcpy(&reqArray[2], symbol.c_str(), symbol.length() + 1);
     GetSocketRsp(reqArray, rspArray);
     auto rsp = reinterpret_cast<PagedSocketResponse*>(&rspArray[0]);
     if (rsp->Type == reqArray[0] && rsp->Success)
     {
-        mSubedDepth[source][symbol].insert(depth);
+        mSubedDepth[source].insert(symbol);
         return true;
     }
     else
@@ -217,11 +215,12 @@ void StrategySocketHandler::UnSubAll()
 {
     for (auto& item : mSubedTicker)
     {
+        uint8_t source = item.first;
         for (auto& symbol : item.second)
         {
             SocketArray reqArray = {}, rspArray = {};
             reqArray[0] = PAGED_SOCKET_UNSUBSCRIBE_TICKER;
-            reqArray[1] = item.first;
+            reqArray[1] = source;
             memcpy(&reqArray[2], symbol.c_str(), symbol.length() + 1);
             GetSocketRsp(reqArray, rspArray);
         }
@@ -248,18 +247,13 @@ void StrategySocketHandler::UnSubAll()
     for (auto& i : mSubedDepth)
     {
         uint8_t source = i.first;
-        for (auto& j : i.second)
+        for (auto& symbol : i.second)
         {
-            const std::string& symbol = j.first;
-            for (auto&k : j.second)
-            {
-                SocketArray reqArray = {}, rspArray = {};
-                reqArray[0] = PAGED_SOCKET_UNSUBSCRIBE_DEPTH;
-                reqArray[1] = source;
-                reqArray[2] = k;
-                memcpy(&reqArray[2] + sizeof(int), symbol.c_str(), symbol.length() + 1);
-                GetSocketRsp(reqArray, rspArray);
-            }
+            SocketArray reqArray = {}, rspArray = {};
+            reqArray[0] = PAGED_SOCKET_UNSUBSCRIBE_DEPTH;
+            reqArray[1] = source;
+            memcpy(&reqArray[2], symbol.c_str(), symbol.length() + 1);
+            GetSocketRsp(reqArray, rspArray);
         }
     }
 }

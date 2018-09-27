@@ -9,9 +9,12 @@
 #include "DataStruct.h"
 #include "IEngine.h"
 #include "json.hpp"
-#include "UnitWriter.h"
 
 PRE_DECLARE_PTR(IMGApi);
+
+UNIT_NAMESPACE_START
+PRE_DECLARE_PTR(UnitWriter);
+UNIT_NAMESPACE_END
 
 class IMGEngine : public IEngine, public std::enable_shared_from_this<IMGEngine>
 {
@@ -44,7 +47,7 @@ protected:
 protected:
     IMGApiPtr mMGApi;
 
-    UnitWriterPtr mWriter;
+    UnitEngine::UnitWriterPtr mWriter;
 };
 
 DECLARE_PTR(IMGEngine);
@@ -66,11 +69,11 @@ public:
 
 public:
     virtual void ReqSubTicker(const std::string& Symbol) = 0;
-    virtual void ReqSubDepth(const std::string& Symbol, int depth) = 0;
+    virtual void ReqSubDepth(const std::string& Symbol) = 0;
     virtual void ReqSubKline(const std::string& Symbol, KlineType klineType) = 0;
 
     virtual void ReqUnSubTicker(const std::string& Symbol) = 0;
-    virtual void ReqUnSubDepth(const std::string& Symbol, int depth) = 0;
+    virtual void ReqUnSubDepth(const std::string& Symbol) = 0;
     virtual void ReqUnSubKline(const std::string& Symbol, KlineType klineType) = 0;
 
 protected:

@@ -5,41 +5,55 @@
 #ifndef DCSS_CONSTANTS_H
 #define DCSS_CONSTANTS_H
 
-// sources
-#define EXCHANGE_OKCOIN     1
-#define EXCHANGE_BINANCE    2
-
-enum class Source
+enum ExchangeEnum : unsigned char
 {
+    Min,
+
     Okex,
-    Binance
+    Binance,
+
+    Max
 };
 
 enum class GWStatus
 {
+    Min,
+
     Unknown,
     Added,
     Requested,
     Connected,
     Logined,
     Disconnected,
-    Loginfailed
+    Loginfailed,
+
+    Max
 };
 
 enum class OrderDirection
 {
+    Min,
+
     Buy,
-    Sell
+    Sell,
+
+    Max
 };
 
 enum class OrderType
 {
+    Min,
+
     Limit,
-    Market
+    Market,
+
+    Max
 };
 
 enum class KlineType
 {
+    Min,
+
     Min1,
     Min3,
     Min5,
@@ -54,18 +68,24 @@ enum class KlineType
     Day1,
     Day3,
     Week1,
-    Month1
+    Month1,
+
+    Max
 };
 
 enum class OrderStatus
 {
+    Min,
+
     Submitted,
     PartTraded,
     AllTraded,
     Canceling,
     AllCanceled,
     Rejected,
-    Expired
+    Expired,
+
+    Max
 };
 
 #endif //DEMO_CONSTANTS_H

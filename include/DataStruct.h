@@ -6,7 +6,6 @@
 #define DCSS_DATASTRUCT_H
 
 #include "Constants.h"
-#include <string>
 #include <cstring>
 
 typedef char char9[9];
@@ -25,7 +24,7 @@ typedef long long3[3];
 
 struct DCSSTickerField
 {
-    // 币对   btc_ltc
+    // 币对如btc_ltc
     char21 Symbol;
 	// 更新时间
 	long UpdateTime;
@@ -43,9 +42,7 @@ struct DCSSTickerField
     double Volume;
 
     DCSSTickerField()
-    {
-        memset(this, 0, sizeof(DCSSTickerField));
-    }
+    : Symbol{}, UpdateTime(0), BuyPrice(0.0), SellPrice(0.0), Highest(0.0), Lowest(0.0), LastPrice(0.0), Volume(0.0) {}
 };
 
 struct DCSSKlineField
@@ -72,15 +69,16 @@ struct DCSSKlineField
     long CloseTime;
 
     DCSSKlineField()
-    {
-        memset(this, 0, sizeof(DCSSKlineField));
-    }
+    : Symbol{0}, Type(KlineType::Min), UpdateTime(0), OpenPrice(0.0), Highest(0.0), Lowest(0.0), ClosePrice(0.0), Volume(0.0), StartTime(0), CloseTime(0) {}
 };
 
 struct RspUserLogin
 {
 	// 登陆成功
     bool Success;
+
+    RspUserLogin()
+    : Success(false) {}
 };
 
 struct DCSSSignalDepthField
@@ -89,6 +87,9 @@ struct DCSSSignalDepthField
 	double Price;
 	// 报单量
 	double Volume;
+
+	DCSSSignalDepthField()
+	: Price(0.0), Volume(0.0) {}
 };
 
 #define MAX_DEPTH_NUM 100
@@ -99,15 +100,15 @@ struct DCSSDepthField
 	char21 Symbol;
 	// 更新时间
 	long UpdateTime;
+
+	long SendTime;
 	// 卖方深度
 	DCSSSignalDepthField AskDepth[MAX_DEPTH_NUM];
 	// 买方深度
 	DCSSSignalDepthField BidDepth[MAX_DEPTH_NUM];
 
-    DCSSDepthField()
-    {
-        memset(this, 0, sizeof(DCSSDepthField));
-    }
+	DCSSDepthField()
+	: Symbol{0}, UpdateTime(0) {}
 };
 
 struct DCSSBalanceField
@@ -118,6 +119,9 @@ struct DCSSBalanceField
     double Free;
     // 冻结量
     double Freezed;
+
+    DCSSBalanceField()
+    : Currency{0}, Free(0.0), Freezed(0.0) {}
 };
 
 #define MAX_CURRENCY_NUM 500
@@ -126,12 +130,44 @@ struct DCSSTradingAccountField
 {
 	// 资金信息
     DCSSBalanceField Balance[MAX_CURRENCY_NUM];
+};
 
-    DCSSTradingAccountField()
-    {
-        memset(this, 0, sizeof(DCSSTradingAccountField));
-    }
+struct DCSSCurrencyField
+{
+    // 基准资产
+    char10 BaseCurrency;
+    // 标价资产
+    char10 QuoteCurrecy;
 
+    DCSSCurrencyField()
+    : BaseCurrency{0}, QuoteCurrecy{0} {}
+};
+
+struct DCSSSymbolField
+{
+    // 交易所（OK/Bina）
+    ExchangeEnum Exchange;
+    // 币对
+    char21 Symbol;
+    // 资产
+    DCSSCurrencyField Currency;
+    // 下单价格精度
+    int PricePrecision;
+    // 下单数量精度
+    int AmountPrecision;
+    // 最小下单量
+    double MinAmount;
+
+    DCSSSymbolField()
+    : Exchange(ExchangeEnum::Min), Symbol{0}, PricePrecision(0), AmountPrecision(0), MinAmount(0.0) {}
+};
+
+struct DCSSReqQrySymbolField
+{
+    char21 Symbol;
+
+    DCSSReqQrySymbolField()
+    : Symbol{0} {}
 };
 
 struct DCSSReqQryTickerField
@@ -140,9 +176,7 @@ struct DCSSReqQryTickerField
     char21 Symbol;
 
     DCSSReqQryTickerField()
-    {
-        memset(this, 0, sizeof(DCSSReqQryTickerField));
-    }
+    : Symbol{0} {}
 };
 
 struct DCSSReqQryKlineField
@@ -157,9 +191,7 @@ struct DCSSReqQryKlineField
     long Since;
 
     DCSSReqQryKlineField()
-    {
-        memset(this, 0, sizeof(DCSSReqQryKlineField));
-    }
+    : Symbol{0}, Type(KlineType::Min), Size(0), Since(0) {}
 };
 
 struct DCSSReqInsertOrderField
@@ -176,9 +208,7 @@ struct DCSSReqInsertOrderField
     double Amount;
 
     DCSSReqInsertOrderField()
-    {
-        memset(this, 0, sizeof(DCSSReqInsertOrderField));
-    }
+    : Symbol{0}, Direction(OrderDirection::Min), Type(OrderType::Min), Price(0.0), Amount(0.0) {}
 };
 
 struct DCSSRspInsertOrderField
@@ -189,8 +219,7 @@ struct DCSSRspInsertOrderField
     long OrderID;
 
     DCSSRspInsertOrderField()
-            :Result(false), OrderID(0)
-    { }
+    : Result(false), OrderID(0) {}
 };
 
 struct DCSSReqCancelOrderField
@@ -201,9 +230,7 @@ struct DCSSReqCancelOrderField
     long OrderID;
 
     DCSSReqCancelOrderField()
-    {
-        memset(this, 0, sizeof(DCSSReqCancelOrderField));
-    }
+    : Symbol{0}, OrderID(0) {}
 };
 
 struct DCSSRspCancelOrderField
@@ -212,9 +239,7 @@ struct DCSSRspCancelOrderField
     long OrderID;
 
     DCSSRspCancelOrderField()
-    {
-        memset(this, 0, sizeof(DCSSRspCancelOrderField));
-    }
+    : OrderID(0) {}
 };
 
 struct DCSSReqQryOrderField
@@ -225,15 +250,15 @@ struct DCSSReqQryOrderField
     long OrderID;
 
     DCSSReqQryOrderField()
-    {
-        memset(this, 0, sizeof(DCSSReqQryOrderField));
-    }
+    : Symbol{0}, OrderID(0) {}
 };
 
 struct DCSSOrderField
 {
     // 币对如ltc_btc
     char21 Symbol;
+    // 交易所
+    ExchangeEnum Exchange;
     // 插入时间
     long InsertTime;
     // 订单id
@@ -254,9 +279,7 @@ struct DCSSOrderField
     OrderStatus Status;
 
     DCSSOrderField()
-    {
-        memset(this, 0, sizeof(DCSSOrderField));
-    }
+    : Symbol{0}, Exchange(ExchangeEnum::Min), InsertTime(0), OrderID(0), Direction(OrderDirection::Min), Type(OrderType::Min), OriginQuantity(0.0), ExecuteQuantity(0.0), Price(0.0), UpdateTime(0.0), Status(OrderStatus::Min) {}
 };
 
 struct DCSSSubTickerField
@@ -265,22 +288,16 @@ struct DCSSSubTickerField
     char21 Symbol;
 
     DCSSSubTickerField()
-    {
-        memset(this, 0, sizeof(DCSSSubTickerField));
-    }
+    : Symbol{0} {}
 };
 
 struct DCSSSubDepthField
 {
 	// 币对如ltc_btc
     char21 Symbol;
-    // 深度
-    int Depth;
 
     DCSSSubDepthField()
-    {
-        memset(this, 0, sizeof(DCSSSubDepthField));
-    }
+    : Symbol{0} {}
 };
 
 struct DCSSSubKlineField
@@ -291,9 +308,7 @@ struct DCSSSubKlineField
     KlineType Type;
 
     DCSSSubKlineField()
-    {
-        memset(this, 0, sizeof(DCSSSubKlineField));
-    }
+    : Symbol{0}, Type(KlineType::Min) {}
 };
 
 #endif //DCSS_DATASTRUCT_H

@@ -7,6 +7,8 @@
 #include "Binance/BinaTGApi.h"
 #include "Timer.h"
 #include "SysMessages.h"
+#include "UnitReader.h"
+#include "UnitWriter.h"
 
 ITGSpi::ITGSpi(const std::string& client, DCSSLogPtr logger, const std::string& proxy)
 : mClient(client), mSignalReceived(-1), mIsRunning(false), mLogger(std::move(logger)), mProxy(proxy), mDefaultAccountIndex(-1), mCurTime(0)
@@ -141,6 +143,11 @@ void ITGSpi::Listening()
             	tgApi->ReqQryOpenOrder(reinterpret_cast<DCSSReqQryOrderField*>(data), requestId);
             	break;
             }
+            case MSG_TYPE_REQ_QRY_SYMBOL:
+            {
+                tgApi->ReqQrySymbol(reinterpret_cast<DCSSReqQrySymbolField*>(data), requestId);
+                break;
+            }
             default:break;
             }
         }
@@ -210,6 +217,12 @@ void ITGSpi::OnRspQryKline(const DCSSKlineField* kline, uint8_t source, bool isL
 	mWriter->WriteErrorFrame(kline, sizeof(DCSSKlineField), source, MSG_TYPE_RSP_QRY_KLINE, isLast, requestId, errorId, errorMsg);
 }
 
+void ITGSpi::OnRspQrySymbol(const DCSSSymbolField* symbol, uint8_t source, bool isLast,
+        int requestId, int errorId, const char* errorMsg)
+{
+    mWriter->WriteErrorFrame(symbol, sizeof(DCSSSymbolField), source, MSG_TYPE_RSP_QRY_SYMBOL, isLast, requestId, errorId, errorMsg);
+}
+
 
 ITGApi::ITGApi(uint8_t source)
 : mSourceId(source), mSpi(nullptr), mLogger(nullptr)
@@ -219,18 +232,12 @@ ITGApiPtr ITGApi::CreateTGApi(uint8_t source)
 {
     switch (source)
     {
-    case EXCHANGE_OKCOIN:
-    {
-        return ITGApiPtr(new OKTGApi(EXCHANGE_OKCOIN));
-    }
-    case EXCHANGE_BINANCE:
-    {
-        return ITGApiPtr(new BinaTGApi(EXCHANGE_BINANCE));
-    }
+    case ExchangeEnum::Okex:
+        return ITGApiPtr(new OKTGApi());
+    case ExchangeEnum::Binance:
+        return ITGApiPtr(new BinaTGApi());
     default:
-    {
-        return ITGApiPtr();
-    }
+        return nullptr;
     }
 }
 

@@ -14,9 +14,9 @@ inline UnitPair GetMdUnitPair(uint8_t source)
 {
     switch (source)
     {
-    case EXCHANGE_OKCOIN:
+    case ExchangeEnum::Okex:
         return {"/shared/dcss/unit/MD/OKEX", "MD_OKEX"};
-    case EXCHANGE_BINANCE:
+    case ExchangeEnum::Binance:
     	return {"/shared/dcss/unit/MD/BINA", "MD_BINA"};
     default:
         return {"", ""};
@@ -27,9 +27,9 @@ inline std::string GetMdString(uint8_t source)
 {
     switch (source)
     {
-    case EXCHANGE_OKCOIN:
+    case ExchangeEnum::Okex:
         return "okex";
-    case EXCHANGE_BINANCE:
+    case ExchangeEnum::Binance:
         return "bina";
     default:
         return "";
@@ -40,9 +40,9 @@ inline UnitPair GetTdUnitPair(uint8_t source)
 {
     switch (source)
     {
-    case EXCHANGE_OKCOIN:
+    case ExchangeEnum::Okex:
         return {"/shared/dcss/unit/TD/OKEX", "TD_OKEX"};
-    case EXCHANGE_BINANCE:
+    case ExchangeEnum::Binance:
         return {"/shared/dcss/unit/TD/BINA", "TD_BINA"};
     default:
         return {"", ""};

@@ -9,6 +9,7 @@
 #include "OkexConstant.h"
 #include "Helper.h"
 #include "MD5.h"
+#include "SymbolDao.hpp"
 
 using namespace OkexConstant;
 
@@ -46,23 +47,34 @@ std::unordered_map<int, OrderStatus> OKTGApi::intOrderStatusMap = {
         {3,     OrderStatus::Canceling}
 };
 
-OKTGApi::OKTGApi(uint8_t source)
-        :ITGApi(source), IsRestConnected(false), IsWsConnected(false), IsPonged(true)
+OKTGApi::OKTGApi()
+        :ITGApi(ExchangeEnum::Okex), IsRestConnected(false), IsWsConnected(false), IsPonged(true), mRestClient(nullptr), mWsClient(nullptr)
 {
-
+    auto res = SymbolDao::GetAllSymbol(ExchangeEnum::Okex);
+    for (const auto& item : res)
+    {
+        std::string common = std::string(item.Currency.BaseCurrency).append("_").append(item.Currency.QuoteCurrecy);
+        std::transform(common.begin(), common.end(), common.begin(), ::tolower);
+        mSymbolInfo[common] = item;
+    }
 }
 
 OKTGApi::~OKTGApi()
 {
-    mWsClient->close(websocket_close_status::normal, "destruct").get();
-
+    if (mWsClient)
+    {
+    	mWsClient->close(websocket_close_status::normal, "destruct").get();
+    	delete mWsClient;
+    }
     mPingThread->join();
+    if (mRestClient)
+    	delete mRestClient;
 }
 
 void OKTGApi::OnWsClose(web::websockets::client::websocket_close_status close_status,
         const utility::string_t& reason, const std::error_code& error)
 {
-    DCSS_LOG_ERROR(mLogger, "[ok_tg](close_status)" << (int)close_status << "(reason)" << reason << "(error)" << error.message());
+    DCSS_LOG_ERROR(mLogger, "[trade gateway][okex](close_status)" << (int)close_status << "(reason)" << reason << "(error)" << error.message());
 
     mSpi->OnRtnTdStatus(GWStatus::Disconnected, mSourceId);
 
@@ -78,26 +90,19 @@ void OKTGApi::OnWsClose(web::websockets::client::websocket_close_status close_st
 
 void OKTGApi::ResetRestClient()
 {
-/*	if (mProxy.empty())
-		mRestClient.reset(new http_client(API_BASE_URL));
+	http_client_config http_config;
+	http_config.set_validate_certificates(false);
+	if (mProxy.empty())
+	{
+		if (!mRestClient)
+			mRestClient = new http_client(API_BASE_URL, http_config);
+	}
 	else
 	{
 		web_proxy proxy(mProxy);
-		http_client_config http_config;
 		http_config.set_proxy(proxy);
-
-		mRestClient.reset(new http_client(API_BASE_URL, http_config));
-	}*/
-
-	http_client_config http_config;
-	http_config.set_validate_certificates(false);
-	if (!mProxy.empty())
-	{
-		web_proxy proxy(mProxy);
-		http_config.set_proxy(proxy);
+		mRestClient = new http_client(API_BASE_URL, http_config);
 	}
-
-	mRestClient.reset(new http_client(API_BASE_URL, http_config));
 }
 
 void OKTGApi::OnWSMessage(const web::websockets::client::websocket_incoming_message& msg)
@@ -139,7 +144,7 @@ void OKTGApi::OnWSMessage(const web::websockets::client::websocket_incoming_mess
     }
     catch (const std::exception& e)
     {
-        DCSS_LOG_ERROR(mLogger, "[ok_tg][onwsmessage]" << "(error)" << e.what());
+        DCSS_LOG_ERROR(mLogger, "[trade gateway][okex][onwsmessage]" << "(error)" << e.what());
     }
 
 }
@@ -148,6 +153,7 @@ void OKTGApi::OnRtnOrder(const json::object& jorder)
 {
     DCSSOrderField order;
 
+    order.Exchange = ExchangeEnum::Okex;
     strcpy(order.Symbol, jorder.at(U("symbol")).as_string().c_str());
     order.InsertTime = std::stol(jorder.at(U("createdDate")).as_string());
     order.OrderID = jorder.at(U("orderId")).as_number().to_int64();
@@ -188,13 +194,12 @@ void OKTGApi::OnUserLogin(const web::json::object& j)
     IsLoggined = j.at(U("result")).as_bool();
     if (IsLoggined)
     {
-        DCSS_LOG_INFO(mLogger, "(api key)" << mApiKey << " login success");
+        DCSS_LOG_INFO(mLogger, "[trade gateway][okex] login success");
         mSpi->OnRtnTdStatus(GWStatus::Logined, mSourceId);
     }
     else
     {
-        DCSS_LOG_INFO(mLogger, "(api key)" << mApiKey << " login fail!" << "(error_msg)" <<
-        j.at(U("error_msg")).as_string());
+        DCSS_LOG_INFO(mLogger, "[trade gateway][okex] login fail! (error_msg) " << j.at(U("error_msg")).as_string());
     }
 }
 
@@ -208,15 +213,9 @@ void OKTGApi::LoadAccount(const nlohmann::json& config)
 
 void OKTGApi::Connect()
 {
-
-//    http_client_config http_config;
-//    http_config.set_proxy(proxy);
-//
-//    mRestClient.reset(new http_client(U(OK_REST_ROOT_URL), http_config));
-
 	if (mProxy.empty())
 	{
-		mWsClient.reset(new websocket_callback_client());
+		mWsClient = new websocket_callback_client();
 	}
 	else
 	{
@@ -224,7 +223,7 @@ void OKTGApi::Connect()
 		websocket_client_config ws_config;
 		ws_config.set_proxy(proxy);
 
-		mWsClient.reset(new websocket_callback_client(ws_config));
+		mWsClient = new websocket_callback_client(ws_config);
 	}
 
 	mWsClient->set_message_handler(std::bind(&OKTGApi::OnWSMessage, this, std::placeholders::_1));
@@ -243,7 +242,7 @@ void OKTGApi::Connect()
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(mLogger, "(ok tg) ws send connect failed!(exception)" << e.what());
+                    DCSS_LOG_ERROR(mLogger, "[trade gateway][okex] ws send connect failed!(exception) " << e.what());
                 }
             });
 }
@@ -255,7 +254,7 @@ void OKTGApi::Disconnect()
 
 void OKTGApi::OnWsConnected()
 {
-    DCSS_LOG_INFO(mLogger, "(api key)" << mApiKey << " ws connect success!");
+    DCSS_LOG_INFO(mLogger, "[trade gateway][okex] ws connect success!");
     IsWsConnected = true;
 
     mSpi->OnRtnTdStatus(GWStatus::Connected, mSourceId);
@@ -283,7 +282,7 @@ void OKTGApi::Ping()
             websocket_outgoing_message msg;
             msg.set_utf8_message(jv.serialize());
             mWsClient->send(msg);
-            DCSS_LOG_DEBUG(mLogger, "[Ping] send ping to remote");
+//            DCSS_LOG_DEBUG(mLogger, "[Ping] send ping to remote");
     	}
     	std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
@@ -308,7 +307,7 @@ void OKTGApi::Login()
 
     mWsClient->send(msg).then([this]()
     {
-        DCSS_LOG_INFO(mLogger, "(api key)" << mApiKey << " send request success!");
+        DCSS_LOG_INFO(mLogger, "[trade gateway][okex] send request success!");
     }).then([=](pplx::task<void> task)
     {
         try
@@ -317,8 +316,7 @@ void OKTGApi::Login()
         }
         catch (const std::exception& e)
         {
-            DCSS_LOG_ERROR(mLogger, "(api key)" << mApiKey
-                                                   << " send request failed!(exception)" << e.what() );
+            DCSS_LOG_ERROR(mLogger, "[trade gateway][okex] send request failed!(exception) " << e.what());
         }
     });
 }
@@ -350,8 +348,7 @@ void OKTGApi::ReqQryTicker(const DCSSReqQryTickerField* req, int requestID)
               }
               catch (const std::exception& e)
               {
-                  DCSS_LOG_ERROR(mLogger, "[ok_tg][qryticker]\t" << "(" << mApiKey << ")"
-                                                         << " send request failed!(exception)" << e.what());
+                  DCSS_LOG_ERROR(mLogger, "[trade gateway][okex][qry ticker] send request failed!(exception)" << e.what());
               }
             });
 }
@@ -360,8 +357,7 @@ void OKTGApi::ReqQryKline(const DCSSReqQryKlineField* req, int requestID)
 {
     if (klineStringMap.count(req->Type) == 0)
     {
-        DCSS_LOG_ERROR(mLogger, "[ok_tg][qrykline]\t" << "(" << mApiKey << ")"
-                                                  << " unknown kline type "<< (int)req->Type);
+        DCSS_LOG_ERROR(mLogger, "[trade gateway][okex] unknown kline type "<< (int)req->Type);
         return;
     }
 
@@ -388,8 +384,7 @@ void OKTGApi::ReqQryKline(const DCSSReqQryKlineField* req, int requestID)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(mLogger, "[ok_tg][qrykline]\t" << "(" << mApiKey << ")"
-                                                              << " send request failed!(exception)" << e.what());
+                    DCSS_LOG_ERROR(mLogger, "[trade gateway][okex][qry kline] send request failed!(exception)" << e.what());
                 }
             });
 }
@@ -415,8 +410,7 @@ void OKTGApi::ReqQryUserInfo(int requestID)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(mLogger, "[ok_tg][qryuserinfo] " << "(" << mApiKey << ")"
-                                                              << " send request failed!(exception)" << e.what());
+                    DCSS_LOG_ERROR(mLogger, "[trade gateway][okex][qry account] send request failed!(exception)" << e.what());
                 }
 
             });
@@ -445,8 +439,7 @@ void OKTGApi::ReqQryOrder(const DCSSReqQryOrderField* req, int requestID)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(mLogger, "[ok_tg][qryorder]\t" << "(" << mApiKey << ")"
-                                                              << " send request failed!(exception)" << e.what());
+                    DCSS_LOG_ERROR(mLogger, "[trade gateway][okex][qry order] send request failed!(exception)" << e.what());
                 }
             });
 }
@@ -497,8 +490,7 @@ void OKTGApi::ReqInsertOrder(const DCSSReqInsertOrderField* req, int requestID)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(mLogger, "[ok_tg][insertorder]\t" << "(" << mApiKey << ")"
-                                                              << " send request failed!(exception)" << e.what());
+                    DCSS_LOG_ERROR(mLogger, "[trade gateway][okex][inser torder] send request failed!(exception)" << e.what());
                 }
             });
 
@@ -526,8 +518,7 @@ void OKTGApi::ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(mLogger, "[ok_tg][cancel order]\t" << "(" << mApiKey << ")"
-                                                              << " send request failed!(exception)" << e.what());
+                    DCSS_LOG_ERROR(mLogger, "[trade gateway][okex][cancel order] send request failed!(exception)" << e.what());
                 }
 
             });
@@ -555,10 +546,21 @@ void OKTGApi::ReqQryOpenOrder(const DCSSReqQryOrderField* req, int requestID)
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(mLogger, "[ok_tg][qryorder]\t" << "(" << mApiKey << ")"
-                                                              << " send request failed!(exception)" << e.what());
+                    DCSS_LOG_ERROR(mLogger, "[trade gateway][okex][qry open order] send request failed!(exception)" << e.what());
                 }
             });
+}
+
+void OKTGApi::ReqQrySymbol(const DCSSReqQrySymbolField* req, int requestID)
+{
+    DCSSSymbolField symbol = {};
+    if (mSymbolInfo.count(req->Symbol) > 0)
+    {
+        symbol = mSymbolInfo.at(req->Symbol);
+        mSpi->OnRspQrySymbol(&symbol, mSourceId, true, requestID);
+    }
+    else
+        mSpi->OnRspQrySymbol(&symbol, mSourceId, true, requestID, 1, "not found");
 }
 
 void OKTGApi::OnRspQryTicker(http_response& response, int requestID, const char21& symbol)
@@ -707,7 +709,7 @@ void OKTGApi::OnRspQryUserInfo(http_response& response, int requestID)
 			{
 				// TODO
 				DCSS_LOG_INFO(mLogger,
-						"[ok_tg][qryuserinfo] " << "(" << mApiKey << ")" << " result is false !");
+						"[trade gateway][okex] result is false !");
 			}
 		}
 		else
@@ -871,6 +873,7 @@ void OKTGApi::OnRspQryOpenOrder(http_response& response, const DCSSReqQryOrderFi
 		const json::value& jv = response.extract_json().get();
 		const json::object& jobj = jv.as_object();
 		DCSSOrderField order;
+		order.Exchange = ExchangeEnum::Okex;
 		strcpy(order.Symbol, req->Symbol);
 		if (jobj.find(U(ERROR_CODE)) == jobj.end())
 		{

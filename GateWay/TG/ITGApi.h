@@ -8,13 +8,15 @@
 #include "DCSSLog.h"
 #include "json.hpp"
 #include "DataStruct.h"
-#include "UnitReader.h"
-#include "UnitWriter.h"
-
-USING_UNIT_NAMESPACE
 
 PRE_DECLARE_PTR(ITGSpi);
 PRE_DECLARE_PTR(ITGApi);
+
+UNIT_NAMESPACE_START
+PRE_DECLARE_PTR(UnitReader);
+PRE_DECLARE_PTR(UnitWriter);
+UNIT_NAMESPACE_END
+USING_UNIT_NAMESPACE
 
 struct ClientInfo
 {
@@ -84,6 +86,9 @@ public:
     void OnRspQryOpenOrder(const DCSSOrderField* order, uint8_t source, bool isLast, int requestId,
     		int errorId = 0, const char* errorMsg = nullptr);
 
+    void OnRspQrySymbol(const DCSSSymbolField* symbol, uint8_t source, bool isLast, int requestId,
+            int errorId = 0, const char* errorMsg = nullptr);
+
     void OnRtnBalance(const DCSSBalanceField* balance, uint8_t source);
 
     void OnRtnTdStatus(const GWStatus& status, uint8_t source);
@@ -146,6 +151,7 @@ public:
     virtual void ReqQryOpenOrder(const DCSSReqQryOrderField* req, int requestID) = 0;
     virtual void ReqInsertOrder(const DCSSReqInsertOrderField* req, int requestID) = 0;
     virtual void ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID) = 0;
+    virtual void ReqQrySymbol(const DCSSReqQrySymbolField* req, int requestID) = 0;
 
 protected:
     explicit ITGApi(uint8_t source);

@@ -25,7 +25,7 @@ public:
 
     virtual bool MdSubscribeKline(const std::string& symbol, int klineType, uint8_t source) = 0;
 
-    virtual bool MdSubscribeDepth(const std::string& symbol, int depth, uint8_t source) = 0;
+    virtual bool MdSubscribeDepth(const std::string& symbol, uint8_t source) = 0;
 
     virtual ~IStrategyUtil() = default;
 };

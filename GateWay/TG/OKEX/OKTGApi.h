@@ -23,7 +23,7 @@ using namespace web;
 class OKTGApi: public ITGApi
 {
 public:
-    explicit OKTGApi(uint8_t source);
+    OKTGApi();
     ~OKTGApi() override ;
 
 public:
@@ -43,6 +43,7 @@ public:
     void ReqInsertOrder(const DCSSReqInsertOrderField* req, int requestID) override ;
     void ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID) override ;
     void ReqQryOpenOrder(const DCSSReqQryOrderField* req, int requestID) override ;
+    void ReqQrySymbol(const DCSSReqQrySymbolField* req, int requestID) override ;
 
 private:
     void OnWsConnected();
@@ -81,8 +82,8 @@ private:
     std::string mSecretKey;
     std::string mProxy;
 
-    std::unique_ptr<http_client> mRestClient;
-    std::unique_ptr<websocket_callback_client> mWsClient;
+    http_client* mRestClient;
+    websocket_callback_client* mWsClient;
 
     volatile bool IsRestConnected;
     volatile bool IsWsConnected;
@@ -90,6 +91,8 @@ private:
     volatile bool IsPonged;
 
     std::unique_ptr<std::thread> mPingThread;
+
+    std::unordered_map<std::string, DCSSSymbolField> mSymbolInfo;
 };
 
 #endif //DEMO_OKTGENGINE_H

@@ -5,27 +5,29 @@
 #include <util.h>
 #include <iostream>
 #include "DCSSDataWrapper.h"
+#include "DCSSStrategyImpl.h"
 #include "SysMessages.h"
+#include "Timer.h"
 
-volatile int IDCSSDataProcessor::mSingalReceived = -1;
+volatile int DCSSStrategyImpl::mSingalReceived = -1;
 
-DCSSDataWrapper::DCSSDataWrapper(IDCSSDataProcessor* processor, DCSSStrategyUtil* util)
-: mProcessor(processor), mUtil(util), mForceStop(false)
+DCSSDataWrapper::DCSSDataWrapper(DCSSStrategyImpl* impl)
+: mImpl(impl), mForceStop(false)
 {
-    auto rids = mUtil->GetRidRange();
+    auto rids = mImpl->GetRidRange();
     mRidStart = rids.first;
     mRidEnd = rids.second;
     mCurTime = GetNanoTime();
 
-    mProcessor->OnTime(mCurTime);
+    mImpl->OnTime(mCurTime);
 }
 
 void DCSSDataWrapper::PreRun()
 {
-    const std::string& name = mUtil->GetName();
+    const std::string& name = mImpl->GetName();
     mFolders.emplace_back(STRATEGY_BASE_FOLDER);
     mNames.emplace_back(name + "_TG");
-    mReader = UnitReader::CreateReaderWithSys(mFolders, mNames, GetNanoTime(), mProcessor->GetName());
+    mReader = UnitReader::CreateReaderWithSys(mFolders, mNames, GetNanoTime(), mImpl->GetName());
 }
 
 void DCSSDataWrapper::Connect(const std::string& config, long time)
@@ -34,9 +36,9 @@ void DCSSDataWrapper::Connect(const std::string& config, long time)
     {
         *(it.second) = GWStatus::Requested;
     }
-    mUtil->TdConnect(config);
+    mImpl->TdConnect(config);
     long startTime = GetNanoTime();
-    while (!IsAllLogined() && GetNanoTime() - startTime < time);
+    while (!IsAllLogined() && GetNanoTime() - startTime < time && mImpl->mSingalReceived <= 0);
 }
 
 void DCSSDataWrapper::Stop()
@@ -71,18 +73,18 @@ void DCSSDataWrapper::AddKline(const std::string& symbol, KlineType klineType, u
     mSubedKline[source][symbol].insert(klineType);
 }
 
-void DCSSDataWrapper::AddDepth(const std::string& symbol, int depth, uint8_t source)
+void DCSSDataWrapper::AddDepth(const std::string& symbol, uint8_t source)
 {
-    mSubedDepth[source][symbol].insert(depth);
+    mSubedDepth[source].insert(symbol);
 }
 
 void DCSSDataWrapper::Run()
 {
     FramePtr frame;
     mForceStop = false;
-    mProcessor->mSingalReceived = -1;
+    mImpl->mSingalReceived = -1;
 
-    while (!mForceStop && mProcessor->mSingalReceived <= 0)
+    while (!mForceStop && mImpl->mSingalReceived <= 0)
     {
         frame = mReader->GetNextFrame();
         if (frame != nullptr)
@@ -107,7 +109,7 @@ void DCSSDataWrapper::Run()
                 void* data = frame->GetData();
                 if (-1 == requestId)
                 {
-                    mUtil->SetMdNano(mCurTime);
+                    mImpl->SetMdNano(mCurTime);
                     switch (msgType)
                     {
                     case MSG_TYPE_RTN_TICKER:
@@ -116,7 +118,7 @@ void DCSSDataWrapper::Run()
                         const std::string& symbol(ticker->Symbol);
                         if (mSubedTicker.count(msgSource) > 0 && mSubedTicker.at(msgSource).count(symbol) > 0)
                         {
-                            mProcessor->OnRtnTicker(ticker, msgSource, mCurTime);
+                            mImpl->OnRtnTicker(ticker, msgSource, mCurTime);
                         }
                         break;
                     }
@@ -127,7 +129,7 @@ void DCSSDataWrapper::Run()
                         if (mSubedKline.count(msgSource) > 0 && mSubedKline.at(msgSource).count(symbol) > 0
                                 && mSubedKline.at(msgSource).at(symbol).count(kline->Type) > 0)
                         {
-                            mProcessor->OnRtnKline(kline, msgSource, mCurTime);
+                            mImpl->OnRtnKline(kline, msgSource, mCurTime);
                         }
                         break;
                     }
@@ -137,7 +139,7 @@ void DCSSDataWrapper::Run()
                         const std::string& symbol(depth->Symbol);
                         if (mSubedDepth.count(msgSource) > 0 && mSubedDepth.at(msgSource).count(symbol) > 0)
                         {
-                            mProcessor->OnRtnDepth(depth, msgSource, mCurTime);
+                            mImpl->OnRtnDepth(depth, msgSource, mCurTime);
                         }
                         break;
                     }
@@ -149,12 +151,12 @@ void DCSSDataWrapper::Run()
                     {
                     case MSG_TYPE_RTN_ORDER:
                     {
-                        mProcessor->OnRtnOrder(static_cast<DCSSOrderField*>(data), msgSource, mCurTime);
+                        mImpl->OnRtnOrder(static_cast<DCSSOrderField*>(data), msgSource, mCurTime);
                         break;
                     }
                     case MSG_TYPE_RTN_BALANCE:
                     {
-                        mProcessor->OnRtnBalance(static_cast<DCSSBalanceField*>(data), msgSource, mCurTime);
+                        mImpl->OnRtnBalance(static_cast<DCSSBalanceField*>(data), msgSource, mCurTime);
                         break;
                     }
                     case MSG_TYPE_RTN_TD_STATUS:
@@ -170,31 +172,37 @@ void DCSSDataWrapper::Run()
                     {
                     case MSG_TYPE_RSP_QRY_ACCOUNT:
                     {
-                        mProcessor->OnRspQryTradingAccount(static_cast<DCSSTradingAccountField*>(data), requestId,
+                        mImpl->OnRspQryTradingAccount(static_cast<DCSSTradingAccountField*>(data), requestId,
                                 frame->GetErrorID(), frame->GetErrorMsg(), msgSource, mCurTime);
                         break;
                     }
                     case MSG_TYPE_RSP_ORDER_INSERT:
                     {
-                        mProcessor->OnRspOrderInsert(static_cast<DCSSRspInsertOrderField*>(data), requestId,
+                        mImpl->OnRspOrderInsert(static_cast<DCSSRspInsertOrderField*>(data), requestId,
                                 frame->GetErrorID(), frame->GetErrorMsg(), msgSource, mCurTime);
                         break;
                     }
                     case MSG_TYPE_RSP_QRY_TICKER:
                     {
-                        mProcessor->OnRspQryTicker(static_cast<DCSSTickerField*>(data), requestId, frame->GetErrorID(),
+                        mImpl->OnRspQryTicker(static_cast<DCSSTickerField*>(data), requestId, frame->GetErrorID(),
                                 frame->GetErrorMsg(), msgSource, mCurTime);
                         break;
                     }
                     case MSG_TYPE_RSP_QRY_KLINE:
                     {
-                        mProcessor->OnRspQryKline(static_cast<const DCSSKlineField*>(data), requestId, frame->GetErrorID(), frame->GetErrorMsg(),
+                        mImpl->OnRspQryKline(static_cast<const DCSSKlineField*>(data), requestId, frame->GetErrorID(), frame->GetErrorMsg(),
                                         msgSource, mCurTime);
                         break;
                     }
                     case MSG_TYPE_RSP_QRY_SIGNAL_ORDER:
                     {
-                        mProcessor->OnRspQryOrder(static_cast<DCSSOrderField*>(data), requestId, frame->GetErrorID(),
+                        mImpl->OnRspQryOrder(static_cast<DCSSOrderField*>(data), requestId, frame->GetErrorID(),
+                                frame->GetErrorMsg(), msgSource, mCurTime);
+                        break;
+                    }
+                    case MSG_TYPE_RSP_QRY_SYMBOL:
+                    {
+                        mImpl->OnRspQrySymbol(static_cast<DCSSSymbolField*>(data), requestId, frame->GetErrorID(),
                                 frame->GetErrorMsg(), msgSource, mCurTime);
                         break;
                     }
@@ -206,17 +214,17 @@ void DCSSDataWrapper::Run()
         {
             mCurTime = GetNanoTime();
         }
-        mProcessor->OnTime(mCurTime);
+        mImpl->OnTime(mCurTime);
     }
 
-    if (mProcessor->mSingalReceived > 0)
+    if (mImpl->mSingalReceived > 0)
     {
-        mProcessor->Debug((std::string("[DataWrapper] signal received: ") + std::to_string(mProcessor->mSingalReceived)).c_str());
+        DCSS_LOG_DEBUG(mImpl->GetLogger(), "[DataWrapper] signal received: " << mImpl->mSingalReceived);
     }
 
     if (mForceStop)
     {
-        mProcessor->Debug("[DataWrapper] forced to stop!");
+        DCSS_LOG_DEBUG(mImpl->GetLogger(), "[DataWrapper] forced to stop!");
     }
 }
 

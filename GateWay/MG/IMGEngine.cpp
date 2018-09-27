@@ -9,6 +9,8 @@
 #include "Binance/BinaMGApi.h"
 #include "Timer.h"
 #include "SysMessages.h"
+#include "UnitWriter.h"
+#include "UnitReader.h"
 
 IMGEngine::~IMGEngine()
 {
@@ -85,7 +87,7 @@ void IMGEngine::Listening()
             case MSG_TYPE_SUB_DEPTH:
             {
                 auto req = static_cast<DCSSSubDepthField*>(data);
-                mMGApi->ReqSubDepth(req->Symbol, req->Depth);
+                mMGApi->ReqSubDepth(req->Symbol);
                 break;
             }
             case MSG_TYPE_SUB_KLINE:
@@ -103,7 +105,7 @@ void IMGEngine::Listening()
             case MSG_TYPE_UNSUB_DEPTH:
             {
                 auto req = static_cast<DCSSSubDepthField*>(data);
-                mMGApi->ReqUnSubDepth(req->Symbol, req->Depth);
+                mMGApi->ReqUnSubDepth(req->Symbol);
                 break;
             }
             case MSG_TYPE_UNSUB_KLINE:
@@ -157,12 +159,12 @@ IMGApiPtr IMGApi::Create(uint8_t source)
 {
     switch (source)
     {
-    case EXCHANGE_OKCOIN:
-        return IMGApiPtr(new OKMGApi(source));
-    case EXCHANGE_BINANCE:
-    	return IMGApiPtr(new BinaMGApi(source));
+    case ExchangeEnum::Okex:
+        return IMGApiPtr(new OKMGApi());
+    case ExchangeEnum::Binance:
+    	return IMGApiPtr(new BinaMGApi());
     default:
-        return IMGApiPtr();
+        return nullptr;
     }
 }
 

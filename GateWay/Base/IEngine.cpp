@@ -2,9 +2,11 @@
 // Created by wangzhen on 18-6-20.
 //
 
-#include "IEngine.h"
 #include <unistd.h>
 #include <csignal>
+#include "IEngine.h"
+#include "UnitReader.h"
+#include "DCSSLog.h"
 
 volatile int IEngine::SignalReceived = -1;
 

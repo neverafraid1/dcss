@@ -5,6 +5,8 @@
 #include "OKMGApi.h"
 #include "Timer.h"
 #include "OkexConstant.h"
+#include "Helper.h"
+
 using namespace OkexConstant;
 
 std::unordered_map<KlineType, std::string, EnumClassHash> OKMGApi::klineStringMap = {
@@ -23,21 +25,21 @@ std::unordered_map<KlineType, std::string, EnumClassHash> OKMGApi::klineStringMa
         {KlineType::Week1,  "1week"}
 };
 
-OKMGApi::OKMGApi(uint8_t source)
-: IMGApi(source), IsWsConnected(false), Ponged(true)
+OKMGApi::OKMGApi()
+: IMGApi(ExchangeEnum::Okex), IsWsConnected(false), Ponged(true), mLastDepthUpdateTime(0)
 {
 }
 
 OKMGApi::~OKMGApi()
 {
-    mWsClient->close();
+    mWsClient->close(websocket_close_status::normal, "destruct").get();
     mWsClient.reset();
     mPingThread.reset();
 }
 
 void OKMGApi::Connect()
 {
-	if (mProxy.empty())
+    if (mProxy.empty())
 	{
 		mWsClient.reset(new websocket_callback_client());
 	}
@@ -140,10 +142,10 @@ void OKMGApi::OnWsClose(web::websockets::client::websocket_close_status close_st
 
     IsWsConnected = false;
 
-    if (close_status != websocket_close_status::normal)
-    {
-    	std::thread t(std::bind(&OKMGApi::Connect, this));
-    }
+//    if (close_status != websocket_close_status::normal)
+//    {
+//    	std::thread t(std::bind(&OKMGApi::Connect, this));
+//    }
 }
 
 void OKMGApi::OnWsConnect()
@@ -193,26 +195,58 @@ void OKMGApi::OnRtnKline(const web::json::value& v, const std::pair<std::string,
     }
 }
 
-void OKMGApi::OnRtnDepth(const web::json::value& v, const std::pair<std::string, int>& pair)
+void OKMGApi::OnRtnDepth(const web::json::value& v, const std::string& symbol)
 {
     const json::array& ask = v.as_object().at(U("asks")).as_array();
     const json::array& bid = v.as_object().at(U("bids")).as_array();
 
+    long updateTime = v.at(U("timestamp")).as_number().to_int64();
+
+    if (updateTime <= mLastDepthUpdateTime)
+        return;
+
+    mLastDepthUpdateTime = updateTime;
+
+    auto& askDepth = mAskDepth[symbol];
+
+    for (const auto& item : ask)
+    {
+        const json::array& arr = item.as_array();
+        double price = std::stod(arr.at(0).as_string());
+        double volume = std::stod(arr.at(1).as_string());
+        if (!IsEqual(volume, 0.0))
+            askDepth[price] =  volume;
+        else
+            askDepth.erase(price);
+    }
+
+    auto& bidDepth = mBidDepth[symbol];
+    for (const auto& item : bid)
+    {
+        const json::array& arr = item.as_array();
+        double price = std::stod(arr.at(0).as_string());
+        double volume = std::stod(arr.at(1).as_string());
+        if (!IsEqual(volume, 0.0))
+            bidDepth[price] =  volume;
+        else
+            bidDepth.erase(price);
+    }
+
     DCSSDepthField depth;
-	strcpy(depth.Symbol, pair.first.c_str());
+	strcpy(depth.Symbol, symbol.c_str());
 	depth.UpdateTime = v.at(U("timestamp")).as_number().to_int64();
 
-    for (size_t i = 0; i < ask.size() && i < MAX_DEPTH_NUM; ++i)
+	size_t i = 0;
+    for (auto iter = askDepth.begin(); iter != askDepth.end() && i < MAX_DEPTH_NUM ; ++i, ++iter)
     {
-        const json::array& arr = ask.at(i).as_array();
-        depth.AskDepth[i].Price = std::stod(arr.at(0).as_string());
-        depth.AskDepth[i].Volume = std::stod(arr.at(1).as_string());
+        depth.AskDepth[i].Price = iter->first;
+        depth.AskDepth[i].Volume = iter->second;
     }
-    for (size_t i = 0; i < bid.size() && i < MAX_DEPTH_NUM; ++i)
+    i = 0;
+    for (auto iter = bidDepth.begin(); iter != bidDepth.end() && i < MAX_DEPTH_NUM; ++i, ++iter)
     {
-        const json::array& arr = bid.at(i).as_array();
-        depth.BidDepth[i].Price = std::stod(arr.at(0).as_string());
-        depth.BidDepth[i].Volume = std::stod(arr.at(1).as_string());
+        depth.BidDepth[i].Price = iter->first;
+        depth.BidDepth[i].Volume = iter->second;
     }
 
     mSpi->OnRtnDepth(&depth, mSourceId);
@@ -287,7 +321,7 @@ void OKMGApi::ReqSubTicker(const std::string& symbol)
             });
 }
 
-void OKMGApi::ReqSubDepth(const std::string& symbol, int depth)
+void OKMGApi::ReqSubDepth(const std::string& symbol)
 {
     if (!IsWsConnected)
     {
@@ -295,16 +329,14 @@ void OKMGApi::ReqSubDepth(const std::string& symbol, int depth)
         return;
     }
 
-    if (mSubDepthNum.count(symbol) > 0 && mSubDepthNum.at(symbol).count(depth) > 0)
+    if (mSubDepthNum.count(symbol) > 0)
     {
-        ++mSubDepthNum.at(symbol).at(depth);
+        ++mSubDepthNum[symbol];
         return;
     }
-    mSubDepthNum[symbol][depth] = 1;
+    mSubDepthNum[symbol] = 1;
 
     std::string sub = "ok_sub_spot_" + symbol + "_depth";
-    if (depth > 0)
-        sub.append("_").append(std::to_string(depth));
 
     json::value jv;
     jv[U("event")] = json::value::string("addChannel");
@@ -316,9 +348,9 @@ void OKMGApi::ReqSubDepth(const std::string& symbol, int depth)
             .then([=]()
             {
                 DCSS_LOG_INFO(mLogger, "[okex mg] send sub "
-                        << symbol << " depth " << depth << " request success");
+                        << symbol << " depth request success");
 
-                mSubDepthMap[sub] = std::make_pair(symbol, depth);
+                mSubDepthMap[sub] = symbol;
             }).then([=](pplx::task<void> task)
             {
                 try
@@ -328,7 +360,7 @@ void OKMGApi::ReqSubDepth(const std::string& symbol, int depth)
                 catch (const std::exception& e)
                 {
                     DCSS_LOG_ERROR(mLogger, "[okex mg] send sub "
-                            << symbol << " depth "<< depth << "  request fail!(exception)" << e.what());
+                            << symbol << " depth request fail!(exception)" << e.what());
                 }
             });
 }
@@ -428,7 +460,7 @@ void OKMGApi::ReqUnSubTicker(const std::string& symbol)
             });
 }
 
-void OKMGApi::ReqUnSubDepth(const std::string& symbol, int depth)
+void OKMGApi::ReqUnSubDepth(const std::string& symbol)
 {
     if (!IsWsConnected)
     {
@@ -436,12 +468,12 @@ void OKMGApi::ReqUnSubDepth(const std::string& symbol, int depth)
         return;
     }
 
-    if (--mSubDepthNum[symbol][depth] > 0)
+    if (--mSubDepthNum[symbol] > 0)
         return;
 
+    mSubDepthNum.erase(symbol);
+
     std::string unsub = "ok_sub_spot_" + symbol + "_depth";
-    if (depth > 0)
-        unsub + "_" + std::to_string(depth);
 
     json::value jv;
     jv[U("event")] = json::value::string("removeChannel");
@@ -454,8 +486,6 @@ void OKMGApi::ReqUnSubDepth(const std::string& symbol, int depth)
             {
                 DCSS_LOG_INFO(mLogger, "[okex mg] send unsub "
                         << symbol << " depth request success");
-
-                mSubDepthMap[unsub] = std::make_pair(symbol, depth);
             }).then([=](pplx::task<void> task)
             {
                 try
@@ -500,8 +530,6 @@ void OKMGApi::ReqUnSubKline(const std::string& symbol, KlineType klineType)
             {
                 DCSS_LOG_INFO(mLogger, "[okex mg] send unsub "
                         << symbol << " kline request success");
-
-                mSubKlineMap[unsub] = std::make_pair(symbol, klineType);
             }).then([=](pplx::task<void> task)
             {
                 try

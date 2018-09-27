@@ -5,7 +5,6 @@
 #ifndef DIGITALCURRENCYSTRATEGYSYSTEM_UNIT_H
 #define DIGITALCURRENCYSTRATEGYSYSTEM_UNIT_H
 
-#include "UnitDeclare.h"
 #include "Page.h"
 
 UNIT_NAMESPACE_START
@@ -56,8 +55,6 @@ private:
 
     Unit() : mExpired(false), mServiceIdx(-1), mIsWriting(false) {}
 };
-
-DECLARE_PTR(Unit);
 
 UNIT_NAMESPACE_END
 #endif //DIGITALCURRENCYSTRATEGYSYSTEM_UNIT_H

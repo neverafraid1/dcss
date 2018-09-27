@@ -8,10 +8,17 @@
 #include <fstream>
 #include "ITGEngine.h"
 #include "Dao.hpp"
+#include "json.hpp"
 
 int main(int argc, char* argv[])
 {
-	MySqlDao::Instance().Init("ccts", "192.168.1.98", "root", "root", 3306);
+    std::ifstream ifs("/opt/dcss/master/etc/mysql/mysql.json");
+    std::string str((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+    ifs.close();
+
+    nlohmann::json config = nlohmann::json::parse(str);
+
+	MySqlDao::Instance().Init(config.at("db"), config.at("host"), config.at("user"), config.at("passwd"), config.at("port"));
     std::shared_ptr<ITGEngine> p(new ITGEngine());
     p->Start();
     p->WaitForStop();

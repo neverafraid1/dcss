@@ -2,19 +2,18 @@
 // Created by wangzhen on 18-6-26.
 //
 
-#include "PageEngine.h"
-#include "Page.h"
-#include "Timer.h"
-#include "PageUtil.h"
-#include "json.hpp"
-#include "SysMessages.h"
-#include "Constants.h"
-#include "DataStruct.h"
-
 #include <mutex>
 #include <csignal>
 #include <iostream>
 #include <unistd.h>
+
+#include "PageEngine.h"
+#include "Timer.h"
+#include "PageUtil.h"
+#include "json.hpp"
+#include "SysMessages.h"
+#include "DataStruct.h"
+#include "UnitWriter.h"
 
 USING_UNIT_NAMESPACE
 
@@ -487,14 +486,13 @@ bool PageEngine::SubKline(const std::string& symbol, int klineType, uint8_t sour
     return true;
 }
 
-bool PageEngine::SubDepth(const std::string& symbol, int depth, uint8_t source)
+bool PageEngine::SubDepth(const std::string& symbol, uint8_t source)
 {
     if (mWriter == nullptr)
         return false;
 
     DCSSSubDepthField req;
     strcpy(req.Symbol, symbol.c_str());
-    req.Depth = depth;
 
     mWriter->WriteFrame(&req, sizeof(req) + 1, source, MSG_TYPE_SUB_DEPTH, true, -1);
 
@@ -528,14 +526,13 @@ bool PageEngine::UnSubKline(const std::string& symbol, int klineType, uint8_t so
     return true;
 }
 
-bool PageEngine::UnSubDepth(const std::string& symbol, int depth, uint8_t source)
+bool PageEngine::UnSubDepth(const std::string& symbol, uint8_t source)
 {
     if (mWriter == nullptr)
         return false;
 
     DCSSSubDepthField req;
     strcpy(req.Symbol, symbol.c_str());
-    req.Depth = depth;
 
     mWriter->WriteFrame(&req, sizeof(req) + 1, source, MSG_TYPE_UNSUB_DEPTH, true, -1);
 

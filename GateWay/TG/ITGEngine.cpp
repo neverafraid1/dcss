@@ -6,8 +6,12 @@
 #include <csignal>
 #include "ITGEngine.h"
 #include "OKEX/OKTGApi.h"
+#include "Binance/BinaTGApi.h"
 #include "util.h"
 #include "SysMessages.h"
+#include "UnitReader.h"
+
+USING_UNIT_NAMESPACE
 
 ITGEngine::ITGEngine()
 : mDefaultAccountIndex(-1), mName("TG"), mCurTime(0)

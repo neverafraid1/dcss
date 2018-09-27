@@ -14,7 +14,7 @@ link_directories(/usr/local/lib/boost)
 
 add_compile_options(-fPIC)
 
-set(LIB_UTIL_INCLUDE_FILES ../utils/Timer.h ../utils/constants.h ../utils/json.hpp)
+set(LIB_UTIL_INCLUDE_FILES ../utils/Timer.h ../utils/json.hpp)
 set(LIB_UTIL_SOURCE_FILES ../utils/Timer.cpp)
 
 set(LIB_INCLUDE_FILES Frame.hpp FrameHeader.h

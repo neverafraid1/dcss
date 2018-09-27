@@ -1,5 +1,5 @@
-Git Version : ${GIT_HASH}
-Build System: ${CMAKE_SYSTEM}
-CMake       : ${CMAKE_COMMAND}
-Builder     : $ENV{USER}
-Time        : ${BUILDTIME}
+Git Version : 511a9d2d93720ed68152374bd7d4e6d4c5fd57b7
+Build System: Linux-3.10.0-862.11.6.el7.x86_64
+CMake       : /usr/local/bin/cmake
+Builder     : wangzhen
+Time        : 20180907104050

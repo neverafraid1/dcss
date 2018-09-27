@@ -3,6 +3,7 @@
 //
 
 #include "StrategyUtil.h"
+#include "UnitWriter.h"
 #include "PageCommStruct.h"
 #include "PageSocketHandler.h"
 #include "StrategySocketHandler.h"
@@ -62,10 +63,10 @@ bool StrategyUtil::MdSubscribeKline(const std::string& symbol, int klineType, ui
         return false;
 }
 
-bool StrategyUtil::MdSubscribeDepth(const std::string& symbol, int depth, uint8_t source)
+bool StrategyUtil::MdSubscribeDepth(const std::string& symbol, uint8_t source)
 {
     if (mHandler != nullptr)
-        return mHandler->MdSubscribeDepth(symbol, depth, source);
+        return mHandler->MdSubscribeDepth(symbol, source);
     else
         return false;
 }

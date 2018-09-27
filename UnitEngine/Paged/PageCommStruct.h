@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <cstring>
-#include "constants.h"
 
 // Status in process 0 ~ 9
 #define PAGED_COMM_RAW          0   /**< this msg block is not allocated (default) */

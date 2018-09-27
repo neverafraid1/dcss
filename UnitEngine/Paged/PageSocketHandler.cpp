@@ -2,11 +2,12 @@
 // Created by wangzhen on 18-6-25.
 //
 
+#include <boost/asio.hpp>
+
 #include "PageSocketHandler.h"
 #include "PageSocketStruct.h"
 #include "DataStruct.h"
 #include "Timer.h"
-#include <boost/asio.hpp>
 
 USING_UNIT_NAMESPACE
 
@@ -181,20 +182,18 @@ void PageSocketHandler::ProcessMsg()
     case PAGED_SOCKET_SUBSCRIBE_DEPTH:
     {
         uint8_t source = gRecvData[1];
-        auto depth = reinterpret_cast<int*>(&gRecvData[2]);
         PagedSocketResponse rsp = {};
         rsp.Type = reqType;
-        rsp.Success = mUtil->SubDepth((&gRecvData[2] + sizeof(int)), *depth, source);
+        rsp.Success = mUtil->SubDepth(&gRecvData[2], source);
         memcpy(&gSendData[0], &rsp, sizeof(rsp));
         break;
     }
     case PAGED_SOCKET_UNSUBSCRIBE_DEPTH:
     {
         uint8_t source = gRecvData[1];
-        auto depth = reinterpret_cast<int*>(&gRecvData[2]);
         PagedSocketResponse rsp = {};
         rsp.Type = reqType;
-        rsp.Success = mUtil->UnSubDepth(&gRecvData[2] + sizeof(int), *depth, source);
+        rsp.Success = mUtil->UnSubDepth(&gRecvData[2], source);
         memcpy(&gSendData[0], &rsp, sizeof(rsp));
         break;
     }

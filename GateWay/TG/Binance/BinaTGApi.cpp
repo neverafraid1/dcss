@@ -61,30 +61,28 @@ std::unordered_map<std::string, OrderStatus> BinaTGApi::statusEnumMap =
 		{"EXPIRED",				OrderStatus::Expired}
 };
 
-BinaTGApi::BinaTGApi(uint8_t source)
-: ITGApi(source), mWsConnected(false), mAccountLastUpdateTime(0), mLogined(false)
+BinaTGApi::BinaTGApi()
+: ITGApi(ExchangeEnum::Binance), mWsConnected(false), mAccountLastUpdateTime(0), mLogined(false), mRestClient(nullptr), mWsClient(nullptr)
 {
-    auto res = SymbolDao::GetAllSymbol(source);
+    auto res = SymbolDao::GetAllSymbol(ExchangeEnum::Binance);
     for (const auto& item : res)
     {
-        std::string common = std::string(std::get<1>(item)).append("_").append(std::get<2>(item));
-        std::transform(common.begin(), common.end(), common.begin(), ::toupper);
-        mBinaToCommonSymbolMap[std::get<0>(item)] = common;
-        mCommonToBinaSymbolMap[common] = std::get<0>(item);
+        std::string common = std::string(item.Currency.BaseCurrency).append("_").append(item.Currency.QuoteCurrecy);
+        std::transform(common.begin(), common.end(), common.begin(), ::tolower);
+        mBinaToCommonSymbolMap[item.Symbol] = common;
+        mCommonToBinaSymbolMap[common] = item;
     }
 }
 
 BinaTGApi::~BinaTGApi()
 {
     mWsClient->close(websocket_close_status::normal, "destruct").get();
-    do
-    {
-    	std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
-    while (IsConnected());
-
-
     mPingThread->join();
+
+    if (mRestClient)
+    	delete mRestClient;
+    if (mWsClient)
+    	delete mWsClient;
 }
 
 void BinaTGApi::LoadAccount(const nlohmann::json& config)
@@ -97,22 +95,19 @@ void BinaTGApi::LoadAccount(const nlohmann::json& config)
 
 void BinaTGApi::Connect()
 {
+	ResetRestClient();
+
     if (mProxy.empty())
     {
-        mWsClient.reset(new websocket_callback_client());
-        mRestClient.reset(new http_client(API_BASE_URL));
+        mWsClient = new websocket_callback_client();
     }
     else
     {
         web_proxy proxy(U(mProxy));
-
         websocket_client_config ws_config;
         ws_config.set_proxy(proxy);
-        mWsClient.reset(new websocket_callback_client(ws_config));
 
-        http_client_config http_config;
-        http_config.set_proxy(proxy);
-        mRestClient.reset(new http_client(API_BASE_URL, http_config));
+        mWsClient = new websocket_callback_client(ws_config);
     }
 
     mWsClient->set_message_handler(std::bind(&BinaTGApi::OnWsMessage, this, std::placeholders::_1));
@@ -138,7 +133,7 @@ void BinaTGApi::Connect()
                 }
                 catch (const std::exception& e)
                 {
-                    DCSS_LOG_ERROR(mLogger, "[binance][tg] connect to ws failed! (exception)" << e.what());
+                    DCSS_LOG_ERROR(mLogger, "[trade gateway][binance] connect to ws failed! (exception)" << e.what());
                 }
 
             });
@@ -156,6 +151,7 @@ void BinaTGApi::Disconnect()
 
 void BinaTGApi::Login()
 {
+    DCSS_LOG_INFO(mLogger, "[trade gateway][binance] login success!");
     mLogined = true;
     mSpi->OnRtnTdStatus(GWStatus::Logined, mSourceId);
 }
@@ -177,11 +173,14 @@ void BinaTGApi::ReqQryTicker(const DCSSReqQryTickerField* req, int requestID)
 		DCSS_LOG_ERROR(mLogger, "invalid symbol " << req->Symbol);
 		return;
 	}
+
+	ResetRestClient();
+
 	http_request request(methods::GET);
 	request.headers().add(X_MBX_APIKEY, mApiKey);
 
 	uri_builder builder(PRICE);
-	builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol));
+	builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol).Symbol);
 
 	request.set_request_uri(builder.to_uri());
 	mRestClient->request(request).then([=](http_response response)
@@ -203,11 +202,7 @@ void BinaTGApi::ReqQryTicker(const DCSSReqQryTickerField* req, int requestID)
 
 void BinaTGApi::ReqQryUserInfo(int requestID)
 {
-	web_proxy proxy(U(mProxy));
-
-	http_client_config http_config;
-	http_config.set_proxy(proxy);
-	mRestClient.reset(new http_client(API_BASE_URL, http_config));
+	ResetRestClient();
 
     http_request request(methods::GET);
     request.headers().add(X_MBX_APIKEY, mApiKey);
@@ -232,7 +227,7 @@ void BinaTGApi::ReqQryUserInfo(int requestID)
                         }
                         catch (const std::exception& e)
                         {
-                            DCSS_LOG_ERROR(mLogger, "[bina tg][qry user info] "
+                            DCSS_LOG_ERROR(mLogger, "[trade gateway][binance][qry user info] "
                                                     "send request failed!(expection)" << e.what());
                         }
                     }
@@ -242,11 +237,13 @@ void BinaTGApi::ReqQryUserInfo(int requestID)
 
 void BinaTGApi::ReqQryOrder(const DCSSReqQryOrderField* req, int requestID)
 {
+	ResetRestClient();
+
 	http_request request(methods::GET);
 	request.headers().add(X_MBX_APIKEY, mApiKey);
 
 	uri_builder builder(ORDER);
-	builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol));
+	builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol).Symbol);
 	builder.append_query("orderId", req->OrderID);
 	AddTimeStamp(builder);
 	HMAC_SHA256(builder);
@@ -265,19 +262,21 @@ void BinaTGApi::ReqQryOrder(const DCSSReqQryOrderField* req, int requestID)
 				}
 				catch (const std::exception& e)
 				{
-					DCSS_LOG_ERROR(mLogger, "[bina tg][qry order] send request failed!(exception)" << e.what());
+					DCSS_LOG_ERROR(mLogger, "[trade gateway][binance][qry order] send request failed!(exception)" << e.what());
 				}
 			});
 }
 
 void BinaTGApi::ReqQryOpenOrder(const DCSSReqQryOrderField* req, int requestID)
 {
+	ResetRestClient();
+
 	http_request request(methods::GET);
 	request.headers().add(X_MBX_APIKEY, mApiKey);
 
 	uri_builder builder("/api/v3/openOrders");
 	if (strlen(req->Symbol) > 0)
-		builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol));
+		builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol).Symbol);
 	AddTimeStamp(builder);
 	HMAC_SHA256(builder);
 
@@ -294,7 +293,7 @@ void BinaTGApi::ReqQryOpenOrder(const DCSSReqQryOrderField* req, int requestID)
 				}
 				catch (const std::exception& e)
 				{
-					DCSS_LOG_ERROR(mLogger, "[bina tg][qry open order] send request failed!(exception)" << e.what());
+					DCSS_LOG_ERROR(mLogger, "[trade gateway][binance][qry open order] send request failed!(exception)" << e.what());
 				}
 			});
 }
@@ -307,11 +306,13 @@ void BinaTGApi::ReqQryKline(const DCSSReqQryKlineField* req, int requestID)
         return;
     }
 
+    ResetRestClient();
+
     http_request request(methods::GET);
 	request.headers().add(X_MBX_APIKEY, mApiKey);
 
     uri_builder builder(KLINE);
-    builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol));
+    builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol).Symbol);
     builder.append_query("interval", klineMap.at(req->Type));
     if (req->Size > 0)
         builder.append_query("limit", req->Size);
@@ -349,11 +350,14 @@ void BinaTGApi::ReqInsertOrder(const DCSSReqInsertOrderField* req, int requestID
         DCSS_LOG_ERROR(mLogger, "error symbol " << req->Symbol);
         return;
     }
+
+    ResetRestClient();
+
     http_request request(methods::POST);
     request.headers().add(X_MBX_APIKEY, mApiKey);
 
     uri_builder builder(ORDER);
-    builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol));
+    builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol).Symbol);
     builder.append_query("side", enumDirectionMap.at(req->Direction));
     builder.append_query("type", enumOrderTypeMap.at(req->Type));
     builder.append_query("timeInForce", "GTC");
@@ -395,35 +399,51 @@ void BinaTGApi::ReqCancelOrder(const DCSSReqCancelOrderField* req, int requestID
         DCSS_LOG_ERROR(mLogger, "error symbol " << req->Symbol);
         return;
     }
+
+    ResetRestClient();
+
     http_request request(methods::DEL);
     request.headers().add(X_MBX_APIKEY, mApiKey);
 
     uri_builder builder(ORDER);
-    builder.append_query("symbol", mCommonToBinaSymbolMap.at(req->Symbol));
+    builder.append_query("symbol",
+            mCommonToBinaSymbolMap.at(req->Symbol).Symbol);
     builder.append_query("orderId", req->OrderID);
 
-	AddTimeStamp(builder);
-	HMAC_SHA256(builder);
+    AddTimeStamp(builder);
+    HMAC_SHA256(builder);
 
-	request.set_request_uri(builder.to_uri());
-	mRestClient->request(request).then([=](http_response response)
-	{
-		OnRspCancelOrder(response, req, requestID);
-	}
+    request.set_request_uri(builder.to_uri());
+    mRestClient->request(request).then([=](http_response response)
+    {
+        OnRspCancelOrder(response, req, requestID);
+    }
 
-	).then([=](pplx::task<void> task)
-	{
-		try
-		{
-			task.get();
-		}
-		catch (const std::exception& e)
-		{
+    ).then([=](pplx::task<void> task)
+    {
+        try
+        {
+            task.get();
+        }
+        catch (const std::exception& e)
+        {
 
-		}
-	}
+        }
+    }
 
-	);
+    );
+}
+
+void BinaTGApi::ReqQrySymbol(const DCSSReqQrySymbolField* req, int requestID)
+{
+    DCSSSymbolField symbol = {};
+    if (mCommonToBinaSymbolMap.count(req->Symbol) > 0)
+    {
+        symbol = mCommonToBinaSymbolMap.at(req->Symbol);
+        mSpi->OnRspQrySymbol(&symbol, mSourceId, true, requestID);
+    }
+    else
+        mSpi->OnRspQrySymbol(&symbol, mSourceId, true, requestID, 1, "not found");
 }
 
 /// rsp ///
@@ -432,7 +452,7 @@ void BinaTGApi::OnWsMessage(const websocket_incoming_message& msg)
     json::value jv = json::value::parse(msg.extract_string().get());
     const json::object& jo = jv.as_object();
     const std::string& event = jo.at("e").as_string();
-    if (event == "outboundAccountInfo" == 0)
+    if (event == "outboundAccountInfo")
     {
         OnRtnAccount(jo);
     }
@@ -445,9 +465,14 @@ void BinaTGApi::OnWsMessage(const websocket_incoming_message& msg)
 void BinaTGApi::OnWsClose(websocket_close_status close_status, const utility::string_t& reason,
         const std::error_code& error)
 {
-	DCSS_LOG_INFO(mLogger, "ws close due to " << reason);
+	DCSS_LOG_INFO(mLogger, "[trade gateway][binance] ws close due to " << reason);
 	mSpi->OnRtnTdStatus(GWStatus::Disconnected, mSourceId);
     mWsConnected = false;
+
+    if (close_status != websocket_close_status::normal)
+    {
+    	std::thread t(std::bind(&BinaTGApi::Connect, this));
+    }
 }
 
 void BinaTGApi::OnRtnAccount(const json::object& jo)
@@ -509,6 +534,7 @@ void BinaTGApi::OnRtnOrder(const json::object& jo)
     mOrderLastUpdateTime[orderId] = updateTime;
 
     DCSSOrderField orderField;
+    orderField.Exchange = ExchangeEnum::Binance;
     strcpy(orderField.Symbol, mBinaToCommonSymbolMap.at(symbol).c_str());
     orderField.InsertTime = jo.at("T").as_number().to_int64();
     orderField.OrderID = orderId;
@@ -523,7 +549,7 @@ void BinaTGApi::OnRtnOrder(const json::object& jo)
 
 void BinaTGApi::OnWsConnected()
 {
-    DCSS_LOG_INFO(mLogger, "[binance][tg] ws connect success!");
+    DCSS_LOG_INFO(mLogger, "[trade gateway][binance] ws connect success!");
     mWsConnected = true;
 
     mSpi->OnRtnTdStatus(GWStatus::Connected, mSourceId);
@@ -553,6 +579,26 @@ void BinaTGApi::Ping()
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
+
+void BinaTGApi::ResetRestClient()
+{
+	http_client_config http_config;
+	http_config.set_validate_certificates(false);
+	if (mProxy.empty())
+	{
+		if (!mRestClient)
+			mRestClient = new http_client(API_BASE_URL, http_config);
+	}
+	else
+	{
+		web_proxy proxy(mProxy);
+		http_config.set_proxy(proxy);
+		if (mRestClient)
+			delete mRestClient;
+		mRestClient = new http_client(API_BASE_URL, http_config);
+	}
+}
+
 void BinaTGApi::OnRspQryUserInfo(http_response& response, int requestID)
 {
     try
@@ -571,7 +617,7 @@ void BinaTGApi::OnRspQryUserInfo(http_response& response, int requestID)
                 const json::object& balance = item.as_object();
                 double free = std::stod(balance.at("free").as_string());
                 double locked = std::stod(balance.at("locked").as_string());
-                if (IsEqual(free, 0.0) && IsEqual(locked, 0,0))
+                if (IsEqual(free, 0.0) && IsEqual(locked, 0.0))
                     continue;
 
                 const std::string& asset = balance.at("asset").as_string();
@@ -684,7 +730,7 @@ void BinaTGApi::OnRspQryOrder(http_response& response, const DCSSReqQryOrderFiel
 					statusEnumMap.count(status) == 0)
 				return;
 
-			DCSSOrderField order;
+			order.Exchange = ExchangeEnum::Binance;
 			order.Direction = directionEnumMap.at(side);
 			order.Type = orderTypeEnumMap.at(type);
 			order.OriginQuantity = std::stod(jo.at("origQty").as_string());
@@ -709,6 +755,7 @@ void BinaTGApi::OnRspQryOpenOrder(http_response& response, const DCSSReqQryOrder
 	try
 	{
 		DCSSOrderField order;
+		order.Exchange = ExchangeEnum::Binance;
 		strcpy(order.Symbol, req->Symbol);
 		const json::value jv = response.extract_json().get();
 		if (jv.is_object())

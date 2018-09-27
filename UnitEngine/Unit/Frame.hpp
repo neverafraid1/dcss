@@ -7,7 +7,6 @@
 
 #include <cstring>
 #include "FrameHeader.h"
-#include "UnitDeclare.h"
 
 UNIT_NAMESPACE_START
 

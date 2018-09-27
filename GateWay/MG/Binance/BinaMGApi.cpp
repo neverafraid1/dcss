@@ -2,10 +2,16 @@
 // Created by wangzhen on 18-8-14.
 //
 
+#include <cpprest/http_client.h>
 #include "BinaMGApi.h"
 #include "Helper.h"
 #include "SymbolDao.hpp"
 #include "BinanceConstant.h"
+#include "Timer.h"
+#include <limits>
+
+using namespace web::http;
+using namespace web::http::client;
 
 std::unordered_map<KlineType, std::string, EnumClassHash> BinaMGApi::klineStringMap = {
         {KlineType::Min1,   "1m"},
@@ -43,17 +49,23 @@ std::unordered_map<std::string, KlineType> BinaMGApi::stringKlineMap = {
 		{"1M",	KlineType::Month1}
 };
 
-BinaMGApi::BinaMGApi(uint8_t source)
-: IMGApi(source), mWsConnected(false)
+BinaMGApi::BinaMGApi()
+: IMGApi(ExchangeEnum::Binance), mWsConnected(false)
 {
-    auto res = SymbolDao::GetAllSymbol(source);
+    auto res = SymbolDao::GetAllSymbol(ExchangeEnum::Binance);
     for (const auto& item : res)
     {
-        std::string common = std::string(std::get<1>(item)).append("_").append(std::get<2>(item));
-        std::string binaSymbol = std::get<0>(item);
-        mCommonToBinaSymbolMap[common] = binaSymbol;
+        DCSSSymbolField symbolField = item;
+
+        std::string common = std::string(symbolField.Currency.BaseCurrency).append("_").append(symbolField.Currency.QuoteCurrecy);
+        std::transform(common.begin(), common.end(), common.begin(), ::tolower);
+
+        std::string binaSymbol(symbolField.Symbol);
         std::transform(binaSymbol.begin(), binaSymbol.end(), binaSymbol.begin(), ::toupper);
-        mBinaToCommonSymbolMap[binaSymbol] = common;
+        strcpy(symbolField.Symbol, binaSymbol.c_str());
+
+        mBinaToCommonSymbolMap[symbolField.Symbol] = common;
+        mCommonToBinaSymbolMap[common] = symbolField;
     }
 }
 
@@ -111,7 +123,7 @@ std::shared_ptr<websocket_callback_client> BinaMGApi::CreateNewWsClient()
 
 std::string BinaMGApi::GetTickerChannel(const std::string& symbol)
 {
-    std::string binaSymbol = mCommonToBinaSymbolMap.at(symbol);
+    std::string binaSymbol = mCommonToBinaSymbolMap.at(symbol).Symbol;
     std::transform(binaSymbol.begin(), binaSymbol.end(), binaSymbol.begin(), ::tolower);
 
     return BinanceConstant::WS_API_BASE_URL+ binaSymbol + "@ticker";
@@ -119,18 +131,77 @@ std::string BinaMGApi::GetTickerChannel(const std::string& symbol)
 
 std::string BinaMGApi::GetKlineChannel(const std::string& symbol, KlineType type)
 {
-	std::string binaSymbol = mCommonToBinaSymbolMap.at(symbol);
+	std::string binaSymbol = mCommonToBinaSymbolMap.at(symbol).Symbol;
 	std::transform(binaSymbol.begin(), binaSymbol.end(), binaSymbol.begin(), ::tolower);
 
 	return BinanceConstant::WS_API_BASE_URL + binaSymbol + "@kline_" + klineStringMap.at(type);
 }
 
-std::string BinaMGApi::GetDepthChannel(const std::string& symbol, int depth)
+std::string BinaMGApi::GetDepthChannel(const std::string& symbol)
 {
-    std::string binaSymbol = mCommonToBinaSymbolMap.at(symbol);
+    std::string binaSymbol = mCommonToBinaSymbolMap.at(symbol).Symbol;
     std::transform(binaSymbol.begin(), binaSymbol.end(), binaSymbol.begin(), ::tolower);
 
-    return BinanceConstant::WS_API_BASE_URL + binaSymbol + "@depth" + std::to_string(depth);
+    return BinanceConstant::WS_API_BASE_URL + binaSymbol + "@depth";
+}
+
+void BinaMGApi::GetDepthSnapShot(const std::string& symbol)
+{
+    mBidDepth.erase(symbol);
+    mAskDepth.erase(symbol);
+    mLastUpdateIdMap.erase(symbol);
+
+    http_client_config http_config;
+    http_config.set_validate_certificates(false);
+    if (!mProxy.empty())
+    {
+        web_proxy proxy(mProxy);
+        http_config.set_proxy(proxy);
+    }
+
+    http_client restClient("https://www.binance.com", http_config);
+    http_request request(methods::GET);
+
+    uri_builder builder("api/v1/depth");
+    builder.append_query("symbol",
+            std::string(mCommonToBinaSymbolMap.at(symbol).Symbol));
+    builder.append_query("limit", MAX_DEPTH_NUM);
+
+    request.set_request_uri(builder.to_uri());
+
+    try
+    {
+        auto& bidDepth = mBidDepth[symbol];
+        auto& askDepth = mAskDepth[symbol];
+
+        auto response = restClient.request(request).get();
+        json::value jv = response.extract_json().get();
+
+        const json::array& bids = jv.at("bids").as_array();
+        for (const auto& item : bids)
+        {
+            const json::array& bid = item.as_array();
+
+            double price = std::stod(bid.at(0).as_string());
+            if (!IsEqual(price, 0.0))
+                bidDepth.insert(std::make_pair(price, std::stod(bid.at(1).as_string())));
+        }
+
+        const json::array& asks = jv.at("asks").as_array();
+        for (const auto& item : asks)
+        {
+            const json::array& ask = item.as_array();
+            double price = std::stod(ask.at(0).as_string());
+            if (!IsEqual(price, 0.0))
+                askDepth.insert(std::make_pair(std::stod(ask.at(0).as_string()), std::stod(ask.at(1).as_string())));
+        }
+
+        mLastUpdateIdMap[symbol] = std::make_pair(jv.at("lastUpdateId").as_number().to_int64(), std::numeric_limits<long>::max());
+    }
+    catch (const std::exception& e)
+    {
+        DCSS_LOG_INFO(mLogger, "[binance mg] (channel) get depth error (exception) " << e.what());
+    }
 }
 
 bool BinaMGApi::IsConnected() const
@@ -161,7 +232,7 @@ void BinaMGApi::ReqSubTicker(const std::string& symbol)
     client->set_close_handler(std::bind(&BinaMGApi::OnWsClose, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
     try
     {
-    	client->connect(channel).get();
+    	client->connect(channel).wait();
     }
     catch (const std::exception& e)
     {
@@ -175,7 +246,7 @@ void BinaMGApi::ReqSubTicker(const std::string& symbol)
     DCSS_LOG_INFO(mLogger, "[binance mg](channel)" << channel << " sub success");
 }
 
-void BinaMGApi::ReqSubDepth(const std::string& symbol, int depth)
+void BinaMGApi::ReqSubDepth(const std::string& symbol)
 {
     if (!mWsConnected)
     {
@@ -183,37 +254,37 @@ void BinaMGApi::ReqSubDepth(const std::string& symbol, int depth)
         return;
     }
 
-    if (depth != 5 && depth != 10 && depth != 20)
+    if (mSubDepthNum.count(symbol) > 0)
     {
-        DCSS_LOG_ERROR(mLogger, "[binance]invalid depth " << depth);
+        ++mSubDepthNum.at(symbol);
         return;
     }
 
-    if (mSubDepthNum.count(symbol) > 0 && mSubDepthNum.at(symbol).count(depth) > 0)
-    {
-        ++mSubDepthNum.at(symbol).at(depth);
-        return;
-    }
+    mSubDepthNum[symbol] = 1;
 
-    mSubDepthNum[symbol][depth] = 1;
+    std::string binaSymbol = mCommonToBinaSymbolMap.at(symbol).Symbol;
+        std::transform(binaSymbol.begin(), binaSymbol.end(), binaSymbol.begin(), ::tolower);
 
-    std::string channel = GetDepthChannel(symbol, depth);
+    std::string channel = GetDepthChannel(symbol);
 
     std::shared_ptr<websocket_callback_client> client = CreateNewWsClient();
-    client->set_message_handler(std::bind(&BinaMGApi::OnWsMessage, this, std::placeholders::_1));
+    client->set_message_handler(std::bind(&BinaMGApi::OnWsDepth, this, std::placeholders::_1));
     client->set_close_handler(std::bind(&BinaMGApi::OnWsClose, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+
     try
     {
-    	client->connect(channel).get();
+        client->connect(channel).wait();
     }
     catch (const std::exception& e)
     {
-    	DCSS_LOG_ERROR(mLogger, "[binance mg](channel)" << channel << " sub failed!(exception)" << e.what());
-    	--mSubDepthNum.at(symbol).at(depth);
-    	return;
+        DCSS_LOG_ERROR(mLogger, "[binance mg](channel)" << channel << " sub failed!(exception)" << e.what());
+        --mSubDepthNum.at(symbol);
+        return;
     }
 
     mSubDepthClient[channel] = client;
+
+    GetDepthSnapShot(symbol);
 
     DCSS_LOG_INFO(mLogger, "[binance mg](channel)" << channel << " sub success");
 }
@@ -247,7 +318,7 @@ void BinaMGApi::ReqSubKline(const std::string& symbol, KlineType klineType)
     client->set_close_handler(std::bind(&BinaMGApi::OnWsClose, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
     try
     {
-    	client->connect(channel).get();
+    	client->connect(channel).wait();
     }
     catch (const std::exception& e)
     {
@@ -273,7 +344,7 @@ void BinaMGApi::ReqUnSubTicker(const std::string& symbol)
 	auto client = mSubTickerClient.at(channel);
 	try
 	{
-		client->close(websocket_close_status::normal, "unsub (channel)" + channel).get();
+		client->close(websocket_close_status::normal, "unsub (channel)" + channel).wait();
 	}
 	catch (const std::exception& e)
 	{
@@ -300,7 +371,7 @@ void BinaMGApi::ReqUnSubKline(const std::string& symbol, KlineType klineType)
 	auto client = mSubKlineClient.at(channel);
 	try
 	{
-		client->close(websocket_close_status::normal, "unsub (channel)" + channel).get();
+		client->close(websocket_close_status::normal, "unsub (channel)" + channel).wait();
 	}
 	catch (const std::exception& e)
 	{
@@ -315,21 +386,20 @@ void BinaMGApi::ReqUnSubKline(const std::string& symbol, KlineType klineType)
 		mSubKlineNum.erase(symbol);
 }
 
-void BinaMGApi::ReqUnSubDepth(const std::string& symbol, int depth)
+void BinaMGApi::ReqUnSubDepth(const std::string& symbol)
 {
-	if (mSubDepthNum.count(symbol) == 0 ||
-			mSubDepthNum.at(symbol).count(depth) == 0 ||
-			--mSubDepthNum.at(symbol).at(depth) > 0)
+	if (mSubDepthNum.count(symbol) == 0 || --mSubDepthNum.at(symbol) > 0)
 		return;
 
-	std::string channel = GetDepthChannel(symbol, depth);
+	std::string channel = GetDepthChannel(symbol);
+
 	if (mSubDepthClient.count(channel) == 0)
 		return;
 
 	auto client = mSubDepthClient.at(channel);
 	try
 	{
-		client->close(websocket_close_status::normal, "unsub (channel)" + channel).get();
+		client->close(websocket_close_status::normal, "unsub (channel)" + channel).wait();
 	}
 	catch (const std::exception& e)
 	{
@@ -338,9 +408,7 @@ void BinaMGApi::ReqUnSubDepth(const std::string& symbol, int depth)
 
 	DCSS_LOG_INFO(mLogger, "[binance mg](channel)" << channel << " unnub success");
 	mSubDepthClient.erase(channel);
-	mSubDepthNum.at(symbol).erase(depth);
-	if (mSubDepthNum.at(symbol).empty())
-		mSubDepthNum.erase(symbol);
+	mSubDepthNum.erase(symbol);
 }
 
 void BinaMGApi::OnWsMessage(const websocket_incoming_message& msg)
@@ -371,6 +439,81 @@ void BinaMGApi::OnWsKline(const websocket_incoming_message& msg)
 	OnRtnKline(jo);
 }
 
+void BinaMGApi::OnWsDepth(const websocket_incoming_message& msg)
+{
+    json::value jv = json::value::parse(msg.extract_string().get());
+
+    const std::string& binaSymbol = jv.at("s").as_string();
+    const std::string& commSymbol = mBinaToCommonSymbolMap.at(binaSymbol);
+
+    if (mLastUpdateIdMap.count(commSymbol) == 0)
+        return;
+
+    long firstUpdateId = jv.at("U").as_number().to_int64();
+    long finalUpdateId = jv.at("u").as_number().to_int64();
+    long updateTime = jv.at("E").as_number().to_int64();
+
+    auto& item = mLastUpdateIdMap.at(commSymbol);
+    auto& bidDepth = mBidDepth.at(commSymbol);
+    auto& askDepth = mAskDepth.at(commSymbol);
+
+    if (finalUpdateId <= item.first)
+        return;
+
+    if (firstUpdateId > item.first + 1)
+    {
+        GetDepthSnapShot(commSymbol);
+        return;
+    }
+
+    item.first = finalUpdateId;
+    item.second = updateTime;
+
+    const json::array& bids = jv.at("b").as_array();
+    for (const auto& item : bids)
+    {
+        const json::array& bid = item.as_array();
+        double price = std::stod(bid.at(0).as_string());
+        if (IsEqual(price, 0.0))
+            bidDepth.erase(price);
+        else
+            bidDepth[price] = std::stod(bid.at(1).as_string());
+    }
+
+    const json::array& asks = jv.at("a").as_array();
+    for (const auto& item : asks)
+    {
+        const json::array& ask = item.as_array();
+        double price = std::stod(ask.at(0).as_string());
+        if (IsEqual(price, 0.0))
+            askDepth.erase(price);
+        else
+            askDepth[price] = std::stod(ask.at(1).as_string());
+    }
+
+    DCSSDepthField depth;
+    strcpy(depth.Symbol, commSymbol.c_str());
+    depth.UpdateTime = mLastUpdateIdMap.at(commSymbol).second;
+
+    int index = 0;
+    for (auto iter = bidDepth.begin(); iter != bidDepth.end() && index < MAX_DEPTH_NUM; ++iter, ++index)
+    {
+        depth.BidDepth[index].Price = iter->first;
+        depth.BidDepth[index].Volume = iter->second;
+    }
+
+    index = 0;
+    for (auto iter = askDepth.begin(); iter != askDepth.end() && index < MAX_DEPTH_NUM; ++iter, ++index)
+    {
+        depth.AskDepth[index].Price = iter->first;
+        depth.AskDepth[index].Volume = iter->second;
+    }
+
+    depth.SendTime = GetNanoTime();
+    mSpi->OnRtnDepth(&depth, mSourceId);
+
+}
+
 void BinaMGApi::OnWsClose(websocket_close_status close_status, const utility::string_t& reason, const std::error_code& error)
 {
 
@@ -378,19 +521,17 @@ void BinaMGApi::OnWsClose(websocket_close_status close_status, const utility::st
 
 void BinaMGApi::OnRtnKline(const json::object& jo)
 {
-    const json::object& jkline = jo.at("k").as_object();
-
     DCSSKlineField kline;
     strcpy(kline.Symbol, mBinaToCommonSymbolMap.at(jo.at("s").as_string()).c_str());
     kline.UpdateTime = jo.at("E").as_number().to_int64();
-    kline.Type = stringKlineMap.at(jkline.at("i").as_string());
-    kline.OpenPrice = std::stod(jkline.at("o").as_string());
-    kline.ClosePrice = std::stod(jkline.at("c").as_string());
-    kline.Highest = std::stod(jkline.at("h").as_string());;
-    kline.Lowest = std::stod(jkline.at("l").as_string());
-    kline.Volume = std::stod(jkline.at("v").as_string());
-    kline.StartTime = jkline.at("t").as_number().to_int64();
-    kline.CloseTime = jkline.at("T").as_number().to_int64();
+    kline.Type = stringKlineMap.at(jo.at("i").as_string());
+    kline.OpenPrice = std::stod(jo.at("o").as_string());
+    kline.ClosePrice = std::stod(jo.at("c").as_string());
+    kline.Highest = std::stod(jo.at("h").as_string());;
+    kline.Lowest = std::stod(jo.at("l").as_string());
+    kline.Volume = std::stod(jo.at("v").as_string());
+    kline.StartTime = jo.at("t").as_number().to_int64();
+    kline.CloseTime = jo.at("T").as_number().to_int64();
 
     mSpi->OnRtnKline(&kline, mSourceId);
 }

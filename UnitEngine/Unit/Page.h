@@ -5,10 +5,7 @@
 #ifndef DIGITALCURRENCYSTRATEGYSYSTEM_PAGE_H
 #define DIGITALCURRENCYSTRATEGYSYSTEM_PAGE_H
 
-#include "FrameHeader.h"
 #include "Frame.hpp"
-#include "constants.h"
-#include "UnitDeclare.h"
 
 UNIT_NAMESPACE_START
 
